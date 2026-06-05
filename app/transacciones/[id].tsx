@@ -35,6 +35,7 @@ export default function TransaccionDetailScreen() {
   const router = useRouter();
   const { format } = useCurrency();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reverting, setReverting] = useState(false);
   const pinGate = usePinGate();
   const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
 
@@ -71,10 +72,11 @@ export default function TransaccionDetailScreen() {
   }, [trxId]);
 
   const handleRevert = useCallback(() => {
-    if (!trxId) return;
+    if (!trxId || reverting) return;
     pinGate.request({
       title: 'Revertir transacción',
       onSuccess: () => {
+        setReverting(true);
         try {
           revertirTransaccion(trxId);
           invalidateMany(['transacciones', 'caja', 'productos']);
@@ -82,10 +84,11 @@ export default function TransaccionDetailScreen() {
           router.back();
         } catch (e) {
           ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo revertir.');
+          setReverting(false);
         }
       },
     });
-  }, [pinGate, router, trxId]);
+  }, [pinGate, router, reverting, trxId]);
 
   if (loading) {
     return (
@@ -179,7 +182,14 @@ export default function TransaccionDetailScreen() {
         </Card>
       ) : null}
 
-      <Button title="Revertir transacción" variant="danger" onPress={() => setConfirmOpen(true)} fullWidth />
+      <Button
+        title="Revertir transacción"
+        variant="danger"
+        onPress={() => setConfirmOpen(true)}
+        busy={reverting}
+        disabled={reverting}
+        fullWidth
+      />
 
       <ConfirmDialog
         visible={confirmOpen}

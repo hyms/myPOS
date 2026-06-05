@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 
 import { useMovimientos, type MovimientoItem } from '@/presentation/hooks/useMovimientos';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
@@ -12,6 +12,7 @@ import { SearchBar } from '@/presentation/components/filters/SearchBar';
 import { TipoFilterChips, type TipoFilter } from '@/presentation/components/movimientos/TipoFilterChips';
 import { MovimientoListItem } from '@/presentation/components/movimientos/MovimientoListItem';
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
+import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
 import { DARK_PALETTE } from '@/presentation/theme/tokens';
 import { cn } from '@/shared/utils/cn';
@@ -168,6 +169,19 @@ export default function MovimientosIndexScreen() {
                 search
                   ? `No hay "${search}" en ${FILTERS_INFO[tipoFilter]}.`
                   : `Aún no hay ${FILTERS_INFO[tipoFilter] === 'todos los tipos' ? 'movimientos' : FILTERS_INFO[tipoFilter]}. Registra tu primera transacción en la pestaña Registro.`
+              }
+              action={
+                search ? null : (
+                  <Link href="/(tabs)/registro" asChild>
+                    <AnimatedPressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Ir a registro para crear una transacción"
+                      className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
+                    >
+                      <Text className="text-base font-bold text-onAccent">Ir a Registro</Text>
+                    </AnimatedPressable>
+                  </Link>
+                )
               }
             />
           }

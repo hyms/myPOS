@@ -3,6 +3,7 @@ import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
 import { Link } from 'expo-router';
 import { RefreshControl, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGastosDelMes } from '@/presentation/hooks/useTransacciones';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { useInfiniteScroll } from '@/presentation/hooks/useInfiniteScroll';
@@ -66,6 +67,7 @@ function GastoSkeleton() {
 }
 
 export default function GastosIndexScreen() {
+  const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
   const { items, hasMore, loading, refresh } = useGastosDelMes(page);
   const { format } = useCurrency();
@@ -121,6 +123,17 @@ export default function GastosIndexScreen() {
                 icon="receipt-outline"
                 title="Sin gastos este mes"
                 description="Registra pagos de servicios, sueldos u otros gastos operativos."
+                action={
+                  <Link href="/gastos/nuevo" asChild>
+                    <AnimatedPressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Registrar primer gasto del mes"
+                      className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-danger px-4 py-2.5"
+                    >
+                      <Text className="text-base font-bold text-onDanger">Registrar gasto</Text>
+                    </AnimatedPressable>
+                  </Link>
+                }
               />
             ) : null
           }
@@ -132,8 +145,8 @@ export default function GastosIndexScreen() {
           accessibilityRole="button"
           accessibilityLabel="Nuevo gasto"
           accessibilityHint="Abre el formulario para registrar un nuevo gasto"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-danger"
-          style={SHADOW.fab}
+          className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-danger"
+          style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
         >
           <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
         </AnimatedPressable>

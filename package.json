@@ -8,6 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "lint:tw": "node scripts/check-tw-dupes.mjs",
     "typecheck": "tsc --noEmit",
     "test": "NODE_ENV=test jest --passWithNoTests",
     "test:watch": "NODE_ENV=test jest --watch",

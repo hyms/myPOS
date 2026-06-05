@@ -2,7 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
 import { Link, Stack, router } from 'expo-router';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SearchBar } from '@/presentation/components/filters/SearchBar';
 import { SortMenu } from '@/presentation/components/filters/SortMenu';
@@ -42,6 +43,7 @@ const RenderProduct = React.memo(function RenderProduct({ item, onPress }: Rende
 });
 
 export default function ProductosScreen() {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [sort, setSort] = useState<SortOrder>('POPULARIDAD_DESC');
@@ -117,6 +119,17 @@ export default function ProductosScreen() {
               icon="cube-outline"
               title="Sin productos"
               description="Crea tu primer producto para empezar a vender."
+              action={
+                <Link href="/productos/nuevo" asChild>
+                  <AnimatedPressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Crear primer producto"
+                    className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
+                  >
+                    <Text className="text-base font-bold text-onAccent">Crear primer producto</Text>
+                  </AnimatedPressable>
+                </Link>
+              }
             />
           }
           ListFooterComponent={hasMore && loading ? <ListFooterLoader count={3} itemHeight={140} /> : null}
@@ -127,8 +140,8 @@ export default function ProductosScreen() {
           accessibilityRole="button"
           accessibilityLabel="Crear producto"
           accessibilityHint="Abre el formulario para registrar un nuevo producto"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-accent"
-          style={SHADOW.fab}
+          className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-accent"
+          style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
         >
           <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
         </AnimatedPressable>

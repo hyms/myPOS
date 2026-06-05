@@ -17,7 +17,7 @@ const CurrencyOption = memo(function CurrencyOption({ value, active, onSelect }:
     <Pressable
       onPress={handlePress}
       className={cn(
-        'flex-1 items-center rounded-xl border p-3',
+        'min-h-[48px] flex-1 items-center justify-center rounded-xl border p-3',
         active
           ? 'border-accent bg-surface-hi'
           : 'border-border-subtle bg-surface',

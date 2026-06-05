@@ -7,49 +7,18 @@ import type { Transaccion, TipoTransaccion, TipoPago } from '@/domain/entities/T
 import { formatFechaCorta } from '@/shared/utils/date';
 import { cn } from '@/shared/utils/cn';
 import { DARK_PALETTE } from '@/presentation/theme/tokens';
+import { TONE_STYLES, type SemanticTone } from '@/presentation/components/ui/SemanticTone';
 
-export type MovimientoTone = 'success' | 'warning' | 'danger';
-
-interface ToneSpec {
-  bar: string;
-  text: string;
-  chip: string;
-  chipBg: string;
-  iconHex: string;
-  sign: string;
-}
-
-const TONE: Readonly<Record<MovimientoTone, ToneSpec>> = {
-  success: {
-    bar: 'bg-success',
-    text: 'text-success',
-    chip: 'text-success',
-    chipBg: 'bg-success-soft',
-    iconHex: DARK_PALETTE.success,
-    sign: '+',
-  },
-  warning: {
-    bar: 'bg-warning',
-    text: 'text-warning',
-    chip: 'text-warning',
-    chipBg: 'bg-warning-soft',
-    iconHex: DARK_PALETTE.warning,
-    sign: '-',
-  },
-  danger: {
-    bar: 'bg-danger',
-    text: 'text-danger',
-    chip: 'text-danger',
-    chipBg: 'bg-danger-soft',
-    iconHex: DARK_PALETTE.danger,
-    sign: '-',
-  },
-};
-
-const TIPO_TONE: Readonly<Record<TipoTransaccion, MovimientoTone>> = {
+const TIPO_TONE: Readonly<Record<TipoTransaccion, Extract<SemanticTone, 'success' | 'warning' | 'danger'>>> = {
   VENTA: 'success',
   COMPRA: 'warning',
   GASTO: 'danger',
+};
+
+const TIPO_SIGN: Readonly<Record<TipoTransaccion, '+' | '-'>> = {
+  VENTA: '+',
+  COMPRA: '-',
+  GASTO: '-',
 };
 
 const TIPO_ICON: Readonly<Record<TipoTransaccion, IconName>> = {
@@ -86,7 +55,8 @@ interface Props {
 }
 
 function MovimientoListItemComponent({ item, detailCount, onPress, format }: Props) {
-  const tone = TONE[TIPO_TONE[item.tipo]];
+  const tone = TIPO_TONE[item.tipo];
+  const s = TONE_STYLES[tone];
   const detalle =
     item.detalle ??
     (detailCount && detailCount > 0
@@ -100,14 +70,14 @@ function MovimientoListItemComponent({ item, detailCount, onPress, format }: Pro
       accessibilityLabel={`${TIPO_LABEL[item.tipo]} de ${format(item.montoTotal)}${detalle ? `, ${detalle}` : ''}`}
       className="mx-3 my-1.5 overflow-hidden rounded-2xl border border-border-subtle bg-surface"
     >
-      <View className={cn('h-1 w-full', tone.bar)} />
+      <View className={cn('h-1 w-full', s.bar)} />
       <View className="flex-row items-center justify-between p-3.5">
         <View className="flex-1 pr-2">
           <View className="flex-row items-center gap-2">
-            <View className={cn('rounded-md p-1', tone.chipBg)}>
-              <Icon name={TIPO_ICON[item.tipo]} size={14} color={tone.iconHex} />
+            <View className={cn('rounded-md p-1', s.soft)}>
+              <Icon name={TIPO_ICON[item.tipo]} size={14} color={s.hex} />
             </View>
-            <Text className={cn('text-xs font-bold uppercase tracking-wide', tone.chip)}>
+            <Text className={cn('text-xs font-bold uppercase tracking-wide', s.text)}>
               {TIPO_LABEL[item.tipo]}
             </Text>
             <View className="flex-row items-center gap-1">
@@ -135,8 +105,8 @@ function MovimientoListItemComponent({ item, detailCount, onPress, format }: Pro
           </Text>
         </View>
         <View className="ml-2 flex-row items-center gap-1.5">
-          <Text className={cn('text-lg font-extrabold tabular-nums', tone.text)}>
-            {tone.sign}{format(Math.abs(item.montoTotal))}
+          <Text className={cn('text-lg font-extrabold tabular-nums', s.text)}>
+            {TIPO_SIGN[item.tipo]}{format(Math.abs(item.montoTotal))}
           </Text>
           <Icon name="chevron-forward" size={14} color={DARK_PALETTE.inkFaint} />
         </View>

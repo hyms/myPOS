@@ -23,14 +23,22 @@ export default function LockScreen() {
   const biometricEnabled = useSettingsStore((s) => s.biometricEnabled);
 
   const tryBiometric = useCallback(async () => {
-    const ok = await BiometricService.authenticate('Desbloquear TPV');
-    if (ok) {
-      setUnlocked(true);
-      router.replace('/(tabs)');
-    } else {
-      ToastService.info('Cancelado', 'Ingresa tu PIN.');
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await BiometricService.authenticate('Desbloquear TPV');
+      if (ok) {
+        setUnlocked(true);
+        router.replace('/(tabs)');
+      } else {
+        ToastService.info('Cancelado', 'Ingresa tu PIN.');
+      }
+    } catch {
+      ToastService.error('No se pudo autenticar');
+    } finally {
+      setBusy(false);
     }
-  }, [router, setUnlocked]);
+  }, [busy, router, setUnlocked]);
 
   useEffect(() => {
     if (biometricEnabled) {
@@ -92,6 +100,10 @@ export default function LockScreen() {
           {biometricEnabled ? (
             <AnimatedPressable
               onPress={tryBiometric}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Usar biometría para desbloquear"
+              accessibilityState={{ disabled: busy, busy }}
               className="items-center justify-center rounded-lg bg-surface-hi px-4 py-3"
             >
               <View className="flex-row items-center gap-2">

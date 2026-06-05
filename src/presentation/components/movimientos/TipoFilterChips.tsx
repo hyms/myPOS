@@ -73,7 +73,7 @@ function TipoFilterChipsComponent({ value, onChange }: Props) {
             accessibilityState={{ selected: active }}
             hitSlop={4}
             className={cn(
-              'min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3.5 py-1.5',
+              'min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3.5 py-2',
               active
                 ? opt.activeClass
                 : 'border-border bg-surface',

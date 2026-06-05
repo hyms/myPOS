@@ -100,25 +100,12 @@ const RIPPLE = Object.freeze({
   danger: 'rgba(232, 90, 107, 0.20)',
 });
 
-// Tokens agregados. `tokens.colors` apunta a DARK_PALETTE para que
-// consumidores antiguos (`tokens.colors.surface`) sigan funcionando.
-const TOKENS = Object.freeze({
-  spacing: Object.freeze({
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 24,
-    xxl: 32,
-  }),
-  radii: Object.freeze({
-    sm: 6,
-    md: 12,
-    lg: 16,
-    xl: 24,
-    full: 9999,
-  }),
-  fontSize: Object.freeze({
+// Escala tipográfica. Consumida por tailwind.config.js para registrar las
+// clases `text-xs/sm/base/...`, `font-{regular,medium,semibold,bold}`, y los
+// `lineHeight` correspondientes. No se exporta como `TOKENS.fontSize` porque
+// el acceso programático desde TSX no tiene consumidores (cero referencias).
+const TYPOGRAPHY = Object.freeze({
+  size: Object.freeze({
     xs: 11,
     sm: 13,
     base: 15,
@@ -127,12 +114,44 @@ const TOKENS = Object.freeze({
     xl: 24,
     xxl: 32,
   }),
-  fontWeight: Object.freeze({
+  lineHeight: Object.freeze({
+    tight: 1.2,
+    normal: 1.4,
+  }),
+  weight: Object.freeze({
     regular: '400',
     medium: '500',
     semibold: '600',
     bold: '700',
   }),
+});
+
+// Radios registrados como `rounded-sm/md/lg/xl/2xl/full`. 2xl y xl comparten
+// valor (24) por simplicidad; el resto respeta la progresión.
+const RADII = Object.freeze({
+  sm: 6,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 9999,
+});
+
+// Espaciado semántico del design system. Expuesto en Tailwind como
+// `ds-xs`/`ds-sm`/`ds-md`/`ds-lg`/`ds-xl`/`ds-xxl` para `p-*`/`m-*`/`gap-*`.
+// Las clases numéricas nativas (p-1, p-2, gap-1.5, etc.) siguen disponibles;
+// este set es para casos que necesitan anclarse al design system explícito.
+const SPACING = Object.freeze({
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+});
+
+// Tokens agregados. `tokens.colors` apunta a DARK_PALETTE para que
+// consumidores antiguos (`tokens.colors.surface`) sigan funcionando.
+const TOKENS = Object.freeze({
   colors: DARK_PALETTE,
   on: ON,
   scrim: SCRIM,
@@ -169,6 +188,9 @@ module.exports = {
   FOCUS,
   DISABLED,
   RIPPLE,
+  TYPOGRAPHY,
+  RADII,
+  SPACING,
   TOKENS,
   FALLBACK_PALETTE,
   colorForId,

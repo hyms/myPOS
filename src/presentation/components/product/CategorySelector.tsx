@@ -36,7 +36,7 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
               key={c.id}
               onPress={() => handleSelect(c.id)}
               className={cn(
-                'rounded-full border px-3 py-2',
+                'min-h-[40px] flex-row items-center rounded-full border px-3.5 py-2',
                 active
                   ? 'border-accent bg-accent'
                   : 'border-border bg-surface',
@@ -56,7 +56,9 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
         })}
         <Pressable
           onPress={onRequestNew}
-          className="flex-row items-center gap-1 rounded-full border border-dashed border-accent bg-surface-hi px-3 py-2"
+          accessibilityRole="button"
+          accessibilityLabel="Crear nueva categoría"
+          className="min-h-[40px] flex-row items-center gap-1 rounded-full border border-dashed border-accent bg-surface-hi px-3.5 py-2"
         >
           <Text className="text-base font-bold text-ink-strong">+</Text>
           <Text className="text-sm font-semibold text-ink-strong">Nueva</Text>

@@ -2,26 +2,14 @@ import React, { memo } from 'react';
 import { Text, View } from 'react-native';
 
 import { cn } from '@/shared/utils/cn';
+import { TONE_STYLES, type ResumenTone } from '@/presentation/components/ui/SemanticTone';
 
-export type StatTone = 'success' | 'warning' | 'danger' | 'neutral';
-
-interface ToneStyle {
-  readonly bg: string;
-  readonly bar: string;
-  readonly text: string;
-}
-
-const TONE_STYLES: Readonly<Record<StatTone, ToneStyle>> = {
-  success: { bg: 'bg-success-soft', bar: 'bg-success', text: 'text-success' },
-  warning: { bg: 'bg-warning-soft', bar: 'bg-warning', text: 'text-warning' },
-  danger: { bg: 'bg-danger-soft', bar: 'bg-danger', text: 'text-danger' },
-  neutral: { bg: 'bg-surface-hi', bar: 'bg-surface-hi', text: 'text-ink-strong' },
-};
+export type { ResumenTone } from '@/presentation/components/ui/SemanticTone';
 
 interface Props {
   readonly label: string;
   readonly value: string;
-  readonly tone?: StatTone;
+  readonly tone?: ResumenTone;
   readonly className?: string;
 }
 

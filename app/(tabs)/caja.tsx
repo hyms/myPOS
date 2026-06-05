@@ -11,6 +11,8 @@ import {
 import { Card } from '@/presentation/components/ui/Card';
 import { Icon } from '@/presentation/components/ui/Icon';
 import { Skeleton } from '@/presentation/components/ui/Skeleton';
+import { Stat, type ResumenTone } from '@/presentation/components/reports/Stat';
+import { ReportRow } from '@/presentation/components/reports/ReportRow';
 import { Breakdown } from '@/presentation/components/reports/BreakdownBar';
 import type { ResumenPeriodo } from '@/application/reportes/ResumenPeriodo';
 import { cn } from '@/shared/utils/cn';
@@ -26,14 +28,6 @@ function SkeletonCaja() {
           <Skeleton className="h-14 flex-1 rounded-lg" />
           <Skeleton className="h-14 flex-1 rounded-lg" />
           <Skeleton className="h-14 flex-1 rounded-lg" />
-        </View>
-      </Card>
-      <Card>
-        <Skeleton className="mb-3 h-4 w-32" />
-        <View className="gap-3">
-          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
-          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
-          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
         </View>
       </Card>
       <Card>
@@ -77,7 +71,7 @@ export default function CajaScreen() {
     resumen.totalGastos === 0 &&
     resumen.saldoActual === 0;
 
-  const saldoTone =
+  const saldoTone: ResumenTone =
     resumen.saldoActual > 0
       ? 'success'
       : resumen.saldoActual < 0
@@ -198,16 +192,11 @@ export default function CajaScreen() {
           ]}
         />
         <View className="mt-3 border-t border-border-subtle pt-3">
-          <Row
+          <ReportRow
             label="Neto del mes"
             value={format(mes.neto)}
             tone={mes.neto >= 0 ? 'success' : 'danger'}
             bold
-            accessibilityHint={
-              mes.neto >= 0
-                ? 'Saldo positivo: ventas superan a compras y gastos'
-                : 'Saldo negativo: gastos o compras superan a ventas'
-            }
           />
         </View>
       </Card>
@@ -226,89 +215,14 @@ export default function CajaScreen() {
           ]}
         />
         <View className="mt-3 border-t border-border-subtle pt-3">
-          <Row
+          <ReportRow
             label="Neto del año"
             value={format(anio.neto)}
             tone={anio.neto >= 0 ? 'success' : 'danger'}
             bold
-            accessibilityHint={
-              anio.neto >= 0 ? 'Saldo positivo anual' : 'Saldo negativo anual'
-            }
           />
         </View>
       </Card>
     </ScrollView>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: 'success' | 'warning' | 'danger';
-}) {
-  const map = {
-    success: { bg: 'bg-success-soft', text: 'text-success' },
-    warning: { bg: 'bg-warning-soft', text: 'text-warning' },
-    danger: { bg: 'bg-danger-soft', text: 'text-danger' },
-  } as const;
-  const m = map[tone];
-  return (
-    <View
-      accessibilityLabel={`${label}: ${value}`}
-      className={`flex-1 rounded-lg p-2 ${m.bg}`}
-    >
-      <Text className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
-        {label}
-      </Text>
-      <Text className={`text-base font-bold tabular-nums ${m.text}`}>{value}</Text>
-    </View>
-  );
-}
-
-function Row({
-  label,
-  value,
-  tone,
-  bold,
-  accessibilityHint,
-}: {
-  label: string;
-  value: string;
-  tone: 'success' | 'warning' | 'danger' | 'neutral';
-  bold?: boolean;
-  accessibilityHint?: string;
-}) {
-  const colorMap = {
-    success: 'text-success',
-    warning: 'text-warning',
-    danger: 'text-danger',
-    neutral: 'text-ink-strong',
-  } as const;
-  return (
-    <View className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0">
-      <View className="flex-1 pr-2">
-        <Text className="text-sm font-medium text-ink-muted">{label}</Text>
-        {accessibilityHint ? (
-          <Text
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-            className="text-[10px] text-ink-muted"
-          >
-            {accessibilityHint}
-          </Text>
-        ) : null}
-      </View>
-      <Text
-        accessibilityLabel={`${label}: ${value}`}
-        className={`text-sm tabular-nums ${bold ? 'font-extrabold' : 'font-semibold'} ${colorMap[tone]}`}
-        selectable
-      >
-        {value}
-      </Text>
-    </View>
   );
 }

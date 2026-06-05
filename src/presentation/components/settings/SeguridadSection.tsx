@@ -6,6 +6,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Card } from '@/presentation/components/ui/Card';
 import { ConfirmDialog } from '@/presentation/components/feedback/ConfirmDialog';
 import { useSettingsSecurity } from '@/presentation/hooks/useSettingsSecurity';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 const sanitizeDigits = (max: number) => (t: string) => t.replace(/[^0-9]/g, '').slice(0, max);
 
@@ -23,6 +24,8 @@ function BiometricRowComponent() {
         value={biometricEnabled}
         onValueChange={toggleBiometric}
         disabled={!biometricAvailable}
+        trackColor={{ false: DARK_PALETTE.surfaceHi, true: DARK_PALETTE.success }}
+        thumbColor={biometricEnabled ? DARK_PALETTE.inkStrong : DARK_PALETTE.inkMuted}
       />
     </Card>
   );

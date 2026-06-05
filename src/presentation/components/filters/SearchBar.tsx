@@ -33,7 +33,13 @@ function SearchBarComponent({ value, onChangeText, placeholder, className }: Sea
         autoCorrect={false}
       />
       {value.length > 0 ? (
-        <Pressable onPress={() => onChangeText('')} hitSlop={8}>
+        <Pressable
+          onPress={() => onChangeText('')}
+          accessibilityRole="button"
+          accessibilityLabel="Limpiar búsqueda"
+          hitSlop={12}
+          className="min-h-[44px] min-w-[44px] items-center justify-center"
+        >
           <Ionicons name="close-circle" size={18} color={DARK_PALETTE.inkMuted} />
         </Pressable>
       ) : null}

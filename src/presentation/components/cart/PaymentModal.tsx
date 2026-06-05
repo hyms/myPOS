@@ -136,7 +136,7 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
                   accessibilityRole="button"
                   accessibilityLabel="Establecer monto exacto"
                   hitSlop={12}
-                  className="rounded-md bg-surface-hi px-2 py-1 active:bg-surface-lo"
+                  className="min-h-[36px] flex-row items-center rounded-md bg-surface-hi px-3 py-2 active:bg-surface-lo"
                 >
                   <Text className="text-xs font-bold uppercase tracking-wide text-ink-strong">
                     Exacto

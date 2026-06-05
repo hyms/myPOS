@@ -10,6 +10,9 @@ import {
   FOCUS as _FOCUS,
   DISABLED as _DISABLED,
   RIPPLE as _RIPPLE,
+  TYPOGRAPHY as _TYPOGRAPHY,
+  RADII as _RADII,
+  SPACING as _SPACING,
   TOKENS as _TOKENS,
   FALLBACK_PALETTE as _FALLBACK_PALETTE,
   colorForId as _colorForId,
@@ -111,11 +114,16 @@ export interface RippleTokens {
   readonly danger: HexOrRgba;
 }
 
+export interface TypographyTokens {
+  readonly size: Readonly<Record<'xs' | 'sm' | 'base' | 'md' | 'lg' | 'xl' | 'xxl', number>>;
+  readonly lineHeight: Readonly<Record<'tight' | 'normal', number>>;
+  readonly weight: Readonly<Record<'regular' | 'medium' | 'semibold' | 'bold', string>>;
+}
+
+export type SpacingKey = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+export type RadiusKey = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+
 export interface Tokens {
-  readonly spacing: Readonly<Record<'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl', number>>;
-  readonly radii: Readonly<Record<'sm' | 'md' | 'lg' | 'xl' | 'full', number>>;
-  readonly fontSize: Readonly<Record<'xs' | 'sm' | 'base' | 'md' | 'lg' | 'xl' | 'xxl', number>>;
-  readonly fontWeight: Readonly<Record<'regular' | 'medium' | 'semibold' | 'bold', string>>;
   readonly colors: DarkPalette;
   readonly on: OnTokens;
   readonly scrim: ScrimTokens;
@@ -133,6 +141,10 @@ export const SHADOW: Readonly<ShadowTokens> = _SHADOW;
 export const FOCUS: Readonly<FocusTokens> = _FOCUS;
 export const DISABLED: Readonly<DisabledTokens> = _DISABLED;
 export const RIPPLE: Readonly<RippleTokens> = _RIPPLE;
+export const TYPOGRAPHY: Readonly<TypographyTokens> = _TYPOGRAPHY;
+export const RADII: Readonly<Record<RadiusKey, number>> = _RADII;
+export const SPACING: Readonly<Record<SpacingKey, number>> = _SPACING;
 export const tokens: Readonly<Tokens> = _TOKENS;
 export const FALLBACK_PALETTE: ReadonlyArray<string> = _FALLBACK_PALETTE;
 export const colorForId: (id: number) => string = _colorForId;
+

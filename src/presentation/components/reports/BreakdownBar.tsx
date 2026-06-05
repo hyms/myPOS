@@ -3,29 +3,16 @@ import { Text, View, type ViewStyle } from 'react-native';
 
 import { cn } from '@/shared/utils/cn';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
+import { TONE_STYLES, type SemanticTone } from '@/presentation/components/ui/SemanticTone';
 
 interface BreakdownBarProps {
   readonly label: string;
   readonly value: number;
   readonly max: number;
-  readonly tone: 'success' | 'warning' | 'danger' | 'primary';
+  readonly tone: Extract<SemanticTone, 'success' | 'warning' | 'danger' | 'primary'>;
   readonly format?: (n: number) => string;
   readonly className?: string;
 }
-
-const TONE_BG: Readonly<Record<BreakdownBarProps['tone'], string>> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-  primary: 'bg-accent',
-};
-
-const TONE_TEXT: Readonly<Record<BreakdownBarProps['tone'], string>> = {
-  success: 'text-success',
-  warning: 'text-warning',
-  danger: 'text-danger',
-  primary: 'text-ink-strong',
-};
 
 function BreakdownBarComponent({
   label,
@@ -43,16 +30,17 @@ function BreakdownBarComponent({
   const { format: fallbackFormat } = useCurrency();
   const fmt = format ?? fallbackFormat;
   const pctLabel = `${Math.round(pct * 100)} por ciento`;
+  const s = TONE_STYLES[tone];
   return (
     <View className={cn('gap-1.5', className)}>
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <View className={cn('h-2 w-2 rounded-full', TONE_BG[tone])} />
+          <View className={cn('h-2 w-2 rounded-full', s.bar)} />
           <Text className="text-xs font-medium text-ink">
             {label}
           </Text>
         </View>
-        <Text className={cn('text-sm font-bold tabular-nums', TONE_TEXT[tone])}>
+        <Text className={cn('text-sm font-bold tabular-nums', s.text)}>
           {fmt(value)}
         </Text>
       </View>
@@ -63,7 +51,7 @@ function BreakdownBarComponent({
         className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hi"
       >
         <View
-          className={cn('h-full rounded-full', TONE_BG[tone])}
+          className={cn('h-full rounded-full', s.bar)}
           style={{ width: `${pct * 100}%` as ViewStyle['width'] }}
         />
       </View>

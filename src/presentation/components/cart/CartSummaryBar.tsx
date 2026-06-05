@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { CarritoTipo } from '@/domain/entities/CarritoItem';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
@@ -18,12 +19,14 @@ interface Props {
 
 function CartSummaryBarComponent({ count, total, tipo, onCheckout, onClear }: Props) {
   const { format } = useCurrency();
+  const insets = useSafeAreaInsets();
 
   if (count === 0) return null;
   return (
     <View
       accessibilityLabel="Resumen y acciones del carrito"
-      className="border-t border-border-subtle bg-surface px-3 pb-3 pt-2"
+      className="border-t border-border-subtle bg-surface px-3 pt-2"
+      style={{ paddingBottom: 12 + insets.bottom }}
     >
       <View className="mb-2 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">

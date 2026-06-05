@@ -97,8 +97,11 @@ export default function NuevoGastoScreen() {
               <Pressable
                 key={t.value}
                 onPress={() => setTipoPago(t.value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={t.label}
                 className={cn(
-                  'rounded-lg border px-3 py-2',
+                  'min-h-[40px] flex-row items-center rounded-lg border px-3.5 py-2',
                   active
                     ? 'border-accent bg-accent'
                     : 'border-border bg-surface',
