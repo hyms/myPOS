@@ -81,7 +81,7 @@ export default function CajaScreen() {
   if (isInitialLoad) {
     return (
       <ScrollView
-        className="flex-1 bg-surface"
+        className="flex-1 bg-canvas"
         contentContainerClassName="gap-4 p-4"
       >
         <SkeletonCaja />
@@ -112,7 +112,7 @@ export default function CajaScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-surface"
+      className="flex-1 bg-canvas"
       contentContainerClassName="gap-4 p-4 pb-8"
       refreshControl={
         <RefreshControl

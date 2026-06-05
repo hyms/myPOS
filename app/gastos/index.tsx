@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
+
 import { RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGastosDelMes } from '@/presentation/hooks/useTransacciones';
@@ -22,30 +23,29 @@ interface GastoRowProps {
 
 const GastoRow = React.memo(function GastoRow({ item, format }: GastoRowProps) {
   return (
-    <Link href={`/transacciones/${item.id}`} asChild>
-      <AnimatedPressable
-        accessibilityRole="button"
-        accessibilityLabel={`Gasto de ${format(item.montoTotal)} con detalle ${item.detalle ?? 'sin descripción'}`}
-        className="m-2 rounded-2xl border border-border-subtle bg-surface p-4"
-      >
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1 pr-2">
-            <Text className="text-base font-semibold text-ink-strong" numberOfLines={2}>
-              {item.detalle ?? '—'}
-            </Text>
-            <Text className="mt-0.5 text-xs text-ink-muted">{formatFecha(item.fechaRegistro)}</Text>
-          </View>
-          <View className="items-end">
-            <Text className="text-lg font-bold text-danger" selectable>
-              -{format(item.montoTotal)}
-            </Text>
-            <Text className="mt-0.5 text-[10px] uppercase tracking-wide text-ink-muted">
-              {item.tipoPago}
-            </Text>
-          </View>
+    <AnimatedPressable
+      onPress={() => router.push(`/transacciones/${item.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`Gasto de ${format(item.montoTotal)} con detalle ${item.detalle ?? 'sin descripción'}`}
+      className="m-2 rounded-2xl border border-border-subtle bg-surface p-4"
+    >
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 pr-2">
+          <Text className="text-base font-semibold text-ink-strong" numberOfLines={2}>
+            {item.detalle ?? '—'}
+          </Text>
+          <Text className="mt-0.5 text-xs text-ink-muted">{formatFecha(item.fechaRegistro)}</Text>
         </View>
-      </AnimatedPressable>
-    </Link>
+        <View className="items-end">
+          <Text className="text-lg font-bold text-danger" selectable>
+            -{format(item.montoTotal)}
+          </Text>
+          <Text className="mt-0.5 text-[10px] uppercase tracking-wide text-ink-muted">
+            {item.tipoPago}
+          </Text>
+        </View>
+      </View>
+    </AnimatedPressable>
   );
 });
 
@@ -124,15 +124,14 @@ export default function GastosIndexScreen() {
                 title="Sin gastos este mes"
                 description="Registra pagos de servicios, sueldos u otros gastos operativos."
                 action={
-                  <Link href="/gastos/nuevo" asChild>
-                    <AnimatedPressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Registrar primer gasto del mes"
-                      className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-danger px-4 py-2.5"
-                    >
-                      <Text className="text-base font-bold text-onDanger">Registrar gasto</Text>
-                    </AnimatedPressable>
-                  </Link>
+                  <AnimatedPressable
+                    onPress={() => router.push('/gastos/nuevo')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Registrar primer gasto del mes"
+                    className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-danger px-4 py-2.5"
+                  >
+                    <Text className="text-base font-bold text-onDanger">Registrar gasto</Text>
+                  </AnimatedPressable>
                 }
               />
             ) : null
@@ -140,17 +139,16 @@ export default function GastosIndexScreen() {
           ListFooterComponent={hasMore && loading ? <ListFooterLoader count={3} itemHeight={88} /> : null}
         />
       )}
-      <Link href="/gastos/nuevo" asChild>
-        <AnimatedPressable
-          accessibilityRole="button"
-          accessibilityLabel="Nuevo gasto"
-          accessibilityHint="Abre el formulario para registrar un nuevo gasto"
-          className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-danger"
-          style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
-        >
-          <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
-        </AnimatedPressable>
-      </Link>
+      <AnimatedPressable
+        onPress={() => router.push('/gastos/nuevo')}
+        accessibilityRole="button"
+        accessibilityLabel="Nuevo gasto"
+        accessibilityHint="Abre el formulario para registrar un nuevo gasto"
+        className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-danger"
+        style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
+      >
+        <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
+      </AnimatedPressable>
     </View>
   );
 }

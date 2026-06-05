@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import { useMovimientos, type MovimientoItem } from '@/presentation/hooks/useMovimientos';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
@@ -119,7 +119,7 @@ export default function MovimientosIndexScreen() {
   const countText = `${items.length}${hasMore ? '+' : ''} · página ${page + 1} · lote ${pageSize}`;
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-canvas">
       <View className="bg-canvas px-3 pt-2">
         <SearchBar
           value={search}
@@ -172,15 +172,14 @@ export default function MovimientosIndexScreen() {
               }
               action={
                 search ? null : (
-                  <Link href="/(tabs)/registro" asChild>
-                    <AnimatedPressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Ir a registro para crear una transacción"
-                      className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
-                    >
-                      <Text className="text-base font-bold text-onAccent">Ir a Registro</Text>
-                    </AnimatedPressable>
-                  </Link>
+                  <AnimatedPressable
+                    onPress={() => router.push('/(tabs)/registro')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ir a registro para crear una transacción"
+                    className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
+                  >
+                    <Text className="text-base font-bold text-onAccent">Ir a Registro</Text>
+                  </AnimatedPressable>
                 )
               }
             />

@@ -258,7 +258,7 @@ export function CarritoScreen({ tipo, store }: Props) {
   }, [vaciar]);
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-canvas">
       <View className="p-3">
         <View className="mb-2 flex-row gap-2">
           <View className="flex-1">

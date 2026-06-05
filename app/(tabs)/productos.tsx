@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
-import { Link, Stack, router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { RefreshControl, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -84,7 +84,7 @@ export default function ProductosScreen() {
   const keyExtractor = useCallback((item: ProductoConPopularidad) => String(item.id), []);
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-canvas">
       <Stack.Screen options={{ title: 'Productos' }} />
       <View className="p-3">
         <View className="mb-2 flex-row gap-2">
@@ -120,32 +120,30 @@ export default function ProductosScreen() {
               title="Sin productos"
               description="Crea tu primer producto para empezar a vender."
               action={
-                <Link href="/productos/nuevo" asChild>
-                  <AnimatedPressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Crear primer producto"
-                    className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
-                  >
-                    <Text className="text-base font-bold text-onAccent">Crear primer producto</Text>
-                  </AnimatedPressable>
-                </Link>
+                <AnimatedPressable
+                  onPress={() => router.push('/productos/nuevo')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Crear primer producto"
+                  className="min-h-[44px] flex-row items-center justify-center rounded-xl bg-accent px-4 py-2.5"
+                >
+                  <Text className="text-base font-bold text-onAccent">Crear primer producto</Text>
+                </AnimatedPressable>
               }
             />
           }
           ListFooterComponent={hasMore && loading ? <ListFooterLoader count={3} itemHeight={140} /> : null}
         />
       )}
-      <Link href="/productos/nuevo" asChild>
-        <AnimatedPressable
-          accessibilityRole="button"
-          accessibilityLabel="Crear producto"
-          accessibilityHint="Abre el formulario para registrar un nuevo producto"
-          className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-accent"
-          style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
-        >
-          <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
-        </AnimatedPressable>
-      </Link>
+      <AnimatedPressable
+        onPress={() => router.push('/productos/nuevo')}
+        accessibilityRole="button"
+        accessibilityLabel="Crear producto"
+        accessibilityHint="Abre el formulario para registrar un nuevo producto"
+        className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-accent"
+        style={[SHADOW.fab, { bottom: 24 + insets.bottom }]}
+      >
+        <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
+      </AnimatedPressable>
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { Card } from '@/presentation/components/ui/Card';
 import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { Icon } from '@/presentation/components/ui/Icon';
@@ -23,24 +23,24 @@ export default function MasTab() {
       <Text className="mb-4 text-sm text-ink-muted">{APP_NAME}</Text>
       <View className="gap-3">
         {ITEMS.map((item) => (
-          <Link key={item.route} href={item.route} asChild>
-            <AnimatedPressable
-              accessibilityRole="button"
-              accessibilityLabel={`Ir a ${item.label}`}
-              accessibilityHint={item.description}
-            >
-              <Card className="flex-row items-center">
-                <View className="mr-3 rounded-xl bg-surface-lo p-2.5">
-                  <Icon name={item.icon} size={22} color={DARK_PALETTE.warning} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-ink-strong">{item.label}</Text>
-                  <Text className="text-xs text-ink-muted">{item.description}</Text>
-                </View>
-                <Icon name="chevron-forward" size={20} color={DARK_PALETTE.inkMuted} />
-              </Card>
-            </AnimatedPressable>
-          </Link>
+          <AnimatedPressable
+            key={item.route}
+            onPress={() => router.push(item.route)}
+            accessibilityRole="button"
+            accessibilityLabel={`Ir a ${item.label}`}
+            accessibilityHint={item.description}
+          >
+            <Card className="flex-row items-center">
+              <View className="mr-3 rounded-xl bg-surface-lo p-2.5">
+                <Icon name={item.icon} size={22} color={DARK_PALETTE.warning} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-bold text-ink-strong">{item.label}</Text>
+                <Text className="text-xs text-ink-muted">{item.description}</Text>
+              </View>
+              <Icon name="chevron-forward" size={20} color={DARK_PALETTE.inkMuted} />
+            </Card>
+          </AnimatedPressable>
         ))}
       </View>
     </View>

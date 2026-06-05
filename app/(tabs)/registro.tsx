@@ -24,7 +24,7 @@ export default function RegistroTab() {
     tipo === 'VENTA' ? useVentaCarritoStore : useCompraCarritoStore;
 
   return (
-    <View className="flex-1 bg-surface">
+    <View className="flex-1 bg-canvas">
       <RegistroSegmented value={tipo} onChange={handleChange} />
       <View className="flex-1 -mt-3">
         <CarritoScreen tipo={tipo} store={store} />

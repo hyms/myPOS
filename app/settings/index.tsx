@@ -10,7 +10,7 @@ import { BackupSection } from '@/presentation/components/settings/BackupSection'
 export default function SettingsIndex() {
   return (
     <ScrollView
-      className="flex-1 bg-surface"
+      className="flex-1 bg-canvas"
       contentContainerClassName="gap-3 p-4 pb-10"
       keyboardShouldPersistTaps="handled"
     >

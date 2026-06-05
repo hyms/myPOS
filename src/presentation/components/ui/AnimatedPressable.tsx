@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Pressable, type PressableProps } from 'react-native';
+import { Pressable, StyleSheet, type PressableProps } from 'react-native';
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -70,7 +70,11 @@ export function AnimatedPressable({
     <AnimatedReanimatedPressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={typeof style === 'function' ? (state) => [animatedStyle, style(state)] : [animatedStyle, style]}
+      style={
+        typeof style === 'function'
+          ? (state) => [animatedStyle, StyleSheet.flatten(style(state))]
+          : [animatedStyle, StyleSheet.flatten(style)]
+      }
       {...rest}
     >
       {children}

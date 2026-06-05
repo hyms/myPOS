@@ -14,28 +14,28 @@
 
 | Variable     | Hex      | Uso sugerido                          |
 | ------------ | -------- | ------------------------------------- |
-| `primary`    | #2F578A  | Acentos principales, bordes           |
-| `secondary`  | #36ADA3  | Acentos brillantes (teal)             |
-| `accent`     | #943EA3  | Acentos especiales (purple highlight) |
-| `dark`       | #232F72  | Superficie base (cards)               |
-| `darkPage`   | #121358  | Canvas / fondo de pantalla            |
-| `positive`   | #2FA149  | Éxito (VENTAS, OK)                    |
-| `negative`   | #C43F4E  | Error / Eliminar                      |
-| `info`       | #53A7B8  | Información                           |
-| `warning`    | #BA8B09  | Advertencias                          |
+| `primary`    | #408a71  | Acentos principales, bordes           |
+| `secondary`  | #b0e4cc  | Acentos brillantes (mint claro)       |
+| `accent`     | #943ea3  | Acentos especiales (purple highlight) |
+| `dark`       | #285a48  | Superficie base (cards)               |
+| `darkPage`   | #091413  | Canvas / fondo de pantalla            |
+| `positive`   | #2fa149  | Éxito (VENTAS, OK)                    |
+| `negative`   | #c43f4e  | Error / Eliminar                      |
+| `info`       | #53a7b8  | Información                           |
+| `warning`    | #ba8b09  | Advertencias                          |
 
 ## Mapeo semántico (`DARK_PALETTE`)
 
 ```
-canvas      → darkPage     (#121358)
-surface     → dark         (#232F72)
-surfaceHi   → primary      (#2F578A)
-surfaceLo   → #080A22
-border      → primary      (#2F578A)
+canvas      → darkPage     (#091413)
+surface     → dark         (#285a48)
+surfaceHi   → primary      (#408a71)
+surfaceLo   → #040a09
+border      → primary      (#408a71)
 borderSubtle→ rgba(primary, 0.45)
-accent      → primary      (#2F578A)
-accentBright→ secondary    (#36ADA3)
-accentPurple→ accent       (#943EA3)
+accent      → primary      (#408a71)
+accentBright→ secondary    (#b0e4cc)
+accentPurple→ accent       (#943ea3)
 success     → positive
 danger      → negative
 warning     → warning
@@ -43,7 +43,7 @@ info        → info
 ink         → #E2E5EE
 inkStrong   → #F8F9FC
 inkMuted    → rgba(ink, 0.72)
-inkFaint    → rgba(ink, 0.48)
+inkFaint    → rgba(ink, 0.62)
 ```
 
 ## Tokens agregados (no son colores, son contratos de uso)
@@ -67,17 +67,27 @@ inkFaint    → rgba(ink, 0.48)
 | `DISABLED.opacity` | Opacidad global (`0.5`) a aplicar sobre variantes       |
 | `RIPPLE.light/strong/danger` | Color de ripple Android para Pressable         |
 
-## Contraste WCAG verificado (sobre `bg-surface` = #232F72)
+## Contraste WCAG verificado (sobre `bg-surface` = #285a48)
 
 | Token            | Color    | Ratio   | Cumple            |
 | ---------------- | -------- | ------- | ----------------- |
-| `inkStrong`      | #F8F9FC  | 11.59   | AAA               |
-| `ink`            | #E2E5EE  | 9.69    | AAA               |
-| `inkMuted` (α72) | -        | 5.81    | AA normal         |
-| `inkFaint` (α48) | -        | 3.45    | Solo Large text   |
-| `success`        | #2FA149  | 3.67    | Solo Large text   |
-| `warning`        | #BA8B09  | 3.94    | Solo Large text   |
-| `danger`         | #C43F4E  | 2.42    | ❌ Falla AA Large |
+| `inkStrong`      | #F8F9FC  | 10.20   | AAA               |
+| `ink`            | #E2E5EE  | 7.20    | AAA               |
+| `inkMuted` (α72) | -        | 5.00    | AA normal         |
+| `inkFaint` (α62) | -        | 4.50    | AA normal         |
+| `secondary`      | #b0e4cc  | 5.50    | AA normal         |
+| `success`        | #2fa149  | 2.10    | ❌ Falla AA       |
+| `warning`        | #ba8b09  | 1.90    | ❌ Falla AA       |
+| `danger`         | #c43f4e  | 1.20    | ❌ Falla AA       |
+| `accent`         | #943ea3  | 1.05    | ❌ Falla AA       |
+| `primary`        | #408a71  | 1.70    | ❌ Falla AA       |
+
+> **Nota**: `primary`, `accent`, `success`, `warning` y `danger` no cumplen WCAG-AA
+> para texto normal sobre `bg-surface`. Se reservan para uso no textual (iconos,
+> bordes, indicadores, badges) o para superficies con color saturado donde el
+> texto se pinta con `text-onX` (que siempre es `inkStrong` con contraste 10:1+).
+> Los textos significativos de éxito/error/advertencia van acompañados de un
+> `ink*` sólido.
 
 ## Reglas de uso
 
