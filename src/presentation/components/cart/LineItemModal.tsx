@@ -1,8 +1,8 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import type { CarritoItem } from '@/domain/entities/CarritoItem';
-import { useCarritoStore } from '@/presentation/stores/carritoStore';
+import type { CarritoItem, CarritoTipo } from '@/domain/entities/CarritoItem';
+import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -13,12 +13,13 @@ import { cn } from '@/shared/utils/cn';
 interface Props {
   readonly visible: boolean;
   readonly item: CarritoItem | null;
+  readonly store: CarritoStoreHook;
+  readonly tipo: CarritoTipo;
   readonly onClose: () => void;
 }
 
-function LineItemModalComponent({ visible, item, onClose }: Props) {
-  const actualizar = useCarritoStore((s) => s.actualizar);
-  const tipo = useCarritoStore((s) => s.tipo);
+function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) {
+  const actualizar = store((s) => s.actualizar);
   const { format } = useCurrency();
   const [cantidad, setCantidad] = useState('1');
   const [descuento, setDescuento] = useState('0');

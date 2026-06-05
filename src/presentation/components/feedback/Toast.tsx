@@ -1,5 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
+import { Icon } from '@/presentation/components/ui/Icon';
+import type { IconName } from '@/presentation/components/ui/Icon';
 
 interface Props {
   readonly text1?: string;
@@ -7,16 +9,17 @@ interface Props {
   readonly props?: { variant?: 'info' | 'success' | 'error' | 'warning'; color?: string };
 }
 
-const ICON: Record<NonNullable<Props['props']>['variant'] & string, string> = {
-  info: 'ℹ️',
-  success: '✅',
-  error: '⛔',
-  warning: '⚠️',
+const ICON_MAP: Record<'info' | 'success' | 'error' | 'warning', { name: IconName; color: string }> = {
+  info: { name: 'information-circle', color: '#8b5cf6' },
+  success: { name: 'checkmark-circle', color: '#22c55e' },
+  error: { name: 'alert-circle', color: '#ef4444' },
+  warning: { name: 'warning', color: '#f59e0b' },
 };
 
 export function CustomToast({ text1, text2, props }: Props) {
   const variant = props?.variant ?? 'info';
-  const color = props?.color ?? '#0ea5e9';
+  const iconConfig = ICON_MAP[variant];
+  const color = props?.color ?? iconConfig.color;
   return (
     <View
       style={{
@@ -36,7 +39,9 @@ export function CustomToast({ text1, text2, props }: Props) {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ marginRight: 8, fontSize: 16 }}>{ICON[variant]}</Text>
+        <View style={{ marginRight: 8 }}>
+          <Icon name={iconConfig.name} size={18} color={iconConfig.color} />
+        </View>
         <Text style={{ color: 'white', fontWeight: '700', fontSize: 14, flex: 1 }}>{text1}</Text>
       </View>
       {text2 ? (

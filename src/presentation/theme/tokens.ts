@@ -32,7 +32,7 @@ export const tokens = {
 };
 
 export const FALLBACK_PALETTE: ReadonlyArray<string> = [
-  '#0ea5e9',
+  '#f59e0b',
   '#8b5cf6',
   '#ec4899',
   '#f97316',

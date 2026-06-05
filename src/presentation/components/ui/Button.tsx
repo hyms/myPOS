@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
-import { Pressable, Text, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Text, View, type PressableProps, type StyleProp, type ViewStyle, ActivityIndicator } from 'react-native';
 
+import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { cn } from '@/shared/utils/cn';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
@@ -19,10 +20,10 @@ interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
 }
 
 const VARIANT_BG: Record<Variant, string> = {
-  primary: 'bg-primary-600 active:bg-primary-700',
-  secondary: 'bg-surface-200 active:bg-surface-300 dark:bg-surface-800 dark:active:bg-surface-700',
-  danger: 'bg-danger-600 active:bg-danger-700',
-  success: 'bg-success-600 active:bg-success-700',
+  primary: 'bg-primary-600',
+  secondary: 'bg-surface-200 dark:bg-surface-800',
+  danger: 'bg-danger-600',
+  success: 'bg-success-600',
   ghost: 'bg-transparent',
 };
 
@@ -32,6 +33,14 @@ const VARIANT_TEXT: Record<Variant, string> = {
   danger: 'text-white',
   success: 'text-white',
   ghost: 'text-primary-600',
+};
+
+const SPINNER_COLOR: Record<Variant, string> = {
+  primary: '#ffffff',
+  secondary: '#1e293b',
+  danger: '#ffffff',
+  success: '#ffffff',
+  ghost: '#f59e0b',
 };
 
 const SIZE_CLASS: Record<Size, string> = {
@@ -59,26 +68,29 @@ function ButtonComponent({
   ...rest
 }: ButtonProps) {
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled: !!disabled || !!busy }}
+      disabled={disabled || busy}
       className={cn(
         'flex-row items-center justify-center',
         SIZE_CLASS[size],
         VARIANT_BG[variant],
         fullWidth && 'w-full',
-        disabled && 'opacity-50',
+        (disabled || busy) && 'opacity-50',
         className,
       )}
       {...rest}
     >
-      {leadingIcon ? <View className="mr-2">{leadingIcon}</View> : null}
+      {busy ? (
+        <ActivityIndicator size="small" color={SPINNER_COLOR[variant]} className="mr-2" />
+      ) : leadingIcon ? (
+        <View className="mr-2">{leadingIcon}</View>
+      ) : null}
       <Text className={cn('font-semibold', TEXT_SIZE[size], VARIANT_TEXT[variant])}>{title}</Text>
-      {trailingIcon ? <View className="ml-2">{trailingIcon}</View> : null}
-    </Pressable>
+      {!busy && trailingIcon ? <View className="ml-2">{trailingIcon}</View> : null}
+    </AnimatedPressable>
   );
 }
 
 export const Button = memo(ButtonComponent);
-ButtonComponent.displayName = 'Button';

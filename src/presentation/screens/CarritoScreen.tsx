@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import type { ListRenderItem } from '@shopify/flash-list';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
 import type { CarritoTipo, CarritoItem } from '@/domain/entities/CarritoItem';
 import { registrarVenta } from '@/application/ventas/RegistrarVenta';
 import { registrarCompra } from '@/application/compras/RegistrarCompra';
-import { useCarritoStore } from '@/presentation/stores/carritoStore';
+import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 import { useProductos } from '@/presentation/hooks/useProductos';
 import { useCategorias } from '@/presentation/hooks/useCategorias';
 import { useStockAlert } from '@/presentation/hooks/useStockAlert';
@@ -26,18 +28,28 @@ import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import type { TipoPago } from '@/domain/entities/Transaccion';
+import type { ProductoConPopularidad } from '@/presentation/hooks/useProductos';
+
+interface RenderProductProps {
+  readonly item: ProductoConPopularidad;
+  readonly onPress: (id: number) => void;
+}
+
+const RenderProduct = React.memo(function RenderProduct({ item, onPress }: RenderProductProps) {
+  return <ProductGridCard producto={item} onPress={onPress} />;
+});
 
 interface Props {
   readonly tipo: CarritoTipo;
+  readonly store: CarritoStoreHook;
 }
 
-export function CarritoScreen({ tipo }: Props) {
-  const setTipo = useCarritoStore((s) => s.setTipo);
-  const items = useCarritoStore((s) => s.items);
-  const agregar = useCarritoStore((s) => s.agregar);
-  const eliminar = useCarritoStore((s) => s.eliminar);
-  const vaciar = useCarritoStore((s) => s.vaciar);
-  const totals = useCarritoTotals();
+export function CarritoScreen({ tipo, store }: Props) {
+  const items = store((s) => s.items);
+  const agregar = store((s) => s.agregar);
+  const eliminar = store((s) => s.eliminar);
+  const vaciar = store((s) => s.vaciar);
+  const totals = useCarritoTotals(store, tipo);
   const { format } = useCurrency();
   const currency = useSettingsStore((s) => s.currency);
   const stockAlert = useStockAlert();
@@ -51,11 +63,9 @@ export function CarritoScreen({ tipo }: Props) {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 200);
 
-  useCarritoTypeGuard(tipo, setTipo);
-
   const { items: productos, hasMore } = useProductos({
     search: debouncedSearch,
-    categoriaId: categoriaId ?? undefined,
+    ...(categoriaId !== null ? { categoriaId } : {}),
     sort,
     page,
   });
@@ -66,9 +76,11 @@ export function CarritoScreen({ tipo }: Props) {
       if (!p) return;
       if (tipo === 'VENTA' && p.stockActual <= 0) {
         ToastService.warning('Sin stock', p.nombre);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
         return;
       }
       agregar(p, 1);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     },
     [agregar, productos, tipo],
   );
@@ -96,53 +108,83 @@ export function CarritoScreen({ tipo }: Props) {
     setPage(0);
   }, []);
 
-  const onEndReached = useInfiniteScroll(() => setPage((p) => p + 1), hasMore, false);
+  const { onEndReached } = useInfiniteScroll(() => setPage((p) => p + 1), hasMore, false);
+
+  const renderItem: ListRenderItem<ProductoConPopularidad> = useCallback(
+    ({ item }) => <RenderProduct item={item} onPress={handlePress} />,
+    [handlePress],
+  );
+
+  const keyExtractor = useCallback((item: ProductoConPopularidad) => String(item.id), []);
 
   const handleConfirm = useCallback(
     async ({ tipoPago, recibido }: { tipoPago: TipoPago; recibido: number | null }) => {
       try {
+        const currentItems = store.getState().items;
+        let comprobanteData: Parameters<typeof generarYCompartirComprobante>[0];
+
         if (tipo === 'VENTA') {
           const result = registrarVenta({
-            items: useCarritoStore.getState().items,
+            items: currentItems,
             tipoPago,
             detalle: null,
           });
-          setPaymentOpen(false);
-          ToastService.success('Venta registrada', `Total ${format(result.total)}`);
           stockAlert.notify(result.stockAlerts);
-          await generarYCompartirComprobante({
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          ToastService.success('Venta registrada', `Total ${format(result.total)}`);
+          comprobanteData = {
             tipo: 'VENTA',
             transaccionId: result.transaccionId,
-            items: useCarritoStore.getState().items,
+            items: currentItems,
             tipoPago,
             recibido,
             cambio: recibido !== null ? recibido - result.total : null,
             currency,
-          });
+          };
         } else {
           const result = registrarCompra({
-            items: useCarritoStore.getState().items,
+            items: currentItems,
             tipoPago,
             detalle: null,
           });
-          setPaymentOpen(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           ToastService.success('Compra registrada', `Total ${format(result.total)}`);
-          await generarYCompartirComprobante({
+          comprobanteData = {
             tipo: 'COMPRA',
             transaccionId: result.transaccionId,
-            items: useCarritoStore.getState().items,
+            items: currentItems,
             tipoPago,
             currency,
-          });
+          };
         }
+
+        setPaymentOpen(false);
         vaciar();
         setPage(0);
+
+        void generarYCompartirComprobante(comprobanteData).catch((e) => {
+          ToastService.warning(
+            'Comprobante no generado',
+            e instanceof Error ? e.message : 'No se pudo generar el PDF.',
+          );
+        });
       } catch (e) {
         ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo registrar.');
       }
     },
-    [currency, format, stockAlert, tipo, vaciar],
+    [currency, format, stockAlert, store, tipo, vaciar],
   );
+
+  const handleOpenPayment = useCallback(() => setPaymentOpen(true), []);
+  const handleClosePayment = useCallback(() => setPaymentOpen(false), []);
+  const handleCloseLineItem = useCallback(() => setLineItem(null), []);
+
+  const handleClearCart = useCallback(() => {
+    Alert.alert('Vaciar carrito', '¿Eliminar todos los productos del carrito?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Vaciar', style: 'destructive', onPress: () => vaciar() },
+    ]);
+  }, [vaciar]);
 
   return (
     <View className="flex-1 bg-surface-50 dark:bg-surface-950">
@@ -166,7 +208,10 @@ export function CarritoScreen({ tipo }: Props) {
 
       {items.length > 0 ? (
         <View className="border-y border-surface-200 bg-white px-3 py-2 dark:border-surface-800 dark:bg-surface-900">
-          <Text className="mb-1 text-xs font-semibold uppercase text-surface-500">
+          <Text
+            className="mb-1 text-xs font-semibold uppercase"
+            style={{ color: '#64748b' }}
+          >
             Carrito {tipo === 'VENTA' ? 'de venta' : 'de compra'}
           </Text>
           {items.map((it) => (
@@ -177,15 +222,19 @@ export function CarritoScreen({ tipo }: Props) {
               className="flex-row items-center justify-between border-b border-surface-100 py-2 active:bg-surface-50 dark:border-surface-800"
             >
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-surface-900 dark:text-surface-50" numberOfLines={1}>
+                <Text
+                  className="text-sm font-semibold"
+                  numberOfLines={1}
+                  style={{ color: '#0f172a' }}
+                >
                   {it.producto.nombre}
                 </Text>
-                <Text className="text-xs text-surface-500">
+                <Text className="text-xs" style={{ color: '#64748b' }}>
                   {it.cantidad} × {format(tipo === 'VENTA' ? it.producto.precioVenta : it.producto.precioCompra)}
                   {it.descuento > 0 ? `  ·  desc ${format(it.descuento)}` : ''}
                 </Text>
               </View>
-              <Text className="font-bold text-primary-700">
+              <Text className="font-bold" style={{ color: '#b45309' }}>
                 {format(
                   (tipo === 'VENTA' ? it.producto.precioVenta : it.producto.precioCompra) * it.cantidad -
                     it.descuento,
@@ -194,18 +243,18 @@ export function CarritoScreen({ tipo }: Props) {
             </Pressable>
           ))}
           <View className="mt-2 flex-row justify-between">
-            <Text className="text-sm text-surface-600">Subtotal</Text>
-            <Text className="font-semibold text-surface-900 dark:text-surface-50">{format(totals.subtotal)}</Text>
+            <Text className="text-sm" style={{ color: '#475569' }}>Subtotal</Text>
+            <Text className="font-semibold" style={{ color: '#0f172a' }}>{format(totals.subtotal)}</Text>
           </View>
           {totals.descuento > 0 ? (
             <View className="flex-row justify-between">
-              <Text className="text-sm text-surface-600">Descuento</Text>
-              <Text className="font-semibold text-danger-700">-{format(totals.descuento)}</Text>
+              <Text className="text-sm" style={{ color: '#475569' }}>Descuento</Text>
+              <Text className="font-semibold" style={{ color: '#b91c1c' }}>-{format(totals.descuento)}</Text>
             </View>
           ) : null}
           <View className="mt-1 flex-row justify-between">
-            <Text className="text-base font-bold text-surface-900 dark:text-surface-50">Total</Text>
-            <Text className="text-lg font-bold text-primary-700">{format(totals.total)}</Text>
+            <Text className="text-base font-bold" style={{ color: '#0f172a' }}>Total</Text>
+            <Text className="text-lg font-bold" style={{ color: '#b45309' }}>{format(totals.total)}</Text>
           </View>
         </View>
       ) : null}
@@ -213,44 +262,36 @@ export function CarritoScreen({ tipo }: Props) {
       <FlashList
         data={productos}
         numColumns={3}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <ProductGridCard
-            producto={item}
-            onPress={handlePress}
-          />
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         contentContainerClassName="px-2 pb-32"
         ListEmptyComponent={
-          <EmptyState title="Sin productos" description="Ajusta filtros o crea productos nuevos." />
+          <EmptyState icon="cube-outline" title="Sin productos" description="Ajusta filtros o crea productos nuevos." />
         }
       />
 
-      <CartSummaryBar onCheckout={() => setPaymentOpen(true)} />
+      <CartSummaryBar store={store} tipo={tipo} onCheckout={handleOpenPayment} />
 
       <LineItemModal
         visible={!!lineItem}
         item={lineItem}
-        onClose={() => setLineItem(null)}
+        store={store}
+        tipo={tipo}
+        onClose={handleCloseLineItem}
       />
       <PaymentModal
         visible={paymentOpen}
         items={items}
         tipo={tipo}
-        onClose={() => setPaymentOpen(false)}
+        onClose={handleClosePayment}
         onConfirm={handleConfirm}
       />
 
       {items.length > 0 ? (
         <Pressable
-          onPress={() => {
-            Alert.alert('Vaciar carrito', '¿Eliminar todos los productos del carrito?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Vaciar', style: 'destructive', onPress: () => vaciar() },
-            ]);
-          }}
+          onPress={handleClearCart}
           className="absolute bottom-28 left-3 rounded-full bg-danger-600 px-3 py-1.5 active:bg-danger-700"
         >
           <Text className="text-xs font-bold text-white">Vaciar</Text>
@@ -258,12 +299,4 @@ export function CarritoScreen({ tipo }: Props) {
       ) : null}
     </View>
   );
-}
-
-function useCarritoTypeGuard(tipo: CarritoTipo, setTipo: (t: CarritoTipo) => void) {
-  React.useEffect(() => {
-    if (useCarritoStore.getState().tipo !== tipo) {
-      setTipo(tipo);
-    }
-  }, [tipo, setTipo]);
 }

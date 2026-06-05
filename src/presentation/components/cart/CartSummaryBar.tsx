@@ -1,18 +1,22 @@
 import React, { memo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
-import { useCarritoStore } from '@/presentation/stores/carritoStore';
+import type { CarritoTipo } from '@/domain/entities/CarritoItem';
+import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 import { useCarritoTotals } from '@/presentation/hooks/useCarrito';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
+import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { Badge } from '@/presentation/components/ui/Card';
 
 interface Props {
+  readonly store: CarritoStoreHook;
+  readonly tipo: CarritoTipo;
   readonly onCheckout: () => void;
 }
 
-function CartSummaryBarComponent({ onCheckout }: Props) {
-  const count = useCarritoStore((s) => s.items.length);
-  const totals = useCarritoTotals();
+function CartSummaryBarComponent({ store, tipo, onCheckout }: Props) {
+  const count = store((s) => s.items.length);
+  const totals = useCarritoTotals(store, tipo);
   const { format } = useCurrency();
 
   if (count === 0) return null;
@@ -22,13 +26,13 @@ function CartSummaryBarComponent({ onCheckout }: Props) {
         <Badge label={`${count} ítem${count === 1 ? '' : 's'}`} tone="primary" />
         <Text className="text-2xl font-bold text-primary-700">{format(totals.total)}</Text>
       </View>
-      <Pressable
+      <AnimatedPressable
         onPress={onCheckout}
-        className="rounded-xl bg-primary-600 px-4 py-3 active:bg-primary-700"
+        className="rounded-xl bg-primary-600 px-4 py-3"
         accessibilityRole="button"
       >
         <Text className="text-center text-base font-bold text-white">Continuar al pago</Text>
-      </Pressable>
+      </AnimatedPressable>
     </View>
   );
 }

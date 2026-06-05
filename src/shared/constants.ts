@@ -1,4 +1,4 @@
-export const APP_NAME = 'TPV Móvil Express';
+export const APP_NAME = 'MyPOS';
 export const DEFAULT_PAGE_SIZE = 15;
 export const PRODUCT_IMAGE_QUALITY = 0.7;
 export const PRODUCT_IMAGE_MAX_DIM = 400;

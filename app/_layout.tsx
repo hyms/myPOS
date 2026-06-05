@@ -109,24 +109,12 @@ export default function RootLayout() {
             name="settings/index"
             options={{ title: APP_NAME }}
           />
-          <Stack.Screen
-            name="settings/seguridad"
-            options={{ title: 'Seguridad' }}
-          />
-          <Stack.Screen
-            name="settings/divisa"
-            options={{ title: 'Divisa' }}
-          />
-          <Stack.Screen
-            name="settings/paginacion"
-            options={{ title: 'Paginación' }}
-          />
-          <Stack.Screen
-            name="settings/backup"
-            options={{ title: 'Copia de seguridad' }}
-          />
         </Stack>
-        <Toast renderToast={(p) => <CustomToast {...p} />} />
+        <Toast
+          config={{
+            custom: (p) => <CustomToast {...p} />,
+          }}
+        />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -111,7 +111,7 @@ function baseStyles(): string {
   return `
     body { font-family: -apple-system, Roboto, sans-serif; color: #0f172a; padding: 16px; }
     .receipt { max-width: 360px; margin: 0 auto; }
-    h1 { font-size: 18px; text-align: center; margin: 0 0 4px; }
+    h1 { font-size: 18px; text-align: center; margin: 0 0 4px; color: #b45309; }
     .muted { color: #64748b; font-size: 12px; text-align: center; margin: 0 0 8px; }
     hr { border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0; }
     table { width: 100%; font-size: 12px; border-collapse: collapse; }

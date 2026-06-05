@@ -1,5 +1,6 @@
 import React, { memo, useCallback } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import type { Producto } from '@/domain/entities/Producto';
 import { isBelowMin } from '@/domain/rules/stockRules';
@@ -30,8 +31,12 @@ function ProductGridCardComponent({ producto, onPress }: Props) {
         {producto.imagenUri ? (
           <Image
             source={{ uri: producto.imagenUri }}
-            className="h-full w-full"
-            resizeMode="cover"
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={String(producto.id)}
+            transition={150}
+            priority="normal"
           />
         ) : (
           <ProductFallbackAvatar id={producto.id} nombre={producto.nombre} size={64} />

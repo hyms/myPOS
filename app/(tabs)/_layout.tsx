@@ -1,36 +1,31 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View, Text } from 'react-native';
+import { useCompraCarritoStore, useVentaCarritoStore } from '@/presentation/stores/carritoStore';
+import { Icon } from '@/presentation/components/ui/Icon';
+import type { IconName } from '@/presentation/components/ui/Icon';
 
-import { useCarritoCount } from '@/presentation/hooks/useCarrito';
+interface TabConfig { readonly icon: IconName; readonly activeIcon: IconName; }
 
-function TabIcon({ glyph, focused, badge }: { glyph: string; focused: boolean; badge?: number }) {
+const TAB_ICONS: Record<string, TabConfig> = {
+  index: { icon: 'cash-outline', activeIcon: 'cash' },
+  compras: { icon: 'cart-outline', activeIcon: 'cart' },
+  productos: { icon: 'cube-outline', activeIcon: 'cube' },
+  caja: { icon: 'wallet-outline', activeIcon: 'wallet' },
+  mas: { icon: 'ellipsis-horizontal-circle-outline', activeIcon: 'ellipsis-horizontal-circle' },
+};
+
+function TabIcon({ routeName, focused, badge }: { routeName: string; focused: boolean; badge?: number }) {
+  const config = TAB_ICONS[routeName];
+  if (!config) return null;
   return (
-    <View style={{ position: 'relative' }}>
-      <Text
-        style={{
-          fontSize: 22,
-          color: focused ? '#0ea5e9' : '#64748b',
-        }}
-      >
-        {glyph}
-      </Text>
+    <View className="relative">
+      <Icon name={focused ? config.activeIcon : config.icon} size={24} color={focused ? '#f59e0b' : '#64748b'} />
       {badge && badge > 0 ? (
-        <View
-          style={{
-            position: 'absolute',
-            right: -8,
-            top: -4,
-            backgroundColor: '#dc2626',
-            borderRadius: 999,
-            minWidth: 16,
-            height: 16,
-            paddingHorizontal: 4,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+        <View className="absolute -right-2 -top-1 min-w-[16px] items-center justify-center rounded-full bg-danger-600 px-[3px]"
+          style={{ height: 16, paddingHorizontal: 4 }}
         >
-          <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{badge}</Text>
+          <Text className="text-[10px] font-bold text-white">{badge}</Text>
         </View>
       ) : null}
     </View>
@@ -38,53 +33,38 @@ function TabIcon({ glyph, focused, badge }: { glyph: string; focused: boolean; b
 }
 
 export default function TabsLayout() {
-  const ventasCount = useCarritoCount();
+  const ventasCount = useVentaCarritoStore((s) => s.items.length);
+  const comprasCount = useCompraCarritoStore((s) => s.items.length);
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#0ea5e9',
-        tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { borderTopColor: '#e2e8f0' },
-        headerStyle: { backgroundColor: '#0f172a' },
-        headerTintColor: '#f8fafc',
-        headerTitleStyle: { fontWeight: '700' },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Ventas',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="💰" focused={focused} badge={ventasCount} />,
-        }}
-      />
-      <Tabs.Screen
-        name="compras"
-        options={{
-          title: 'Compras',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="🛒" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="productos"
-        options={{
-          title: 'Productos',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="📦" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="caja"
-        options={{
-          title: 'Caja',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="💵" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="mas"
-        options={{
-          title: 'Más',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="⋯" focused={focused} />,
-        }}
-      />
+    <Tabs screenOptions={{
+      tabBarActiveTintColor: '#f59e0b',
+      tabBarInactiveTintColor: '#64748b',
+      tabBarStyle: { borderTopColor: '#e2e8f0' },
+      tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      headerStyle: { backgroundColor: '#0f172a' },
+      headerTintColor: '#f8fafc',
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <Tabs.Screen name="index" options={{
+        title: 'Ventas',
+        tabBarIcon: ({ focused }) => <TabIcon routeName="index" focused={focused} badge={ventasCount} />,
+      }} />
+      <Tabs.Screen name="compras" options={{
+        title: 'Compras',
+        tabBarIcon: ({ focused }) => <TabIcon routeName="compras" focused={focused} badge={comprasCount} />,
+      }} />
+      <Tabs.Screen name="productos" options={{
+        title: 'Productos',
+        tabBarIcon: ({ focused }) => <TabIcon routeName="productos" focused={focused} />,
+      }} />
+      <Tabs.Screen name="caja" options={{
+        title: 'Caja',
+        tabBarIcon: ({ focused }) => <TabIcon routeName="caja" focused={focused} />,
+      }} />
+      <Tabs.Screen name="mas" options={{
+        title: 'Más',
+        tabBarIcon: ({ focused }) => <TabIcon routeName="mas" focused={focused} />,
+      }} />
     </Tabs>
   );
 }

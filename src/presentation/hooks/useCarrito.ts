@@ -1,12 +1,12 @@
-import { useCarritoStore } from '@/presentation/stores/carritoStore';
+import type { CarritoTipo } from '@/domain/entities/CarritoItem';
 import { calcTotals } from '@/domain/rules/cartRules';
+import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 
-export function useCarritoTotals() {
-  const items = useCarritoStore((s) => s.items);
-  const tipo = useCarritoStore((s) => s.tipo);
+export function useCarritoTotals(store: CarritoStoreHook, tipo: CarritoTipo) {
+  const items = store((s) => s.items);
   return calcTotals(items, tipo);
 }
 
-export function useCarritoCount() {
-  return useCarritoStore((s) => s.items.length);
+export function useCarritoCount(store: CarritoStoreHook) {
+  return store((s) => s.items.length);
 }

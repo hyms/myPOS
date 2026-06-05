@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Button } from './Button';
+import { Button } from '../ui/Button';
 
 interface ConfirmDialogProps {
   readonly visible: boolean;

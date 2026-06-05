@@ -1,5 +1,7 @@
 import React, { useCallback } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 import { optimizeProductImage } from '@/infrastructure/image/ImageOptimizer';
@@ -26,8 +28,8 @@ export function ProductFormHeader({ onChange }: Props) {
           return;
         }
         const result = source === 'camera'
-          ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 })
-          : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+          : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
         if (result.canceled || !result.assets[0]) return;
         const optimized = await optimizeProductImage(result.assets[0].uri);
         setDraft({ imagenUri: optimized.uri });
@@ -48,10 +50,16 @@ export function ProductFormHeader({ onChange }: Props) {
     <View className="items-center">
       <View className="h-44 w-44 overflow-hidden rounded-2xl border-2 border-dashed border-surface-300 bg-surface-50 dark:border-surface-700 dark:bg-surface-800">
         {imagenUri ? (
-          <Image source={{ uri: imagenUri }} className="h-full w-full" resizeMode="cover" />
+          <Image
+            source={{ uri: imagenUri }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
         ) : (
           <View className="flex-1 items-center justify-center px-3">
-            <Text className="text-5xl text-surface-400">📷</Text>
+            <Ionicons name="camera-outline" size={48} color="#94a3b8" />
             <Text className="mt-1 text-center text-xs text-surface-500">Sin imagen</Text>
           </View>
         )}

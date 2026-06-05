@@ -10,7 +10,7 @@ interface ShowOptions {
 }
 
 const COLORS: Record<Variant, string> = {
-  info: '#0ea5e9',
+  info: '#8b5cf6',
   success: '#16a34a',
   error: '#dc2626',
   warning: '#f59e0b',

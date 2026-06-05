@@ -23,7 +23,7 @@ function CardComponent({ children, onPress, className }: CardProps) {
   );
   if (!onPress) return inner;
   return (
-    <Pressable onPress={onPress} android_ripple={{ color: '#e2e8f0' }}>
+    <Pressable onPress={onPress} android_ripple={{ color: '#fef3c7' }}>
       {inner}
     </Pressable>
   );
@@ -42,7 +42,7 @@ const TONE_BG: Record<NonNullable<BadgeProps['tone']>, string> = {
   success: 'bg-success-50',
   warning: 'bg-warning-50',
   danger: 'bg-danger-50',
-  primary: 'bg-primary-50',
+  primary: 'bg-primary-100',
 };
 
 const TONE_TEXT: Record<NonNullable<BadgeProps['tone']>, string> = {
@@ -50,7 +50,7 @@ const TONE_TEXT: Record<NonNullable<BadgeProps['tone']>, string> = {
   success: 'text-success-700',
   warning: 'text-warning-600',
   danger: 'text-danger-700',
-  primary: 'text-primary-700',
+  primary: 'text-primary-800',
 };
 
 export function Badge({ label, tone = 'neutral', className }: BadgeProps) {

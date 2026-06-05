@@ -21,11 +21,12 @@ export function useStockAlert() {
         );
         return;
       }
-      ToastService.warning(
-        'Stock bajo',
-        `${items.length} productos por debajo del mínimo (${first.nombre} y otros).`,
-        STOCK_ALERT_TOAST_TIME,
-      );
+      ToastService.show({
+        title: 'Stock bajo',
+        message: `${items.length} productos por debajo del mínimo (${first.nombre} y otros).`,
+        variant: 'warning',
+        visibilityTime: STOCK_ALERT_TOAST_TIME,
+      });
     },
   };
 }

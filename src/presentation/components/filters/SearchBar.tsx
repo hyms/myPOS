@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { cn } from '@/shared/utils/cn';
 
@@ -18,7 +19,9 @@ function SearchBarComponent({ value, onChangeText, placeholder, className }: Sea
         className,
       )}
     >
-      <Text className="mr-2 text-base text-surface-400">🔍</Text>
+      <View className="mr-2">
+        <Ionicons name="search" size={18} color="#94a3b8" />
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -30,7 +33,7 @@ function SearchBarComponent({ value, onChangeText, placeholder, className }: Sea
       />
       {value.length > 0 ? (
         <Pressable onPress={() => onChangeText('')} hitSlop={8}>
-          <Text className="px-2 text-lg text-surface-400">×</Text>
+          <Ionicons name="close-circle" size={18} color="#94a3b8" />
         </Pressable>
       ) : null}
     </View>

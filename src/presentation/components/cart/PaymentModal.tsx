@@ -67,9 +67,11 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
       title={tipo === 'VENTA' ? 'Cobrar venta' : 'Pagar compra'}
     >
       <View className="gap-3">
-        <View className="rounded-lg bg-surface-50 p-3 dark:bg-surface-800">
-          <Text className="text-sm text-surface-500">Total a {tipo === 'VENTA' ? 'cobrar' : 'pagar'}</Text>
-          <Text className="text-3xl font-bold text-primary-700">{format(totals.total)}</Text>
+        <View className="rounded-xl border border-primary-200 bg-primary-50 p-4">
+          <Text className="text-xs font-semibold uppercase tracking-wide text-primary-700">
+            Total a {tipo === 'VENTA' ? 'cobrar' : 'pagar'}
+          </Text>
+          <Text className="text-4xl font-extrabold text-primary-800">{format(totals.total)}</Text>
         </View>
 
         <View>
@@ -119,15 +121,24 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
             />
             <View
               className={cn(
-                'rounded-lg p-3',
-                cambio >= 0 ? 'bg-success-50' : 'bg-danger-50',
+                'rounded-xl border p-4',
+                cambio >= 0
+                  ? 'border-success-200 bg-success-50'
+                  : 'border-danger-200 bg-danger-50',
               )}
             >
-              <Text className="text-sm text-surface-500">Cambio</Text>
               <Text
                 className={cn(
-                  'text-2xl font-bold',
+                  'text-xs font-semibold uppercase tracking-wide',
                   cambio >= 0 ? 'text-success-700' : 'text-danger-700',
+                )}
+              >
+                Cambio
+              </Text>
+              <Text
+                className={cn(
+                  'text-3xl font-extrabold',
+                  cambio >= 0 ? 'text-success-800' : 'text-danger-800',
                 )}
               >
                 {format(Math.abs(cambio))}
