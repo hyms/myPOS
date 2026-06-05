@@ -44,34 +44,53 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
   const cantNum = Math.max(0, Math.floor(Number(cantidad) || 0));
   const descNum = Math.max(0, Number(descuento) || 0);
   const subtotal = unit * cantNum - descNum;
+  const maxCant = tipo === 'VENTA' ? item.producto.stockActual : Infinity;
+  const cantExcedeStock = tipo === 'VENTA' && cantNum > item.producto.stockActual;
+  const descExcedeSubtotal = descNum > unit * cantNum;
+  const invalid = cantExcedeStock || descExcedeSubtotal || cantNum < 1;
 
   return (
     <ModalSheet visible={visible} onClose={onClose} title={item.producto.nombre}>
       <View className="gap-3">
         <View className="rounded-lg bg-surface-50 p-3 dark:bg-surface-800">
-          <Text className="text-sm text-surface-500">Precio unitario</Text>
-          <Text className="text-lg font-bold text-surface-900 dark:text-surface-50">{format(unit)}</Text>
+          <Text className="text-xs font-medium uppercase tracking-wide text-surface-500">
+            Precio unitario
+          </Text>
+          <Text className="text-lg font-bold tabular-nums text-surface-900 dark:text-surface-50">
+            {format(unit)}
+          </Text>
         </View>
         <Input
           label="Cantidad"
           value={cantidad}
           onChangeText={(t) => setCantidad(t.replace(/[^0-9]/g, ''))}
           keyboardType="number-pad"
+          {...(tipo === 'VENTA' ? { helper: `Stock disponible: ${item.producto.stockActual}` } : {})}
+          {...(cantExcedeStock ? { error: `Máximo disponible: ${item.producto.stockActual}` } : {})}
         />
         <Input
           label="Descuento (monto fijo)"
           value={descuento}
           onChangeText={(t) => setDescuento(t.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
-          helper="No puede superar el subtotal"
+          {...(descExcedeSubtotal
+            ? { error: `El descuento no puede superar ${format(unit * cantNum)}` }
+            : {})}
         />
-        <View className="rounded-lg bg-primary-50 p-3">
-          <Text className="text-sm text-primary-700">Subtotal línea</Text>
-          <Text className="text-2xl font-bold text-primary-700">{format(Math.max(0, subtotal))}</Text>
+        <View
+          accessibilityLabel={`Subtotal de la línea: ${format(Math.max(0, subtotal))}`}
+          className="rounded-xl border border-primary-200 bg-primary-50 p-3 dark:border-primary-800 dark:bg-primary-950"
+        >
+          <Text className="text-xs font-semibold uppercase tracking-wide text-primary-700">
+            Subtotal línea
+          </Text>
+          <Text className="text-2xl font-bold tabular-nums text-primary-700 dark:text-primary-300">
+            {format(Math.max(0, subtotal))}
+          </Text>
         </View>
         <View className={cn('flex-row gap-2')}>
           <Button title="Cancelar" variant="secondary" onPress={onClose} className="flex-1" />
-          <Button title="Aplicar" onPress={handleAccept} className="flex-1" />
+          <Button title="Aplicar" onPress={handleAccept} className="flex-1" disabled={invalid} />
         </View>
       </View>
     </ModalSheet>

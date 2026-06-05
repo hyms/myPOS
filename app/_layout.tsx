@@ -106,6 +106,10 @@ export default function RootLayout() {
             options={{ title: 'Detalle' }}
           />
           <Stack.Screen
+            name="movimientos/index"
+            options={{ title: 'Movimientos' }}
+          />
+          <Stack.Screen
             name="settings/index"
             options={{ title: APP_NAME }}
           />

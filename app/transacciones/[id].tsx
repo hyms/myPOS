@@ -1,34 +1,71 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Card } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { ConfirmDialog } from '@/presentation/components/feedback/ConfirmDialog';
 import { revertirTransaccion } from '@/application/ventas/RevertirTransaccion';
-import { useTransacciones } from '@/presentation/hooks/useTransacciones';
+import { getRepositories } from '@/data/repositories/container';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { usePinGate } from '@/presentation/hooks/usePinGate';
 import { formatFecha } from '@/shared/utils/date';
 import { ToastService } from '@/infrastructure/toast/ToastService';
+import type { Transaccion, TipoPago } from '@/domain/entities/Transaccion';
+import type { DetalleTransaccion } from '@/domain/entities/DetalleTransaccion';
+
+interface DetalleEnriquecido {
+  readonly id: number;
+  readonly nombre: string;
+  readonly cantidad: number;
+  readonly precioUnitario: number;
+}
+
+const TIPO_PAGO_LABEL: Readonly<Record<TipoPago, string>> = {
+  EFECTIVO: 'Efectivo',
+  TARJETA: 'Tarjeta',
+  TRANSFERENCIA: 'Transferencia',
+  QR: 'QR',
+};
 
 export default function TransaccionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { format } = useCurrency();
-  const { items } = useTransacciones({ page: 0 });
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pinGate = usePinGate();
 
   const trxId = id ? Number(id) : null;
-  const found = items.find((it) => it.transaccion.id === trxId);
-  const transaccion = found?.transaccion;
+  const [transaccion, setTransaccion] = useState<Transaccion | null>(null);
+  const [detalles, setDetalles] = useState<ReadonlyArray<DetalleEnriquecido>>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (trxId && !found) {
-      // puede que esté en otra página; por simplicidad lo dejamos hasta refresh
+    if (!trxId || Number.isNaN(trxId)) {
+      setLoading(false);
+      return;
     }
-  }, [trxId, found]);
+    const repo = getRepositories();
+    const trx = repo.transacciones.findById(trxId);
+    setTransaccion(trx);
+    if (trx) {
+      const dets: ReadonlyArray<DetalleTransaccion> = repo.transacciones.findDetalles(trxId);
+      const ids = dets.map((d) => d.productoId);
+      const productos = repo.productos.findByIds(ids);
+      const nameMap = new Map(productos.map((p) => [p.id, p.nombre] as const));
+      setDetalles(
+        dets.map((d) => ({
+          id: d.id,
+          nombre: nameMap.get(d.productoId) ?? '—',
+          cantidad: d.cantidad,
+          precioUnitario: d.precioUnitario,
+        })),
+      );
+    } else {
+      setDetalles([]);
+    }
+    setLoading(false);
+  }, [trxId]);
 
   const handleRevert = useCallback(() => {
     if (!trxId) return;
@@ -46,39 +83,67 @@ export default function TransaccionDetailScreen() {
     });
   }, [pinGate, router, trxId]);
 
-  if (!transaccion) {
+  if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface-50 p-6">
-        <Text className="text-base text-surface-700">Cargando o no encontrada…</Text>
+      <View className="flex-1 items-center justify-center bg-surface-50 dark:bg-surface-950">
+        <ActivityIndicator color="#0ea5e9" />
       </View>
     );
   }
 
+  if (!transaccion) {
+    return (
+      <View className="flex-1 items-center justify-center bg-surface-50 p-6">
+        <Text className="text-base font-semibold text-surface-800 dark:text-surface-100">No encontrada</Text>
+        <Text className="mt-1 text-sm text-surface-600">La transacción #{trxId ?? '?'} no existe o fue eliminada.</Text>
+        <View className="mt-4 w-full">
+          <Button title="Volver" variant="secondary" onPress={() => router.back()} fullWidth />
+        </View>
+      </View>
+    );
+  }
+
+  const sign = transaccion.tipo === 'VENTA' ? '+' : '-';
+  const amountClass =
+    transaccion.tipo === 'VENTA'
+      ? 'text-success-800'
+      : transaccion.tipo === 'COMPRA'
+        ? 'text-warning-800'
+        : 'text-danger-800';
+
   return (
     <ScrollView className="flex-1 bg-surface-50 dark:bg-surface-950" contentContainerClassName="gap-3 p-4">
       <Card>
-        <Text className="text-xs font-semibold uppercase text-surface-500">{transaccion.tipo}</Text>
-        <Text className="mt-1 text-3xl font-bold text-primary-700">{format(transaccion.montoTotal)}</Text>
-        <Text className="mt-1 text-xs text-surface-500">{formatFecha(transaccion.fechaRegistro)}</Text>
-        <Text className="mt-1 text-sm text-surface-700 dark:text-surface-200">
-          Pago: <Text className="font-semibold">{transaccion.tipoPago}</Text>
+        <Text className="text-xs font-semibold uppercase tracking-wide text-surface-700">{transaccion.tipo}</Text>
+        <Text className={`mt-1 text-4xl font-extrabold ${amountClass}`}>
+          {sign}{format(Math.abs(transaccion.montoTotal))}
+        </Text>
+        <Text className="mt-1 text-xs text-surface-600">{formatFecha(transaccion.fechaRegistro)}</Text>
+        <Text className="mt-2 text-sm text-surface-700 dark:text-surface-200">
+          Pago: <Text className="font-semibold text-surface-900 dark:text-surface-50">{TIPO_PAGO_LABEL[transaccion.tipoPago]}</Text>
         </Text>
         {transaccion.detalle ? (
-          <Text className="mt-1 text-sm text-surface-700 dark:text-surface-200">Detalle: {transaccion.detalle}</Text>
+          <Text className="mt-1 text-sm text-surface-700 dark:text-surface-200">
+            Detalle: <Text className="font-semibold text-surface-900 dark:text-surface-50">{transaccion.detalle}</Text>
+          </Text>
         ) : null}
       </Card>
 
-      {found && found.detalles.length > 0 ? (
+      {detalles.length > 0 ? (
         <Card>
-          <Text className="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">Detalle</Text>
-          {found.detalles.map((d) => (
+          <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-surface-700">
+            Productos
+          </Text>
+          {detalles.map((d) => (
             <View
               key={d.id}
-              className="flex-row items-center justify-between border-b border-surface-100 py-2 dark:border-surface-800"
+              className="flex-row items-center justify-between border-b border-surface-100 py-2 last:border-b-0 dark:border-surface-800"
             >
               <View className="flex-1 pr-2">
-                <Text className="text-sm text-surface-800 dark:text-surface-100">{d.nombre}</Text>
-                <Text className="text-xs text-surface-500">{d.cantidad} × {format(d.precioUnitario)}</Text>
+                <Text className="text-sm font-semibold text-surface-800 dark:text-surface-100">{d.nombre}</Text>
+                <Text className="text-xs text-surface-500">
+                  {d.cantidad} × {format(d.precioUnitario)}
+                </Text>
               </View>
               <Text className="font-bold text-surface-900 dark:text-surface-50">
                 {format(d.cantidad * d.precioUnitario)}

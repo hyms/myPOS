@@ -7,6 +7,8 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+
+import { useReducedMotion } from '@/presentation/hooks/useReducedMotion';
 import { cn } from '@/shared/utils/cn';
 
 interface SkeletonProps {
@@ -19,15 +21,20 @@ const MAX_OPACITY = 1;
 const PULSE_DURATION = 800;
 
 export function Skeleton({ className, style }: SkeletonProps) {
-  const opacity = useSharedValue(MIN_OPACITY);
+  const reduced = useReducedMotion();
+  const opacity = useSharedValue(reduced ? MAX_OPACITY : MIN_OPACITY);
 
   useEffect(() => {
+    if (reduced) {
+      opacity.value = MAX_OPACITY;
+      return;
+    }
     opacity.value = withRepeat(
       withTiming(MAX_OPACITY, { duration: PULSE_DURATION, easing: Easing.inOut(Easing.quad) }),
       -1,
       true,
     );
-  }, [opacity]);
+  }, [opacity, reduced]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 

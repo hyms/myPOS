@@ -7,6 +7,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
+import { useReducedMotion } from '@/presentation/hooks/useReducedMotion';
+
 interface AnimatedPressableProps extends PressableProps {
   readonly scaleTo?: number;
   readonly opacityTo?: number;
@@ -16,6 +18,7 @@ interface AnimatedPressableProps extends PressableProps {
 const DEFAULT_DURATION = 100;
 const DEFAULT_SCALE = 0.96;
 const DEFAULT_OPACITY = 0.7;
+const INSTANT_DURATION = 0;
 
 export function AnimatedPressable({
   scaleTo = DEFAULT_SCALE,
@@ -27,6 +30,10 @@ export function AnimatedPressable({
   children,
   ...rest
 }: AnimatedPressableProps) {
+  const reduced = useReducedMotion();
+  const effectiveDuration = reduced ? INSTANT_DURATION : duration;
+  const effectiveScale = reduced ? 1 : scaleTo;
+  const effectiveOpacity = reduced ? 1 : opacityTo;
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -37,20 +44,20 @@ export function AnimatedPressable({
 
   const handlePressIn = useCallback(
     (e: any) => {
-      scale.value = withTiming(scaleTo, { duration, easing: Easing.out(Easing.quad) });
-      opacity.value = withTiming(opacityTo, { duration, easing: Easing.out(Easing.quad) });
+      scale.value = withTiming(effectiveScale, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
+      opacity.value = withTiming(effectiveOpacity, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
       onPressIn?.(e);
     },
-    [scale, opacity, scaleTo, opacityTo, duration, onPressIn],
+    [scale, opacity, effectiveScale, effectiveOpacity, effectiveDuration, onPressIn],
   );
 
   const handlePressOut = useCallback(
     (e: any) => {
-      scale.value = withTiming(1, { duration, easing: Easing.out(Easing.quad) });
-      opacity.value = withTiming(1, { duration, easing: Easing.out(Easing.quad) });
+      scale.value = withTiming(1, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
+      opacity.value = withTiming(1, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
       onPressOut?.(e);
     },
-    [scale, opacity, duration, onPressOut],
+    [scale, opacity, effectiveDuration, onPressOut],
   );
 
   return (

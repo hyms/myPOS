@@ -23,7 +23,11 @@ function CardComponent({ children, onPress, className }: CardProps) {
   );
   if (!onPress) return inner;
   return (
-    <Pressable onPress={onPress} android_ripple={{ color: '#fef3c7' }}>
+    <Pressable
+      onPress={onPress}
+      android_ripple={{ color: '#fef3c7', borderless: false }}
+      accessibilityRole="button"
+    >
       {inner}
     </Pressable>
   );

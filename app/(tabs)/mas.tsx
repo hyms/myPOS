@@ -10,6 +10,7 @@ import { APP_NAME } from '@/shared/constants';
 interface MenuItem { readonly label: string; readonly icon: IconName; readonly route: string; readonly description: string; }
 
 const ITEMS: ReadonlyArray<MenuItem> = [
+  { label: 'Movimientos', icon: 'swap-vertical-outline', route: '/movimientos', description: 'Ventas, compras y gastos en una lista.' },
   { label: 'Gastos', icon: 'receipt-outline', route: '/gastos', description: 'Registra y consulta gastos.' },
   { label: 'Configuración', icon: 'settings-outline', route: '/settings', description: 'PIN, biometría, backup y más.' },
 ];

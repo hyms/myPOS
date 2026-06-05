@@ -8,6 +8,8 @@ import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ModalSheet } from '@/presentation/components/ui/ModalSheet';
+import { Icon } from '@/presentation/components/ui/Icon';
+import type { IconName } from '@/presentation/components/ui/Icon';
 import { cn } from '@/shared/utils/cn';
 
 interface Props {
@@ -18,11 +20,11 @@ interface Props {
   readonly onConfirm: (params: { tipoPago: TipoPago; recibido: number | null }) => void | Promise<void>;
 }
 
-const TIPOS_PAGO: ReadonlyArray<{ value: TipoPago; label: string }> = [
-  { value: 'EFECTIVO', label: 'Efectivo' },
-  { value: 'TARJETA', label: 'Tarjeta' },
-  { value: 'TRANSFERENCIA', label: 'Transferencia' },
-  { value: 'QR', label: 'QR' },
+const TIPOS_PAGO: ReadonlyArray<{ value: TipoPago; label: string; icon: IconName }> = [
+  { value: 'EFECTIVO', label: 'Efectivo', icon: 'cash-outline' },
+  { value: 'TARJETA', label: 'Tarjeta', icon: 'card-outline' },
+  { value: 'TRANSFERENCIA', label: 'Transferencia', icon: 'swap-horizontal-outline' },
+  { value: 'QR', label: 'QR', icon: 'qr-code-outline' },
 ];
 
 function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Props) {
@@ -75,23 +77,37 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
         </View>
 
         <View>
-          <Text className="mb-1 text-sm font-medium text-surface-700 dark:text-surface-200">
+          <Text
+            accessibilityRole="header"
+            className="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200"
+          >
             Tipo de pago
           </Text>
-          <View className="flex-row flex-wrap gap-2">
+          <View
+            accessibilityRole="radiogroup"
+            className="flex-row flex-wrap gap-2"
+          >
             {TIPOS_PAGO.map((tp) => {
               const active = tp.value === tipoPago;
               return (
                 <Pressable
                   key={tp.value}
                   onPress={() => setTipoPago(tp.value)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={tp.label}
+                  accessibilityState={{ selected: active }}
                   className={cn(
-                    'rounded-lg border px-3 py-2',
+                    'min-h-[44px] flex-row items-center gap-2 rounded-xl border px-4 py-2.5',
                     active
                       ? 'border-primary-600 bg-primary-600'
                       : 'border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900',
                   )}
                 >
+                  <Icon
+                    name={tp.icon}
+                    size={18}
+                    color={active ? '#ffffff' : '#475569'}
+                  />
                   <Text
                     className={cn(
                       'text-sm font-semibold',
@@ -114,8 +130,16 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               onChangeText={(t) => setRecibido(t.replace(/[^0-9.]/g, ''))}
               keyboardType="decimal-pad"
               rightAdornment={
-                <Pressable onPress={() => setRecibido(String(totals.total))} hitSlop={8}>
-                  <Text className="text-sm font-semibold text-primary-600">Exacto</Text>
+                <Pressable
+                  onPress={() => setRecibido(String(totals.total))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Establecer monto exacto"
+                  hitSlop={12}
+                  className="rounded-md bg-primary-50 px-2 py-1 active:bg-primary-100 dark:bg-primary-950"
+                >
+                  <Text className="text-xs font-bold uppercase tracking-wide text-primary-700">
+                    Exacto
+                  </Text>
                 </Pressable>
               }
             />

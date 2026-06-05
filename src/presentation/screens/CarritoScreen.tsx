@@ -23,6 +23,8 @@ import { LineItemModal } from '@/presentation/components/cart/LineItemModal';
 import { PaymentModal } from '@/presentation/components/cart/PaymentModal';
 import { CartSummaryBar } from '@/presentation/components/cart/CartSummaryBar';
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
+import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
+import { Icon } from '@/presentation/components/ui/Icon';
 import { generarYCompartirComprobante } from '@/infrastructure/pdf/ComprobanteService';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
@@ -37,6 +39,57 @@ interface RenderProductProps {
 
 const RenderProduct = React.memo(function RenderProduct({ item, onPress }: RenderProductProps) {
   return <ProductGridCard producto={item} onPress={onPress} />;
+});
+
+interface CartLineProps {
+  readonly item: CarritoItem;
+  readonly tipo: CarritoTipo;
+  readonly onEdit: (item: CarritoItem) => void;
+  readonly onRemove: (id: number) => void;
+}
+
+const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: CartLineProps) {
+  const { format } = useCurrency();
+  const unit = tipo === 'VENTA' ? item.producto.precioVenta : item.producto.precioCompra;
+  const lineTotal = unit * item.cantidad - item.descuento;
+  const a11yLabel = `${item.producto.nombre}, ${item.cantidad} por ${format(unit)}, total ${format(lineTotal)}`;
+
+  return (
+    <AnimatedPressable
+      onPress={() => onEdit(item)}
+      scaleTo={0.98}
+      opacityTo={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint="Toca para editar, mantén presionado para ver más opciones"
+      className="flex-row items-center justify-between border-b border-surface-100 py-2 dark:border-surface-800"
+    >
+      <View className="flex-1 pr-3">
+        <Text
+          numberOfLines={1}
+          className="text-sm font-semibold text-surface-900 dark:text-surface-50"
+        >
+          {item.producto.nombre}
+        </Text>
+        <Text className="mt-0.5 text-xs tabular-nums text-surface-500">
+          {item.cantidad} × {format(unit)}
+          {item.descuento > 0 ? `  ·  desc ${format(item.descuento)}` : ''}
+        </Text>
+      </View>
+      <Text className="text-base font-bold tabular-nums text-primary-700 dark:text-primary-300">
+        {format(lineTotal)}
+      </Text>
+      <Pressable
+        onPress={() => onRemove(item.producto.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`Quitar ${item.producto.nombre} del carrito`}
+        hitSlop={12}
+        className="ml-2 rounded-full p-1 active:bg-danger-50 dark:active:bg-danger-950"
+      >
+        <Icon name="close-circle" size={20} color="#dc2626" />
+      </Pressable>
+    </AnimatedPressable>
+  );
 });
 
 interface Props {
@@ -83,14 +136,6 @@ export function CarritoScreen({ tipo, store }: Props) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     },
     [agregar, productos, tipo],
-  );
-
-  const handleLongPress = useCallback(
-    (id: number) => {
-      const it = items.find((i) => i.producto.id === id);
-      if (it) setLineItem(it);
-    },
-    [items],
   );
 
   const handleSearchChange = useCallback((v: string) => {
@@ -178,6 +223,14 @@ export function CarritoScreen({ tipo, store }: Props) {
   const handleOpenPayment = useCallback(() => setPaymentOpen(true), []);
   const handleClosePayment = useCallback(() => setPaymentOpen(false), []);
   const handleCloseLineItem = useCallback(() => setLineItem(null), []);
+  const handleEditLine = useCallback((it: CarritoItem) => setLineItem(it), []);
+  const handleRemoveLine = useCallback(
+    (id: number) => {
+      eliminar(id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    },
+    [eliminar],
+  );
 
   const handleClearCart = useCallback(() => {
     Alert.alert('Vaciar carrito', '¿Eliminar todos los productos del carrito?', [
@@ -207,54 +260,43 @@ export function CarritoScreen({ tipo, store }: Props) {
       </View>
 
       {items.length > 0 ? (
-        <View className="border-y border-surface-200 bg-white px-3 py-2 dark:border-surface-800 dark:bg-surface-900">
-          <Text
-            className="mb-1 text-xs font-semibold uppercase"
-            style={{ color: '#64748b' }}
-          >
+        <View
+          accessibilityLabel="Resumen del carrito"
+          className="border-y border-surface-200 bg-white px-3 py-2 dark:border-surface-800 dark:bg-surface-900"
+        >
+          <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-surface-500">
             Carrito {tipo === 'VENTA' ? 'de venta' : 'de compra'}
           </Text>
           {items.map((it) => (
-            <Pressable
+            <CartLine
               key={it.producto.id}
-              onPress={() => setLineItem(it)}
-              onLongPress={() => eliminar(it.producto.id)}
-              className="flex-row items-center justify-between border-b border-surface-100 py-2 active:bg-surface-50 dark:border-surface-800"
-            >
-              <View className="flex-1 pr-3">
-                <Text
-                  className="text-sm font-semibold"
-                  numberOfLines={1}
-                  style={{ color: '#0f172a' }}
-                >
-                  {it.producto.nombre}
-                </Text>
-                <Text className="text-xs" style={{ color: '#64748b' }}>
-                  {it.cantidad} × {format(tipo === 'VENTA' ? it.producto.precioVenta : it.producto.precioCompra)}
-                  {it.descuento > 0 ? `  ·  desc ${format(it.descuento)}` : ''}
-                </Text>
-              </View>
-              <Text className="font-bold" style={{ color: '#b45309' }}>
-                {format(
-                  (tipo === 'VENTA' ? it.producto.precioVenta : it.producto.precioCompra) * it.cantidad -
-                    it.descuento,
-                )}
-              </Text>
-            </Pressable>
+              item={it}
+              tipo={tipo}
+              onEdit={handleEditLine}
+              onRemove={handleRemoveLine}
+            />
           ))}
           <View className="mt-2 flex-row justify-between">
-            <Text className="text-sm" style={{ color: '#475569' }}>Subtotal</Text>
-            <Text className="font-semibold" style={{ color: '#0f172a' }}>{format(totals.subtotal)}</Text>
+            <Text className="text-sm text-surface-600">Subtotal</Text>
+            <Text className="font-semibold tabular-nums text-surface-900 dark:text-surface-50">
+              {format(totals.subtotal)}
+            </Text>
           </View>
           {totals.descuento > 0 ? (
             <View className="flex-row justify-between">
-              <Text className="text-sm" style={{ color: '#475569' }}>Descuento</Text>
-              <Text className="font-semibold" style={{ color: '#b91c1c' }}>-{format(totals.descuento)}</Text>
+              <Text className="text-sm text-surface-600">Descuento</Text>
+              <Text className="font-semibold tabular-nums text-danger-600">
+                -{format(totals.descuento)}
+              </Text>
             </View>
           ) : null}
           <View className="mt-1 flex-row justify-between">
-            <Text className="text-base font-bold" style={{ color: '#0f172a' }}>Total</Text>
-            <Text className="text-lg font-bold" style={{ color: '#b45309' }}>{format(totals.total)}</Text>
+            <Text className="text-base font-bold text-surface-900 dark:text-surface-50">
+              Total
+            </Text>
+            <Text className="text-lg font-bold tabular-nums text-primary-700 dark:text-primary-300">
+              {format(totals.total)}
+            </Text>
           </View>
         </View>
       ) : null}
@@ -268,11 +310,20 @@ export function CarritoScreen({ tipo, store }: Props) {
         onEndReachedThreshold={0.5}
         contentContainerClassName="px-2 pb-32"
         ListEmptyComponent={
-          <EmptyState icon="cube-outline" title="Sin productos" description="Ajusta filtros o crea productos nuevos." />
+          <EmptyState
+            icon="cube-outline"
+            title="Sin productos"
+            description="Ajusta filtros o crea productos nuevos."
+          />
         }
       />
 
-      <CartSummaryBar store={store} tipo={tipo} onCheckout={handleOpenPayment} />
+      <CartSummaryBar
+        store={store}
+        tipo={tipo}
+        onCheckout={handleOpenPayment}
+        onClear={handleClearCart}
+      />
 
       <LineItemModal
         visible={!!lineItem}
@@ -288,15 +339,6 @@ export function CarritoScreen({ tipo, store }: Props) {
         onClose={handleClosePayment}
         onConfirm={handleConfirm}
       />
-
-      {items.length > 0 ? (
-        <Pressable
-          onPress={handleClearCart}
-          className="absolute bottom-28 left-3 rounded-full bg-danger-600 px-3 py-1.5 active:bg-danger-700"
-        >
-          <Text className="text-xs font-bold text-white">Vaciar</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
