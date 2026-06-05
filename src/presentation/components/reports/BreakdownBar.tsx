@@ -60,7 +60,7 @@ function BreakdownBarComponent({
         accessibilityRole="progressbar"
         accessibilityLabel={`${label}: ${fmt(value)}`}
         accessibilityValue={{ min: 0, max: 100, now: Math.round(pct * 100) }}
-        className="h-1.5 w-full overflow-hidden rounded-full bg-surface-lo bg-surface-hi"
+        className="h-1.5 w-full overflow-hidden rounded-full bg-surface-hi"
       >
         <View
           className={cn('h-full rounded-full', TONE_BG[tone])}

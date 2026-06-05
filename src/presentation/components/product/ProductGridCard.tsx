@@ -50,7 +50,7 @@ function ProductGridCardComponent({ producto, onPress }: Props) {
             accessibilityLabel="Stock bajo mínimo"
             className="absolute left-1 top-1 rounded-full bg-danger px-2 py-0.5"
           >
-            <Text className="text-[10px] font-bold uppercase tracking-wide text-white">
+            <Text className="text-[10px] font-bold uppercase tracking-wide text-onDanger">
               Bajo
             </Text>
           </View>

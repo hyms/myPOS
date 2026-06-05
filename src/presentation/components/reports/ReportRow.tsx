@@ -21,12 +21,12 @@ interface Props {
 
 function RowComponent({ label, value, tone = 'neutral', bold, isLast }: Props) {
   return (
-    <View
-      className={cn(
-        'flex-row items-center justify-between py-2.5',
-        !isLast && 'border-b border-border-subtle border-border',
-      )}
-    >
+      <View
+        className={cn(
+          'flex-row items-center justify-between py-2.5',
+          !isLast && 'border-b border-border-subtle',
+        )}
+      >
       <Text
         className={cn(
           'text-sm text-ink',

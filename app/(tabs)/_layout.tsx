@@ -47,7 +47,7 @@ function TabIcon({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{badge}</Text>
+          <Text style={{ color: DARK_PALETTE.inkStrong, fontSize: 10, fontWeight: '700' }}>{badge}</Text>
         </View>
       ) : null}
     </View>

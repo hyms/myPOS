@@ -42,7 +42,7 @@ export function Skeleton({ className, style }: SkeletonProps) {
     <Animated.View
       accessibilityElementsHidden
       importantForAccessibility="no"
-      className={cn('rounded-lg bg-surface-lo bg-surface-hi', className)}
+      className={cn('rounded-lg bg-surface-hi', className)}
       style={[animatedStyle, style]}
     />
   );
@@ -50,7 +50,7 @@ export function Skeleton({ className, style }: SkeletonProps) {
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <View className={cn('rounded-2xl border border-border-subtle bg-surface p-4 border-border bg-surface', className)}>
+    <View className={cn('rounded-2xl border border-border bg-surface p-4', className)}>
       <Skeleton className="mb-3 h-32 w-full rounded-xl" />
       <Skeleton className="mb-2 h-4 w-3/4" />
       <Skeleton className="h-4 w-1/2" />
@@ -87,9 +87,9 @@ export function ListCountText({ count, hasMore, page, pageSize, label = 'element
   const text = `Mostrando ${count}${hasMore ? '+' : ''} · página ${page + 1} · lote ${pageSize} ${label}`;
   return (
     <View accessibilityRole="text" accessibilityLabel={text} className={cn('px-3 pb-2', className)}>
-      <View className="h-px bg-surface-lo bg-surface-hi" />
+      <View className="h-px bg-surface-hi" />
       <View className="flex-row items-center justify-between pt-2">
-        <View className="h-1.5 w-24 rounded-full bg-surface-lo bg-surface-hi" />
+        <View className="h-1.5 w-24 rounded-full bg-surface-hi" />
         {hasMore ? (
           <View className="h-1.5 w-3 rounded-full bg-accent" />
         ) : null}

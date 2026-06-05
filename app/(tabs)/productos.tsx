@@ -12,7 +12,7 @@ import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressabl
 import { Icon } from '@/presentation/components/ui/Icon';
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
 import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
-import { DARK_PALETTE } from '@/presentation/theme/tokens';
+import { DARK_PALETTE, SHADOW } from '@/presentation/theme/tokens';
 import { useProductos } from '@/presentation/hooks/useProductos';
 import { useCategorias } from '@/presentation/hooks/useCategorias';
 import { useDebouncedValue, useInfiniteScroll } from '@/presentation/hooks/useInfiniteScroll';
@@ -21,7 +21,7 @@ import type { SortOrder } from '@/data/repositories/IProductoRepository';
 
 function ProductSkeleton() {
   return (
-    <View className="m-1 flex-1 overflow-hidden rounded-2xl border border-border-subtle bg-surface border-border bg-surface">
+    <View className="m-1 flex-1 overflow-hidden rounded-2xl border border-border bg-surface">
       <Skeleton className="aspect-square w-full rounded-none" />
       <View className="gap-1.5 p-2">
         <Skeleton className="h-3.5 w-3/4" />
@@ -127,10 +127,10 @@ export default function ProductosScreen() {
           accessibilityRole="button"
           accessibilityLabel="Crear producto"
           accessibilityHint="Abre el formulario para registrar un nuevo producto"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-accent active:bg-accent"
-          style={{ boxShadow: '0 6px 16px rgba(15, 23, 42, 0.25)' }}
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-accent"
+          style={SHADOW.fab}
         >
-          <Icon name="add" size={28} color="#fff" />
+          <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
         </AnimatedPressable>
       </Link>
     </View>

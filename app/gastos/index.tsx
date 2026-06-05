@@ -12,7 +12,7 @@ import { EmptyState } from '@/presentation/components/feedback/EmptyState';
 import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
 import { formatFecha } from '@/shared/utils/date';
 import type { Transaccion } from '@/domain/entities/Transaccion';
-import { DARK_PALETTE } from '@/presentation/theme/tokens';
+import { DARK_PALETTE, SHADOW } from '@/presentation/theme/tokens';
 
 interface GastoRowProps {
   readonly item: Transaccion;
@@ -132,10 +132,10 @@ export default function GastosIndexScreen() {
           accessibilityRole="button"
           accessibilityLabel="Nuevo gasto"
           accessibilityHint="Abre el formulario para registrar un nuevo gasto"
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-danger active:bg-danger"
-          style={{ boxShadow: '0 6px 16px rgba(0, 0, 0, 0.4)' }}
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-danger"
+          style={SHADOW.fab}
         >
-          <Icon name="add" size={28} color="#fff" />
+          <Icon name="add" size={28} color={DARK_PALETTE.inkStrong} />
         </AnimatedPressable>
       </Link>
     </View>

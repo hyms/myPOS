@@ -29,18 +29,18 @@ const VARIANT_BG: Record<Variant, string> = {
 };
 
 const VARIANT_TEXT: Record<Variant, string> = {
-  primary: 'text-white',
+  primary: 'text-onAccent',
   secondary: 'text-ink-strong',
-  danger: 'text-white',
-  success: 'text-white',
+  danger: 'text-onDanger',
+  success: 'text-onSuccess',
   ghost: 'text-accent-bright',
 };
 
 const SPINNER_COLOR: Record<Variant, string> = {
-  primary: '#ffffff',
+  primary: DARK_PALETTE.inkStrong,
   secondary: DARK_PALETTE.inkStrong,
-  danger: '#ffffff',
-  success: '#ffffff',
+  danger: DARK_PALETTE.inkStrong,
+  success: DARK_PALETTE.inkStrong,
   ghost: DARK_PALETTE.accentBright,
 };
 

@@ -68,20 +68,20 @@ export function ProductFormHeader({ onChange }: Props) {
       <View className="mt-3 flex-row gap-2">
         <Pressable
           onPress={() => handlePick('camera')}
-          className="rounded-lg bg-accent px-4 py-2 active:bg-accent"
+          className="rounded-lg bg-accent px-4 py-2"
         >
-          <Text className="font-semibold text-white">Cámara</Text>
+          <Text className="font-semibold text-onAccent">Cámara</Text>
         </Pressable>
         <Pressable
           onPress={() => handlePick('gallery')}
-          className="rounded-lg bg-surface-hi px-4 py-2 active:bg-surface"
+          className="rounded-lg bg-surface-hi px-4 py-2"
         >
           <Text className="font-semibold text-ink-strong">Galería</Text>
         </Pressable>
         {imagenUri ? (
           <Pressable
             onPress={handleClear}
-            className="rounded-lg bg-danger-soft px-4 py-2 active:bg-danger-soft"
+            className="rounded-lg bg-danger-soft px-4 py-2"
           >
             <Text className="font-semibold text-danger">Quitar</Text>
           </Pressable>

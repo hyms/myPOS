@@ -8,7 +8,6 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ModalSheet } from '@/presentation/components/ui/ModalSheet';
 import { getUnitPrice } from '@/domain/rules/cartRules';
-import { cn } from '@/shared/utils/cn';
 
 interface Props {
   readonly visible: boolean;
@@ -87,7 +86,7 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
             {format(Math.max(0, subtotal))}
           </Text>
         </View>
-        <View className={cn('flex-row gap-2')}>
+        <View className="flex-row gap-2">
           <Button title="Cancelar" variant="secondary" onPress={onClose} className="flex-1" />
           <Button title="Aplicar" onPress={handleAccept} className="flex-1" disabled={invalid} />
         </View>

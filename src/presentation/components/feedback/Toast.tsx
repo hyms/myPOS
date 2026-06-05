@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Icon } from '@/presentation/components/ui/Icon';
 import type { IconName } from '@/presentation/components/ui/Icon';
-import { DARK_PALETTE } from '@/presentation/theme/tokens';
+import { DARK_PALETTE, SHADOW } from '@/presentation/theme/tokens';
 
 interface Props {
   readonly text1?: string;
@@ -32,10 +32,7 @@ export function CustomToast({ text1, text2, props }: Props) {
         borderRadius: 12,
         minWidth: '85%',
         maxWidth: '95%',
-        shadowColor: '#000',
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
+        ...SHADOW.toast,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>

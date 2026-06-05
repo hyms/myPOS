@@ -6,6 +6,7 @@ import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { Badge } from '@/presentation/components/ui/Card';
 import { Icon } from '@/presentation/components/ui/Icon';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface Props {
   readonly count: number;
@@ -34,7 +35,7 @@ function CartSummaryBarComponent({ count, total, tipo, onCheckout, onClear }: Pr
             hitSlop={8}
             scaleTo={0.95}
             opacityTo={0.6}
-            className="min-h-[44px] items-center justify-center rounded-full bg-danger-soft px-3 active:bg-danger-soft"
+            className="min-h-[44px] items-center justify-center rounded-full bg-danger-soft px-3"
           >
             <Text className="text-[11px] font-bold uppercase tracking-wide text-danger">
               Vaciar
@@ -54,12 +55,12 @@ function CartSummaryBarComponent({ count, total, tipo, onCheckout, onClear }: Pr
         opacityTo={0.9}
         accessibilityRole="button"
         accessibilityLabel={tipo === 'VENTA' ? 'Continuar al cobro' : 'Continuar al pago'}
-        className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 active:bg-accent"
+        className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3"
       >
-        <Text className="text-base font-bold text-white">
+        <Text className="text-base font-bold text-onAccent">
           {tipo === 'VENTA' ? 'Cobrar venta' : 'Registrar compra'}
         </Text>
-        <Icon name="arrow-forward" size={18} color="#ffffff" />
+        <Icon name="arrow-forward" size={18} color={DARK_PALETTE.inkStrong} />
       </AnimatedPressable>
     </View>
   );

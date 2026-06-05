@@ -15,7 +15,7 @@ const TONE_STYLES: Readonly<Record<StatTone, ToneStyle>> = {
   success: { bg: 'bg-success-soft', bar: 'bg-success', text: 'text-success' },
   warning: { bg: 'bg-warning-soft', bar: 'bg-warning', text: 'text-warning' },
   danger: { bg: 'bg-danger-soft', bar: 'bg-danger', text: 'text-danger' },
-  neutral: { bg: 'bg-surface-lo bg-surface-hi', bar: 'bg-surface-hi', text: 'text-ink-strong' },
+  neutral: { bg: 'bg-surface-hi', bar: 'bg-surface-hi', text: 'text-ink-strong' },
 };
 
 interface Props {

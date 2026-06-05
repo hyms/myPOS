@@ -107,7 +107,7 @@ export default function NuevoGastoScreen() {
                 <Text
                   className={cn(
                     'text-sm font-semibold',
-                    active ? 'text-white' : 'text-ink-strong',
+                    active ? 'text-onAccent' : 'text-ink-strong',
                   )}
                 >
                   {t.label}

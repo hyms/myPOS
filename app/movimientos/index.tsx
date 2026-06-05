@@ -14,6 +14,7 @@ import { MovimientoListItem } from '@/presentation/components/movimientos/Movimi
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
 import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
 import { DARK_PALETTE } from '@/presentation/theme/tokens';
+import { cn } from '@/shared/utils/cn';
 import type { TipoTransaccion } from '@/domain/entities/Transaccion';
 
 const TIPO_MAP: Readonly<Record<Exclude<TipoFilter, 'ALL'>, TipoTransaccion>> = {
@@ -42,7 +43,7 @@ function MovimientosSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <View
           key={i}
-          className="overflow-hidden rounded-2xl border border-border-subtle bg-surface border-border bg-surface"
+          className="overflow-hidden rounded-2xl border border-border bg-surface"
         >
           <Skeleton className="h-1 w-full rounded-none" />
           <View className="flex-row items-center justify-between p-3.5">
@@ -107,9 +108,9 @@ export default function MovimientosIndexScreen() {
   const tone = FILTER_TONE[tipoFilter];
   const toneText =
     tone === 'success'
-      ? 'text-success-300'
+      ? 'text-success'
       : tone === 'warning'
-        ? 'text-warning-300'
+        ? 'text-warning'
         : tone === 'danger'
           ? 'text-danger'
           : 'text-ink-strong';
@@ -128,10 +129,10 @@ export default function MovimientosIndexScreen() {
       </View>
 
       {items.length > 0 ? (
-        <View className="mx-3 mb-1 flex-row items-center justify-between rounded-xl bg-surface px-3 py-2 bg-surface">
+        <View className="mx-3 mb-1 flex-row items-center justify-between rounded-xl bg-surface px-3 py-2">
           <View className="flex-row items-center gap-2">
             <View className="h-2 w-2 rounded-full bg-surface-hi" />
-            <Text className="text-xs font-medium text-ink-muted text-ink">
+            <Text className="text-xs font-medium text-ink">
               {countText}
             </Text>
           </View>
@@ -175,8 +176,4 @@ export default function MovimientosIndexScreen() {
       )}
     </View>
   );
-}
-
-function cn(...classes: ReadonlyArray<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
 }

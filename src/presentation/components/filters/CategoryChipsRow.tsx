@@ -40,14 +40,14 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
       className={cn(
         'rounded-full border px-3 py-1.5',
         active
-          ? 'border-surface-900 bg-surface border-surface-50 bg-surface'
-          : 'border-border bg-surface border-border bg-surface',
+          ? 'border-accent bg-accent'
+          : 'border-border bg-surface',
       )}
     >
       <Text
         className={cn(
           'text-sm font-medium',
-          active ? 'text-white text-ink-strong' : 'text-ink',
+          active ? 'text-onAccent' : 'text-ink',
         )}
       >
         {label}

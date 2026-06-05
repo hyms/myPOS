@@ -46,7 +46,7 @@ const RenderProduct = React.memo(function RenderProduct({ item, onPress }: Rende
 
 function ProductSkeleton() {
   return (
-    <View className="m-1 flex-1 overflow-hidden rounded-2xl border border-border-subtle bg-surface border-border bg-surface">
+    <View className="m-1 flex-1 overflow-hidden rounded-2xl border border-border bg-surface">
       <Skeleton className="aspect-square w-full rounded-none" />
       <View className="gap-1.5 p-2">
         <Skeleton className="h-3.5 w-3/4" />
@@ -78,7 +78,7 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
       accessibilityHint="Toca para editar, mantén presionado para ver más opciones"
-      className="flex-row items-center justify-between border-b border-border-subtle py-2 border-border"
+      className="flex-row items-center justify-between border-b border-border-subtle py-2"
     >
       <View className="flex-1 pr-3">
         <Text
@@ -92,7 +92,7 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
           {item.descuento > 0 ? `  ·  desc ${format(item.descuento)}` : ''}
         </Text>
       </View>
-      <Text className="text-base font-bold tabular-nums text-ink-strong text-accent-bright">
+      <Text className="text-base font-bold tabular-nums text-accent-bright">
         {format(lineTotal)}
       </Text>
       <Pressable
@@ -100,7 +100,7 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
         accessibilityRole="button"
         accessibilityLabel={`Quitar ${item.producto.nombre} del carrito`}
         hitSlop={12}
-        className="ml-2 rounded-full p-1 active:bg-danger-soft active:bg-danger-soft"
+        className="ml-2 rounded-full p-1 active:bg-danger-soft"
       >
         <Icon name="close-circle" size={20} color={DARK_PALETTE.danger} />
       </Pressable>
@@ -280,7 +280,7 @@ export function CarritoScreen({ tipo, store }: Props) {
       {items.length > 0 ? (
         <View
           accessibilityLabel="Resumen del carrito"
-          className="border-y border-border-subtle bg-surface px-3 py-2 border-border bg-surface"
+          className="border-y border-border-subtle bg-surface px-3 py-2"
         >
           <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Carrito {tipo === 'VENTA' ? 'de venta' : 'de compra'}
@@ -312,7 +312,7 @@ export function CarritoScreen({ tipo, store }: Props) {
             <Text className="text-base font-bold text-ink-strong">
               Total
             </Text>
-            <Text className="text-lg font-bold tabular-nums text-ink-strong text-accent-bright">
+            <Text className="text-lg font-bold tabular-nums text-accent-bright">
               {format(totals.total)}
             </Text>
           </View>

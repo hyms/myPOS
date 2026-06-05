@@ -54,7 +54,7 @@ const TONE_TEXT: Record<NonNullable<BadgeProps['tone']>, string> = {
   success: 'text-success',
   warning: 'text-warning',
   danger: 'text-danger',
-  primary: 'text-ink',
+  primary: 'text-onAccent',
 };
 
 export function Badge({ label, tone = 'neutral', className }: BadgeProps) {

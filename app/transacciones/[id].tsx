@@ -103,7 +103,7 @@ export default function TransaccionDetailScreen() {
         <Card>
           <Skeleton className="mb-3 h-3 w-20" />
           {Array.from({ length: 4 }).map((_, i) => (
-            <View key={i} className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0 border-border">
+            <View key={i} className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0">
               <View className="flex-1 gap-1.5 pr-2">
                 <Skeleton className="h-3.5 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
@@ -163,7 +163,7 @@ export default function TransaccionDetailScreen() {
           {detalles.map((d) => (
             <View
               key={d.id}
-              className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0 border-border"
+              className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0"
             >
               <View className="flex-1 pr-2">
                 <Text className="text-sm font-semibold text-ink-strong">{d.nombre}</Text>

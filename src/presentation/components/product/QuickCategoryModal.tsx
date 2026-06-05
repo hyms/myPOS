@@ -7,7 +7,6 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
-import { cn } from '@/shared/utils/cn';
 
 interface Props {
   readonly visible: boolean;
@@ -59,7 +58,7 @@ export function QuickCategoryModal({ visible, onClose, onCreated }: Props) {
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose}>
       <Pressable onPress={handleClose} className="flex-1 items-center justify-center bg-black/50 px-6">
-        <Pressable onPress={() => {}} className="w-full max-w-md rounded-2xl bg-surface p-5 bg-surface">
+          <Pressable onPress={() => {}} className="w-full max-w-md rounded-2xl bg-surface p-5">
           <Text className="mb-3 text-lg font-bold text-ink-strong">Nueva categoría</Text>
           <Input
             label="Nombre"
@@ -71,7 +70,7 @@ export function QuickCategoryModal({ visible, onClose, onCreated }: Props) {
             onSubmitEditing={handleSubmit}
             returnKeyType="done"
           />
-          <View className={cn('mt-4 flex-row justify-end gap-2')}>
+          <View className="mt-4 flex-row justify-end gap-2">
             <Pressable onPress={handleClose} className="rounded-lg px-4 py-3 active:bg-surface-lo">
               <Text className="font-semibold text-ink">Cancelar</Text>
             </Pressable>

@@ -16,7 +16,7 @@ const OPTIONS: ReadonlyArray<{ value: CarritoTipo; label: string; tone: 'success
 
 function RegistroSegmentedComponent({ value, onChange }: Props) {
   return (
-    <View className="m-3 flex-row rounded-full border border-border-subtle bg-surface-lo p-1 border-border bg-surface">
+    <View className="m-3 flex-row rounded-full border border-border-subtle bg-surface-lo p-1">
       {OPTIONS.map((opt) => {
         const active = opt.value === value;
         return (
@@ -38,7 +38,11 @@ function RegistroSegmentedComponent({ value, onChange }: Props) {
             <Text
               className={cn(
                 'text-sm font-bold',
-                active ? 'text-white' : 'text-ink',
+                active
+                  ? opt.tone === 'success'
+                    ? 'text-onSuccess'
+                    : 'text-onWarning'
+                  : 'text-ink',
               )}
             >
               {opt.label}

@@ -107,12 +107,12 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
                   <Icon
                     name={tp.icon}
                     size={18}
-                    color={active ? '#ffffff' : DARK_PALETTE.inkMuted}
+                    color={active ? DARK_PALETTE.inkStrong : DARK_PALETTE.inkMuted}
                   />
                   <Text
                     className={cn(
                       'text-sm font-semibold',
-                      active ? 'text-white' : 'text-ink-strong',
+                      active ? 'text-onAccent' : 'text-ink-strong',
                     )}
                   >
                     {tp.label}

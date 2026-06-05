@@ -29,7 +29,7 @@ export function ConfirmDialog({
   if (!visible) return null;
   return (
     <View className="absolute inset-0 z-50 items-center justify-center bg-black/50 px-6">
-      <View className="w-full max-w-md rounded-2xl bg-surface p-5 bg-surface">
+      <View className="w-full max-w-md rounded-2xl bg-surface p-5">
         <Text className="text-lg font-bold text-ink-strong">{title}</Text>
         <Text className="mt-2 text-base text-ink">{message}</Text>
         <View className="mt-5 flex-row justify-end gap-3">

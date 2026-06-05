@@ -39,14 +39,14 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
                 'rounded-full border px-3 py-2',
                 active
                   ? 'border-accent bg-accent'
-                  : 'border-border bg-surface border-border bg-surface',
+                  : 'border-border bg-surface',
               )}
               accessibilityRole="button"
             >
               <Text
                 className={cn(
                   'text-sm font-semibold',
-                  active ? 'text-white' : 'text-ink-strong',
+                  active ? 'text-onAccent' : 'text-ink-strong',
                 )}
               >
                 {c.nombre}
@@ -56,7 +56,7 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
         })}
         <Pressable
           onPress={onRequestNew}
-          className="flex-row items-center gap-1 rounded-full border border-dashed border-accent bg-surface-hi px-3 py-2 active:bg-surface-hi"
+          className="flex-row items-center gap-1 rounded-full border border-dashed border-accent bg-surface-hi px-3 py-2"
         >
           <Text className="text-base font-bold text-ink-strong">+</Text>
           <Text className="text-sm font-semibold text-ink-strong">Nueva</Text>

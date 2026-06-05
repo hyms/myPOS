@@ -20,7 +20,7 @@ const CurrencyOption = memo(function CurrencyOption({ value, active, onSelect }:
         'flex-1 items-center rounded-xl border p-3',
         active
           ? 'border-accent bg-surface-hi'
-          : 'border-border-subtle bg-surface border-border bg-surface',
+          : 'border-border-subtle bg-surface',
       )}
     >
       <Text

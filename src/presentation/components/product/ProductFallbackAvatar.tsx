@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { Text, View } from 'react-native';
 
-import { colorForId } from '@/presentation/theme/tokens';
+import { colorForId, DARK_PALETTE } from '@/presentation/theme/tokens';
 import { cn } from '@/shared/utils/cn';
 
 interface AvatarProps {
@@ -25,7 +25,7 @@ function FallbackAvatarComponent({ id, nombre, size = 56, className }: AvatarPro
       className={cn('items-center justify-center rounded-xl', className)}
       style={{ width: size, height: size, backgroundColor: color }}
     >
-      <Text style={{ color: '#fff', fontSize, fontWeight: '700' }}>{getInitial(nombre)}</Text>
+      <Text style={{ color: DARK_PALETTE.inkStrong, fontSize, fontWeight: '700' }}>{getInitial(nombre)}</Text>
     </View>
   );
 }
