@@ -5,10 +5,10 @@ import { cn } from '@/shared/utils/cn';
 import type { StatTone } from './Stat';
 
 const VALUE_COLOR: Readonly<Record<StatTone, string>> = {
-  success: 'text-success-700',
-  warning: 'text-warning-700',
-  danger: 'text-danger-700',
-  neutral: 'text-surface-900 dark:text-surface-50',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
+  neutral: 'text-ink-strong',
 };
 
 interface Props {
@@ -24,12 +24,12 @@ function RowComponent({ label, value, tone = 'neutral', bold, isLast }: Props) {
     <View
       className={cn(
         'flex-row items-center justify-between py-2.5',
-        !isLast && 'border-b border-surface-100 dark:border-surface-800',
+        !isLast && 'border-b border-border-subtle border-border',
       )}
     >
       <Text
         className={cn(
-          'text-sm text-surface-700 dark:text-surface-200',
+          'text-sm text-ink',
           bold ? 'font-semibold' : 'font-medium',
         )}
       >
@@ -37,7 +37,7 @@ function RowComponent({ label, value, tone = 'neutral', bold, isLast }: Props) {
       </Text>
       <Text
         className={cn(
-          'text-sm text-surface-900 dark:text-surface-50',
+          'text-sm text-ink-strong',
           bold ? 'font-extrabold' : 'font-bold',
           VALUE_COLOR[tone],
         )}

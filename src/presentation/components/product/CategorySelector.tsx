@@ -25,8 +25,8 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
 
   return (
     <View>
-      <Text className="mb-1 text-sm font-medium text-surface-700 dark:text-surface-200">
-        Categoría <Text className="text-danger-500">*</Text>
+      <Text className="mb-1 text-sm font-medium text-ink">
+        Categoría <Text className="text-danger">*</Text>
       </Text>
       <View className="flex-row flex-wrap gap-2">
         {categorias.map((c) => {
@@ -38,15 +38,15 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
               className={cn(
                 'rounded-full border px-3 py-2',
                 active
-                  ? 'border-primary-600 bg-primary-600'
-                  : 'border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900',
+                  ? 'border-accent bg-accent'
+                  : 'border-border bg-surface border-border bg-surface',
               )}
               accessibilityRole="button"
             >
               <Text
                 className={cn(
                   'text-sm font-semibold',
-                  active ? 'text-white' : 'text-surface-800 dark:text-surface-100',
+                  active ? 'text-white' : 'text-ink-strong',
                 )}
               >
                 {c.nombre}
@@ -56,15 +56,15 @@ export function CategorySelector({ categorias, onRequestNew, error }: Props) {
         })}
         <Pressable
           onPress={onRequestNew}
-          className="flex-row items-center gap-1 rounded-full border border-dashed border-primary-500 bg-primary-50 px-3 py-2 active:bg-primary-100"
+          className="flex-row items-center gap-1 rounded-full border border-dashed border-accent bg-surface-hi px-3 py-2 active:bg-surface-hi"
         >
-          <Text className="text-base font-bold text-primary-700">+</Text>
-          <Text className="text-sm font-semibold text-primary-700">Nueva</Text>
+          <Text className="text-base font-bold text-ink-strong">+</Text>
+          <Text className="text-sm font-semibold text-ink-strong">Nueva</Text>
         </Pressable>
       </View>
-      {error ? <Text className="mt-1 text-xs text-danger-500">{error}</Text> : null}
+      {error ? <Text className="mt-1 text-xs text-danger">{error}</Text> : null}
       {selected ? null : (
-        <Text className="mt-1 text-xs text-surface-500">Selecciona una categoría obligatoria.</Text>
+        <Text className="mt-1 text-xs text-ink-muted">Selecciona una categoría obligatoria.</Text>
       )}
     </View>
   );

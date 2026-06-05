@@ -1,5 +1,13 @@
-/** @type {import('tailwindcss').Config} */
+// Único consumer de tokens.cjs fuera del runtime TS.
+// Importa PALETTE/DARK_PALETTE y registra las clases semánticas de Tailwind.
+// NO hardcodear hex aquí — todo viene de tokens.cjs.
+
+const { DARK_PALETTE, ON, FOCUS, DISABLED } = require('./src/presentation/theme/tokens.cjs');
+
+const c = (v) => v;
+
 module.exports = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,jsx,ts,tsx}',
     './src/**/*.{js,jsx,ts,tsx}',
@@ -8,61 +16,82 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#f59e0b',
-          600: '#d97706',
-          700: '#b45309',
-          800: '#92400e',
-          900: '#78350f',
-          950: '#451a03',
-        },
-        accent: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-          950: '#2e1065',
-        },
-        success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-        },
-        danger: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
-        },
-        warning: {
-          50: '#fffbeb',
-          500: '#f59e0b',
-          600: '#d97706',
+        canvas: {
+          DEFAULT: DARK_PALETTE.canvas,
+          light: DARK_PALETTE.surface,
+          dark: DARK_PALETTE.surfaceLo,
         },
         surface: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+          DEFAULT: DARK_PALETTE.surface,
+          hi: DARK_PALETTE.surfaceHi,
+          lo: DARK_PALETTE.canvas,
+        },
+        border: {
+          DEFAULT: DARK_PALETTE.border,
+          subtle: DARK_PALETTE.borderSubtle,
+          focus: FOCUS.border,
+        },
+        ink: {
+          DEFAULT: DARK_PALETTE.ink,
+          strong: DARK_PALETTE.inkStrong,
+          muted: DARK_PALETTE.inkMuted,
+          faint: DARK_PALETTE.inkFaint,
+          inverse: DARK_PALETTE.canvas,
+        },
+        accent: {
+          DEFAULT: DARK_PALETTE.accent,
+          bright: DARK_PALETTE.accentBright,
+          purple: DARK_PALETTE.accentPurple,
+        },
+        on: {
+          accent: ON.onAccent,
+          success: ON.onSuccess,
+          danger: ON.onDanger,
+          warning: ON.onWarning,
+          info: ON.onInfo,
+          surface: ON.onSurface,
+        },
+        success: {
+          50: DARK_PALETTE.successSoft,
+          100: DARK_PALETTE.successSoft,
+          DEFAULT: DARK_PALETTE.success,
+          500: DARK_PALETTE.success,
+          600: DARK_PALETTE.success,
+          700: DARK_PALETTE.success,
+          800: DARK_PALETTE.success,
+          900: DARK_PALETTE.success,
+        },
+        danger: {
+          50: DARK_PALETTE.dangerSoft,
+          100: DARK_PALETTE.dangerSoft,
+          DEFAULT: DARK_PALETTE.danger,
+          500: DARK_PALETTE.danger,
+          600: DARK_PALETTE.danger,
+          700: DARK_PALETTE.danger,
+          800: DARK_PALETTE.danger,
+          900: DARK_PALETTE.danger,
+        },
+        warning: {
+          50: DARK_PALETTE.warningSoft,
+          DEFAULT: DARK_PALETTE.warning,
+          500: DARK_PALETTE.warning,
+          600: DARK_PALETTE.warning,
+          700: DARK_PALETTE.warning,
+          800: DARK_PALETTE.warning,
+        },
+        info: {
+          50: DARK_PALETTE.infoSoft,
+          DEFAULT: DARK_PALETTE.info,
+          500: DARK_PALETTE.info,
+        },
+        disabled: {
+          bg: DISABLED.bg,
+          text: DISABLED.text,
+          border: DISABLED.border,
+        },
+        scrim: {
+          modal: c('rgba(0, 0, 0, 0.70)'),
+          dialog: c('rgba(0, 0, 0, 0.50)'),
         },
       },
     },

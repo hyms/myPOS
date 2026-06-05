@@ -13,6 +13,7 @@ export function getDatabase(): SQLiteDatabase {
       enableChangeListener: true,
     });
     dbInstance.execSync('PRAGMA journal_mode = WAL;');
+    dbInstance.execSync('PRAGMA synchronous = NORMAL;');
     dbInstance.execSync('PRAGMA foreign_keys = ON;');
     runMigrations(dbInstance);
   }

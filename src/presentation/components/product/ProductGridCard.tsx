@@ -26,12 +26,12 @@ function ProductGridCardComponent({ producto, onPress }: Props) {
       onPress={handlePress}
       scaleTo={0.96}
       opacityTo={0.85}
-      className="m-1 flex-1 overflow-hidden rounded-2xl border border-surface-100 bg-white dark:border-surface-800 dark:bg-surface-900"
+      className="m-1 flex-1 overflow-hidden rounded-2xl border border-border-subtle bg-surface"
       accessibilityRole="button"
       accessibilityLabel={`${producto.nombre}, precio ${format(producto.precioVenta)}`}
       accessibilityHint={lowStock ? 'Stock bajo' : undefined}
     >
-      <View className="aspect-square w-full items-center justify-center bg-surface-50 dark:bg-surface-800">
+      <View className="aspect-square w-full items-center justify-center bg-surface-hi">
         {producto.imagenUri ? (
           <Image
             source={{ uri: producto.imagenUri }}
@@ -48,7 +48,7 @@ function ProductGridCardComponent({ producto, onPress }: Props) {
         {lowStock ? (
           <View
             accessibilityLabel="Stock bajo mínimo"
-            className="absolute left-1 top-1 rounded-full bg-danger-500 px-2 py-0.5"
+            className="absolute left-1 top-1 rounded-full bg-danger px-2 py-0.5"
           >
             <Text className="text-[10px] font-bold uppercase tracking-wide text-white">
               Bajo
@@ -59,14 +59,14 @@ function ProductGridCardComponent({ producto, onPress }: Props) {
       <View className="px-2 py-2">
         <Text
           numberOfLines={1}
-          className="text-sm font-semibold text-surface-900 dark:text-surface-50"
+          className="text-sm font-semibold text-ink-strong"
         >
           {producto.nombre}
         </Text>
-        <Text className="mt-0.5 text-sm font-bold text-primary-700 dark:text-primary-300">
+        <Text className="mt-0.5 text-sm font-bold text-accent-bright">
           {format(producto.precioVenta)}
         </Text>
-        <Text className="mt-0.5 text-[11px] tabular-nums text-surface-500">
+        <Text className="mt-0.5 text-[11px] tabular-nums text-ink-muted">
           Stock: {producto.stockActual}
         </Text>
       </View>

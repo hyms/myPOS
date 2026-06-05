@@ -14,10 +14,10 @@ interface Props {
 function ReportCardComponent({ title, subtitle, children, className }: Props) {
   return (
     <Card className={cn('gap-1', className)}>
-      <Text className="text-sm font-semibold uppercase tracking-wide text-surface-800 dark:text-surface-100">
+      <Text className="text-sm font-semibold uppercase tracking-wide text-ink-strong">
         {title}
       </Text>
-      {subtitle ? <Text className="text-xs text-surface-600">{subtitle}</Text> : null}
+      {subtitle ? <Text className="text-xs text-ink-muted">{subtitle}</Text> : null}
       <View className="mt-1">{children}</View>
     </Card>
   );

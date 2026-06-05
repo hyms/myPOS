@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface CardProps {
   readonly children: React.ReactNode;
@@ -13,8 +14,7 @@ function CardComponent({ children, onPress, className }: CardProps) {
   const inner = (
     <View
       className={cn(
-        'rounded-2xl bg-white p-4 shadow-sm dark:bg-surface-900',
-        'border border-surface-100 dark:border-surface-800',
+        'rounded-2xl bg-surface p-4 shadow-sm border border-border-subtle',
         className,
       )}
     >
@@ -25,7 +25,7 @@ function CardComponent({ children, onPress, className }: CardProps) {
   return (
     <Pressable
       onPress={onPress}
-      android_ripple={{ color: '#fef3c7', borderless: false }}
+      android_ripple={{ color: DARK_PALETTE.borderSubtle, borderless: false }}
       accessibilityRole="button"
     >
       {inner}
@@ -42,19 +42,19 @@ interface BadgeProps {
 }
 
 const TONE_BG: Record<NonNullable<BadgeProps['tone']>, string> = {
-  neutral: 'bg-surface-200 dark:bg-surface-800',
-  success: 'bg-success-50',
-  warning: 'bg-warning-50',
-  danger: 'bg-danger-50',
-  primary: 'bg-primary-100',
+  neutral: 'bg-surface-hi',
+  success: 'bg-success-soft',
+  warning: 'bg-warning-soft',
+  danger: 'bg-danger-soft',
+  primary: 'bg-accent',
 };
 
 const TONE_TEXT: Record<NonNullable<BadgeProps['tone']>, string> = {
-  neutral: 'text-surface-700 dark:text-surface-200',
-  success: 'text-success-700',
-  warning: 'text-warning-600',
-  danger: 'text-danger-700',
-  primary: 'text-primary-800',
+  neutral: 'text-ink',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
+  primary: 'text-ink',
 };
 
 export function Badge({ label, tone = 'neutral', className }: BadgeProps) {

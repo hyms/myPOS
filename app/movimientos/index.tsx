@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
@@ -12,7 +12,8 @@ import { SearchBar } from '@/presentation/components/filters/SearchBar';
 import { TipoFilterChips, type TipoFilter } from '@/presentation/components/movimientos/TipoFilterChips';
 import { MovimientoListItem } from '@/presentation/components/movimientos/MovimientoListItem';
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
-import { Skeleton } from '@/presentation/components/ui/Skeleton';
+import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 import type { TipoTransaccion } from '@/domain/entities/Transaccion';
 
 const TIPO_MAP: Readonly<Record<Exclude<TipoFilter, 'ALL'>, TipoTransaccion>> = {
@@ -20,6 +21,45 @@ const TIPO_MAP: Readonly<Record<Exclude<TipoFilter, 'ALL'>, TipoTransaccion>> = 
   COMPRA: 'COMPRA',
   GASTO: 'GASTO',
 };
+
+const FILTERS_INFO: Readonly<Record<TipoFilter, string>> = {
+  ALL: 'todos los tipos',
+  VENTA: 'ventas',
+  COMPRA: 'compras',
+  GASTO: 'gastos',
+};
+
+const FILTER_TONE: Readonly<Record<TipoFilter, 'success' | 'warning' | 'danger' | 'neutral'>> = {
+  ALL: 'neutral',
+  VENTA: 'success',
+  COMPRA: 'warning',
+  GASTO: 'danger',
+};
+
+function MovimientosSkeleton() {
+  return (
+    <View className="gap-2 p-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <View
+          key={i}
+          className="overflow-hidden rounded-2xl border border-border-subtle bg-surface border-border bg-surface"
+        >
+          <Skeleton className="h-1 w-full rounded-none" />
+          <View className="flex-row items-center justify-between p-3.5">
+            <View className="flex-1 gap-2 pr-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-24" />
+            </View>
+            <View className="items-end gap-1.5">
+              <Skeleton className="h-5 w-20" />
+            </View>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function MovimientosIndexScreen() {
   const { format } = useCurrency();
@@ -59,26 +99,50 @@ export default function MovimientosIndexScreen() {
 
   const keyExtractor = useCallback((item: MovimientoItem) => String(item.transaccion.id), []);
 
+  const totalFiltrado = useMemo(
+    () => items.reduce((acc, it) => acc + it.transaccion.montoTotal, 0),
+    [items],
+  );
+
+  const tone = FILTER_TONE[tipoFilter];
+  const toneText =
+    tone === 'success'
+      ? 'text-success-300'
+      : tone === 'warning'
+        ? 'text-warning-300'
+        : tone === 'danger'
+          ? 'text-danger'
+          : 'text-ink-strong';
+
+  const countText = `${items.length}${hasMore ? '+' : ''} · página ${page + 1} · lote ${pageSize}`;
+
   return (
-    <View className="flex-1 bg-surface-50 dark:bg-surface-950">
-      <View className="bg-surface-50 px-3 pt-2 dark:bg-surface-950">
+    <View className="flex-1 bg-surface">
+      <View className="bg-canvas px-3 pt-2">
         <SearchBar
           value={search}
           onChangeText={handleSearchChange}
-          placeholder="Buscar por detalle…"
+          placeholder={`Buscar en ${FILTERS_INFO[tipoFilter]}…`}
         />
         <TipoFilterChips value={tipoFilter} onChange={handleTipoChange} />
-        <Text className="px-1 pb-2 text-[11px] text-surface-500">
-          {`Mostrando ${items.length}${hasMore ? '+' : ''} · página ${page + 1} · lote ${pageSize}`}
-        </Text>
       </View>
 
-      {loading && items.length === 0 ? (
-        <View className="gap-2 p-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
-          ))}
+      {items.length > 0 ? (
+        <View className="mx-3 mb-1 flex-row items-center justify-between rounded-xl bg-surface px-3 py-2 bg-surface">
+          <View className="flex-row items-center gap-2">
+            <View className="h-2 w-2 rounded-full bg-surface-hi" />
+            <Text className="text-xs font-medium text-ink-muted text-ink">
+              {countText}
+            </Text>
+          </View>
+          <Text className={cn('text-sm font-bold tabular-nums', toneText)}>
+            {format(totalFiltrado)}
+          </Text>
         </View>
+      ) : null}
+
+      {loading && items.length === 0 ? (
+        <MovimientosSkeleton />
       ) : (
         <FlashList
           data={items}
@@ -86,17 +150,33 @@ export default function MovimientosIndexScreen() {
           renderItem={renderItem}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />}
-          contentContainerClassName="pb-6 pt-1"
+          refreshControl={
+            <RefreshControl
+              refreshing={loading && items.length > 0}
+              onRefresh={() => { setPage(0); refresh(); }}
+              tintColor={DARK_PALETTE.accentBright}
+              colors={[DARK_PALETTE.accentBright]}
+            />
+          }
+          contentContainerClassName="pb-4"
           ListEmptyComponent={
             <EmptyState
               icon="document-text-outline"
               title="Sin movimientos"
-              description={search ? 'No hay coincidencias para tu búsqueda.' : 'Aún no registras ventas, compras ni gastos.'}
+              description={
+                search
+                  ? `No hay "${search}" en ${FILTERS_INFO[tipoFilter]}.`
+                  : `Aún no hay ${FILTERS_INFO[tipoFilter] === 'todos los tipos' ? 'movimientos' : FILTERS_INFO[tipoFilter]}. Registra tu primera transacción en la pestaña Registro.`
+              }
             />
           }
+          ListFooterComponent={hasMore && loading ? <ListFooterLoader count={3} itemHeight={84} /> : null}
         />
       )}
     </View>
   );
+}
+
+function cn(...classes: ReadonlyArray<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(' ');
 }

@@ -1,12 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import dayjs from 'dayjs';
+
 import { useResumenCaja } from '@/presentation/hooks/useResumenCaja';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
-import { obtenerResumenAnio, obtenerResumenMes } from '@/application/reportes/ResumenPeriodo';
+import {
+  obtenerResumenAnio,
+  obtenerResumenMes,
+} from '@/application/reportes/ResumenPeriodo';
 import { Card } from '@/presentation/components/ui/Card';
-import { Skeleton } from '@/presentation/components/ui/Skeleton';
 import { Icon } from '@/presentation/components/ui/Icon';
-import dayjs from 'dayjs';
+import { Skeleton } from '@/presentation/components/ui/Skeleton';
+import { Breakdown } from '@/presentation/components/reports/BreakdownBar';
+import type { ResumenPeriodo } from '@/application/reportes/ResumenPeriodo';
+import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 function SkeletonCaja() {
   return (
@@ -22,15 +30,19 @@ function SkeletonCaja() {
       </Card>
       <Card>
         <Skeleton className="mb-3 h-4 w-32" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="mb-2 h-5 w-full" />
-        ))}
+        <View className="gap-3">
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+        </View>
       </Card>
       <Card>
         <Skeleton className="mb-3 h-4 w-32" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="mb-2 h-5 w-full" />
-        ))}
+        <View className="gap-3">
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+          <View><Skeleton className="mb-1 h-3 w-24" /><Skeleton className="h-1.5 w-full" /></View>
+        </View>
       </Card>
     </View>
   );
@@ -39,90 +51,220 @@ function SkeletonCaja() {
 export default function CajaScreen() {
   const { resumen, refresh } = useResumenCaja();
   const { format } = useCurrency();
-  const [mes, setMes] = React.useState(obtenerResumenMes());
-  const [anio, setAnio] = React.useState(obtenerResumenAnio());
-  const [loading, setLoading] = React.useState(true);
+  const [mes, setMes] = useState<ResumenPeriodo>(obtenerResumenMes());
+  const [anio, setAnio] = useState<ResumenPeriodo>(obtenerResumenAnio());
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (resumen.saldoActual !== 0 || resumen.totalVentas !== 0 || resumen.totalCompras !== 0 || resumen.totalGastos !== 0) {
-      setLoading(false);
-    } else {
-      const t = setTimeout(() => setLoading(false), 800);
-      return () => clearTimeout(t);
-    }
-  }, [resumen]);
-
-  useEffect(() => {
-    const unsub = setInterval(() => { setMes(obtenerResumenMes()); setAnio(obtenerResumenAnio()); }, 60_000);
-    return () => clearInterval(unsub);
+    const t = setInterval(() => {
+      setMes(obtenerResumenMes());
+      setAnio(obtenerResumenAnio());
+    }, 60_000);
+    return () => clearInterval(t);
   }, []);
 
-  if (loading) {
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    refresh();
+    setMes(obtenerResumenMes());
+    setAnio(obtenerResumenAnio());
+    setTimeout(() => setRefreshing(false), 400);
+  }, [refresh]);
+
+  const isInitialLoad =
+    resumen.totalVentas === 0 &&
+    resumen.totalCompras === 0 &&
+    resumen.totalGastos === 0 &&
+    resumen.saldoActual === 0;
+
+  const saldoTone =
+    resumen.saldoActual > 0
+      ? 'success'
+      : resumen.saldoActual < 0
+        ? 'danger'
+        : 'neutral';
+
+  if (isInitialLoad) {
     return (
-      <ScrollView className="flex-1 bg-surface-50 dark:bg-surface-950" contentContainerClassName="gap-4 p-4">
+      <ScrollView
+        className="flex-1 bg-surface"
+        contentContainerClassName="gap-4 p-4"
+      >
         <SkeletonCaja />
       </ScrollView>
     );
   }
 
+  const saldoBgClass =
+    saldoTone === 'success'
+      ? 'bg-success-soft'
+      : saldoTone === 'danger'
+        ? 'bg-danger-soft'
+        : 'bg-surface-hi';
+
+  const saldoAccentClass =
+    saldoTone === 'success'
+      ? 'bg-success'
+      : saldoTone === 'danger'
+        ? 'bg-danger'
+        : 'bg-accent';
+
+  const saldoTextClass =
+    saldoTone === 'success'
+      ? 'text-success'
+      : saldoTone === 'danger'
+        ? 'text-danger'
+        : 'text-ink-strong';
+
   return (
     <ScrollView
-      className="flex-1 bg-surface-50 dark:bg-surface-950"
-      contentContainerClassName="gap-4 p-4"
-      refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} />}
+      className="flex-1 bg-surface"
+      contentContainerClassName="gap-4 p-4 pb-8"
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={DARK_PALETTE.accentBright}
+          colors={[DARK_PALETTE.accentBright]}
+        />
+      }
     >
-      <Card>
-        <View className="flex-row items-center gap-2">
-          <Icon name="wallet" size={18} color="#f59e0b" />
-          <Text className="text-xs font-semibold uppercase text-primary-600">Saldo actual</Text>
+      <View
+        className={cn(
+          'overflow-hidden rounded-3xl border border-border-subtle',
+          saldoBgClass,
+        )}
+      >
+        <View className={cn('h-1.5 w-full', saldoAccentClass)} />
+        <View className="p-5">
+          <View className="flex-row items-center gap-2.5">
+            <View
+              className={cn(
+                'rounded-xl p-2.5',
+                saldoTone === 'success'
+                  ? 'bg-success-soft'
+                  : saldoTone === 'danger'
+                    ? 'bg-danger-soft'
+                    : 'bg-surface-lo',
+              )}
+            >
+              <Icon
+                name="wallet"
+                size={22}
+                color={
+                  saldoTone === 'success'
+                    ? DARK_PALETTE.success
+                    : saldoTone === 'danger'
+                      ? DARK_PALETTE.danger
+                      : DARK_PALETTE.inkMuted
+                }
+              />
+            </View>
+            <Text className="text-sm font-bold uppercase tracking-widest text-ink-muted">
+              Saldo actual
+            </Text>
+          </View>
+          <Text
+            accessibilityLabel={`Saldo actual: ${format(resumen.saldoActual)}`}
+            className={cn(
+              'mt-3 text-5xl font-extrabold tabular-nums leading-tight',
+              saldoTextClass,
+            )}
+            selectable
+          >
+            {format(resumen.saldoActual)}
+          </Text>
+          <View className="mt-5 flex-row gap-2.5">
+            <Stat label="Ventas" value={format(resumen.totalVentas)} tone="success" />
+            <Stat label="Compras" value={format(resumen.totalCompras)} tone="warning" />
+            <Stat label="Gastos" value={format(resumen.totalGastos)} tone="danger" />
+          </View>
         </View>
-        <Text className="mt-1 text-4xl font-bold text-surface-900 dark:text-surface-50">{format(resumen.saldoActual)}</Text>
-        <View className="mt-3 flex-row gap-3">
-          <Stat label="Ventas" value={format(resumen.totalVentas)} tone="success" />
-          <Stat label="Compras" value={format(resumen.totalCompras)} tone="warning" />
-          <Stat label="Gastos" value={format(resumen.totalGastos)} tone="danger" />
+      </View>
+
+      <Card>
+        <View className="mb-3 flex-row items-center gap-2">
+          <Icon name="calendar" size={16} color={DARK_PALETTE.inkMuted} />
+          <Text className="text-sm font-semibold text-ink">Resumen del mes</Text>
+          <Text className="ml-auto text-xs capitalize text-ink-muted">
+            {dayjs().format('MMMM YYYY')}
+          </Text>
+        </View>
+        <Breakdown
+          items={[
+            { label: 'Ventas', value: mes.totalVentas, tone: 'success' },
+            { label: 'Compras', value: mes.totalCompras, tone: 'warning' },
+            { label: 'Gastos', value: mes.totalGastos, tone: 'danger' },
+          ]}
+        />
+        <View className="mt-3 border-t border-border-subtle pt-3">
+          <Row
+            label="Neto del mes"
+            value={format(mes.neto)}
+            tone={mes.neto >= 0 ? 'success' : 'danger'}
+            bold
+            accessibilityHint={
+              mes.neto >= 0
+                ? 'Saldo positivo: ventas superan a compras y gastos'
+                : 'Saldo negativo: gastos o compras superan a ventas'
+            }
+          />
         </View>
       </Card>
+
       <Card>
-        <View className="mb-2 flex-row items-center gap-2">
-          <Icon name="calendar" size={16} color="#64748b" />
-          <Text className="text-sm font-semibold text-surface-700 dark:text-surface-200">Resumen del mes</Text>
+        <View className="mb-3 flex-row items-center gap-2">
+          <Icon name="calendar" size={16} color={DARK_PALETTE.inkMuted} />
+          <Text className="text-sm font-semibold text-ink">Resumen del año</Text>
+          <Text className="ml-auto text-xs text-ink-muted">{dayjs().format('YYYY')}</Text>
         </View>
-        <Text className="mb-2 text-xs text-surface-500">{dayjs().format('MMMM YYYY')}</Text>
-        <Row label="Ventas" value={format(mes.totalVentas)} tone="success" />
-        <Row label="Compras" value={format(mes.totalCompras)} tone="warning" />
-        <Row label="Gastos" value={format(mes.totalGastos)} tone="danger" />
-        <View className="mt-1 border-t border-surface-100 pt-2 dark:border-surface-800">
-          <Row label="Neto del mes" value={format(mes.neto)} tone={mes.neto >= 0 ? 'success' : 'danger'} bold />
-        </View>
-      </Card>
-      <Card>
-        <View className="mb-2 flex-row items-center gap-2">
-          <Icon name="calendar" size={16} color="#64748b" />
-          <Text className="text-sm font-semibold text-surface-700 dark:text-surface-200">Resumen del año {dayjs().format('YYYY')}</Text>
-        </View>
-        <Row label="Ventas" value={format(anio.totalVentas)} tone="success" />
-        <Row label="Compras" value={format(anio.totalCompras)} tone="warning" />
-        <Row label="Gastos" value={format(anio.totalGastos)} tone="danger" />
-        <View className="mt-1 border-t border-surface-100 pt-2 dark:border-surface-800">
-          <Row label="Neto del año" value={format(anio.neto)} tone={anio.neto >= 0 ? 'success' : 'danger'} bold />
+        <Breakdown
+          items={[
+            { label: 'Ventas', value: anio.totalVentas, tone: 'success' },
+            { label: 'Compras', value: anio.totalCompras, tone: 'warning' },
+            { label: 'Gastos', value: anio.totalGastos, tone: 'danger' },
+          ]}
+        />
+        <View className="mt-3 border-t border-border-subtle pt-3">
+          <Row
+            label="Neto del año"
+            value={format(anio.neto)}
+            tone={anio.neto >= 0 ? 'success' : 'danger'}
+            bold
+            accessibilityHint={
+              anio.neto >= 0 ? 'Saldo positivo anual' : 'Saldo negativo anual'
+            }
+          />
         </View>
       </Card>
     </ScrollView>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: 'success' | 'warning' | 'danger' }) {
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'success' | 'warning' | 'danger';
+}) {
   const map = {
-    success: { bg: 'bg-success-50', text: 'text-success-700' },
-    warning: { bg: 'bg-warning-50', text: 'text-warning-600' },
-    danger: { bg: 'bg-danger-50', text: 'text-danger-700' },
+    success: { bg: 'bg-success-soft', text: 'text-success' },
+    warning: { bg: 'bg-warning-soft', text: 'text-warning' },
+    danger: { bg: 'bg-danger-soft', text: 'text-danger' },
   } as const;
   const m = map[tone];
   return (
-    <View className={`flex-1 rounded-lg p-2 ${m.bg}`}>
-      <Text className="text-[10px] uppercase text-surface-500">{label}</Text>
-      <Text className={`text-base font-bold ${m.text}`}>{value}</Text>
+    <View
+      accessibilityLabel={`${label}: ${value}`}
+      className={`flex-1 rounded-lg p-2 ${m.bg}`}
+    >
+      <Text className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
+        {label}
+      </Text>
+      <Text className={`text-base font-bold tabular-nums ${m.text}`}>{value}</Text>
     </View>
   );
 }
@@ -132,22 +274,39 @@ function Row({
   value,
   tone,
   bold,
+  accessibilityHint,
 }: {
   label: string;
   value: string;
   tone: 'success' | 'warning' | 'danger' | 'neutral';
   bold?: boolean;
+  accessibilityHint?: string;
 }) {
   const colorMap = {
-    success: 'text-success-700',
-    warning: 'text-warning-600',
-    danger: 'text-danger-700',
-    neutral: 'text-surface-900 dark:text-surface-50',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-danger',
+    neutral: 'text-ink-strong',
   } as const;
   return (
-    <View className="flex-row items-center justify-between border-b border-surface-100 py-2 dark:border-surface-800">
-      <Text className="text-sm text-surface-600">{label}</Text>
-      <Text className={`text-sm ${bold ? 'font-bold' : 'font-semibold'} ${colorMap[tone]}`}>
+    <View className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0">
+      <View className="flex-1 pr-2">
+        <Text className="text-sm font-medium text-ink-muted">{label}</Text>
+        {accessibilityHint ? (
+          <Text
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            className="text-[10px] text-ink-muted"
+          >
+            {accessibilityHint}
+          </Text>
+        ) : null}
+      </View>
+      <Text
+        accessibilityLabel={`${label}: ${value}`}
+        className={`text-sm tabular-nums ${bold ? 'font-extrabold' : 'font-semibold'} ${colorMap[tone]}`}
+        selectable
+      >
         {value}
       </Text>
     </View>

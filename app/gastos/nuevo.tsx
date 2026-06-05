@@ -9,8 +9,10 @@ import { registrarGasto } from '@/application/gastos/RegistrarGasto';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import { generarYCompartirComprobante } from '@/infrastructure/pdf/ComprobanteService';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import type { TipoPago } from '@/domain/entities/Transaccion';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 const TIPOS: ReadonlyArray<{ value: TipoPago; label: string }> = [
   { value: 'EFECTIVO', label: 'Efectivo' },
@@ -21,6 +23,7 @@ const TIPOS: ReadonlyArray<{ value: TipoPago; label: string }> = [
 
 export default function NuevoGastoScreen() {
   const { format, currency } = useCurrency();
+  const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [tipoPago, setTipoPago] = useState<TipoPago>('EFECTIVO');
@@ -46,6 +49,7 @@ export default function NuevoGastoScreen() {
         currency,
       });
       ToastService.success('Gasto registrado', format(montoNum));
+      invalidateMany(['transacciones', 'caja']);
       setConfirmOpen(false);
       router.back();
     } catch (e) {
@@ -57,14 +61,14 @@ export default function NuevoGastoScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-surface-50 dark:bg-surface-950"
+      className="flex-1 bg-canvas"
       contentContainerClassName="gap-4 p-5"
       keyboardShouldPersistTaps="handled"
     >
       <View>
-        <Text className="mb-1 text-sm font-medium text-surface-700 dark:text-surface-200">Monto</Text>
-        <View className="rounded-2xl border-2 border-danger-500 bg-white p-4 dark:bg-surface-900">
-          <Text className="text-3xl font-bold text-danger-700">{format(montoNum)}</Text>
+        <Text className="mb-1 text-sm font-medium text-ink">Monto</Text>
+        <View className="rounded-2xl border-2 border-danger bg-surface p-4">
+          <Text className="text-3xl font-bold text-danger">{format(montoNum)}</Text>
         </View>
       </View>
       <Input
@@ -85,7 +89,7 @@ export default function NuevoGastoScreen() {
         style={{ minHeight: 80, textAlignVertical: 'top' }}
       />
       <View>
-        <Text className="mb-1 text-sm font-medium text-surface-700 dark:text-surface-200">Tipo de pago</Text>
+        <Text className="mb-1 text-sm font-medium text-ink">Tipo de pago</Text>
         <View className="flex-row flex-wrap gap-2">
           {TIPOS.map((t) => {
             const active = t.value === tipoPago;
@@ -96,14 +100,14 @@ export default function NuevoGastoScreen() {
                 className={cn(
                   'rounded-lg border px-3 py-2',
                   active
-                    ? 'border-primary-600 bg-primary-600'
-                    : 'border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900',
+                    ? 'border-accent bg-accent'
+                    : 'border-border bg-surface',
                 )}
               >
                 <Text
                   className={cn(
                     'text-sm font-semibold',
-                    active ? 'text-white' : 'text-surface-800 dark:text-surface-100',
+                    active ? 'text-white' : 'text-ink-strong',
                   )}
                 >
                   {t.label}

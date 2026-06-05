@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Icon } from '@/presentation/components/ui/Icon';
 import type { IconName } from '@/presentation/components/ui/Icon';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface Props {
   readonly text1?: string;
@@ -10,10 +11,10 @@ interface Props {
 }
 
 const ICON_MAP: Record<'info' | 'success' | 'error' | 'warning', { name: IconName; color: string }> = {
-  info: { name: 'information-circle', color: '#8b5cf6' },
-  success: { name: 'checkmark-circle', color: '#22c55e' },
-  error: { name: 'alert-circle', color: '#ef4444' },
-  warning: { name: 'warning', color: '#f59e0b' },
+  info: { name: 'information-circle', color: DARK_PALETTE.info },
+  success: { name: 'checkmark-circle', color: DARK_PALETTE.success },
+  error: { name: 'alert-circle', color: DARK_PALETTE.danger },
+  warning: { name: 'warning', color: DARK_PALETTE.warning },
 };
 
 export function CustomToast({ text1, text2, props }: Props) {
@@ -23,7 +24,7 @@ export function CustomToast({ text1, text2, props }: Props) {
   return (
     <View
       style={{
-        backgroundColor: '#0f172a',
+        backgroundColor: DARK_PALETTE.surface,
         borderLeftColor: color,
         borderLeftWidth: 4,
         paddingVertical: 12,
@@ -32,9 +33,8 @@ export function CustomToast({ text1, text2, props }: Props) {
         minWidth: '85%',
         maxWidth: '95%',
         shadowColor: '#000',
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
         elevation: 6,
       }}
     >
@@ -42,10 +42,14 @@ export function CustomToast({ text1, text2, props }: Props) {
         <View style={{ marginRight: 8 }}>
           <Icon name={iconConfig.name} size={18} color={iconConfig.color} />
         </View>
-        <Text style={{ color: 'white', fontWeight: '700', fontSize: 14, flex: 1 }}>{text1}</Text>
+        <Text style={{ color: DARK_PALETTE.inkStrong, fontWeight: '700', fontSize: 14, flex: 1 }}>
+          {text1}
+        </Text>
       </View>
       {text2 ? (
-        <Text style={{ color: '#cbd5e1', fontSize: 12, marginTop: 2 }}>{text2}</Text>
+        <Text style={{ color: DARK_PALETTE.inkMuted, fontSize: 12, marginTop: 2 }}>
+          {text2}
+        </Text>
       ) : null}
     </View>
   );

@@ -4,6 +4,7 @@ import { getRepositories } from '@/data/repositories/container';
 import type { Transaccion, TipoTransaccion } from '@/domain/entities/Transaccion';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import { useDebouncedValue } from '@/presentation/hooks/useInfiniteScroll';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 
 export interface MovimientoItem {
   readonly transaccion: Transaccion;
@@ -19,6 +20,7 @@ interface UseMovimientosArgs {
 export function useMovimientos({ tipo, search, page }: UseMovimientosArgs) {
   const pageSize = useSettingsStore((s) => s.pageSize);
   const debounced = useDebouncedValue(search, 200);
+  const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
   const [items, setItems] = useState<ReadonlyArray<MovimientoItem>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,7 @@ export function useMovimientos({ tipo, search, page }: UseMovimientosArgs) {
     }));
     setItems(enriched);
     setLoading(false);
-  }, [tipo, page, pageSize]);
+  }, [tipo, page, pageSize, invalidVersion]);
 
   useEffect(() => {
     load();

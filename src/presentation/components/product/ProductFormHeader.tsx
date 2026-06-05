@@ -8,6 +8,7 @@ import { optimizeProductImage } from '@/infrastructure/image/ImageOptimizer';
 import { useProductoDraftStore } from '@/presentation/stores/productoDraftStore';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface Props {
   readonly onChange?: (uri: string | null) => void;
@@ -48,7 +49,7 @@ export function ProductFormHeader({ onChange }: Props) {
 
   return (
     <View className="items-center">
-      <View className="h-44 w-44 overflow-hidden rounded-2xl border-2 border-dashed border-surface-300 bg-surface-50 dark:border-surface-700 dark:bg-surface-800">
+      <View className="h-44 w-44 overflow-hidden rounded-2xl border-2 border-dashed border-border bg-surface-lo">
         {imagenUri ? (
           <Image
             source={{ uri: imagenUri }}
@@ -59,32 +60,30 @@ export function ProductFormHeader({ onChange }: Props) {
           />
         ) : (
           <View className="flex-1 items-center justify-center px-3">
-            <Ionicons name="camera-outline" size={48} color="#94a3b8" />
-            <Text className="mt-1 text-center text-xs text-surface-500">Sin imagen</Text>
+            <Ionicons name="camera-outline" size={48} color={DARK_PALETTE.inkMuted} />
+            <Text className="mt-1 text-center text-xs text-ink-muted">Sin imagen</Text>
           </View>
         )}
       </View>
       <View className="mt-3 flex-row gap-2">
         <Pressable
           onPress={() => handlePick('camera')}
-          className={cn(
-            'rounded-lg bg-primary-600 px-4 py-2 active:bg-primary-700',
-          )}
+          className="rounded-lg bg-accent px-4 py-2 active:bg-accent"
         >
           <Text className="font-semibold text-white">Cámara</Text>
         </Pressable>
         <Pressable
           onPress={() => handlePick('gallery')}
-          className="rounded-lg bg-surface-200 px-4 py-2 active:bg-surface-300 dark:bg-surface-800"
+          className="rounded-lg bg-surface-hi px-4 py-2 active:bg-surface"
         >
-          <Text className="font-semibold text-surface-800 dark:text-surface-100">Galería</Text>
+          <Text className="font-semibold text-ink-strong">Galería</Text>
         </Pressable>
         {imagenUri ? (
           <Pressable
             onPress={handleClear}
-            className="rounded-lg bg-danger-50 px-4 py-2 active:bg-danger-100"
+            className="rounded-lg bg-danger-soft px-4 py-2 active:bg-danger-soft"
           >
-            <Text className="font-semibold text-danger-700">Quitar</Text>
+            <Text className="font-semibold text-danger">Quitar</Text>
           </Pressable>
         ) : null}
       </View>

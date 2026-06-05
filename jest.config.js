@@ -7,7 +7,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@app/(.*)$': '<rootDir>/app/$1',
-    '^expo-file-system/legacy$': '<rootDir>/src/__tests__/__mocks__/expo-file-system-legacy.ts',
+    '^expo-file-system$': '<rootDir>/src/__tests__/__mocks__/expo-file-system.ts',
     '^expo-sqlite$': '<rootDir>/src/__tests__/__mocks__/expo-sqlite.ts',
     '^expo-secure-store$': '<rootDir>/src/__tests__/__mocks__/expo-secure-store.ts',
     '^expo-image-manipulator$': '<rootDir>/src/__tests__/__mocks__/expo-image-manipulator.ts',

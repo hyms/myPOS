@@ -6,6 +6,7 @@ import { useProductoDraftStore } from '@/presentation/stores/productoDraftStore'
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ToastService } from '@/infrastructure/toast/ToastService';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import { cn } from '@/shared/utils/cn';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 
 export function QuickCategoryModal({ visible, onClose, onCreated }: Props) {
   const setCategorias = useProductoDraftStore((s) => s.setCategorias);
+  const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
   const [nombre, setNombre] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export function QuickCategoryModal({ visible, onClose, onCreated }: Props) {
       const created = repo.crear({ nombre });
       const list = repo.listar();
       setCategorias(list);
+      invalidateMany(['categorias']);
       ToastService.success('Categoría creada', created.nombre);
       onCreated?.(created.id, created.nombre);
       reset();
@@ -56,21 +59,21 @@ export function QuickCategoryModal({ visible, onClose, onCreated }: Props) {
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose}>
       <Pressable onPress={handleClose} className="flex-1 items-center justify-center bg-black/50 px-6">
-        <Pressable onPress={() => {}} className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-surface-900">
-          <Text className="mb-3 text-lg font-bold text-surface-900 dark:text-surface-50">Nueva categoría</Text>
+        <Pressable onPress={() => {}} className="w-full max-w-md rounded-2xl bg-surface p-5 bg-surface">
+          <Text className="mb-3 text-lg font-bold text-ink-strong">Nueva categoría</Text>
           <Input
             label="Nombre"
             value={nombre}
             onChangeText={setNombre}
             placeholder="Ej. Bebidas"
             autoFocus
-            error={error ?? undefined}
+            {...(error ? { error } : {})}
             onSubmitEditing={handleSubmit}
             returnKeyType="done"
           />
           <View className={cn('mt-4 flex-row justify-end gap-2')}>
-            <Pressable onPress={handleClose} className="rounded-lg px-4 py-3 active:bg-surface-200">
-              <Text className="font-semibold text-surface-700 dark:text-surface-200">Cancelar</Text>
+            <Pressable onPress={handleClose} className="rounded-lg px-4 py-3 active:bg-surface-lo">
+              <Text className="font-semibold text-ink">Cancelar</Text>
             </Pressable>
             <Button title="Crear" onPress={handleSubmit} busy={busy} disabled={busy} />
           </View>

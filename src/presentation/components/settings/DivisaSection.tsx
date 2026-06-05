@@ -19,14 +19,14 @@ const CurrencyOption = memo(function CurrencyOption({ value, active, onSelect }:
       className={cn(
         'flex-1 items-center rounded-xl border p-3',
         active
-          ? 'border-primary-600 bg-primary-50'
-          : 'border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900',
+          ? 'border-accent bg-surface-hi'
+          : 'border-border-subtle bg-surface border-border bg-surface',
       )}
     >
       <Text
         className={cn(
           'text-base font-bold',
-          active ? 'text-primary-700' : 'text-surface-900 dark:text-surface-50',
+          active ? 'text-ink-strong' : 'text-ink-strong',
         )}
       >
         {value}

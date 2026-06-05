@@ -44,7 +44,6 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
   const cantNum = Math.max(0, Math.floor(Number(cantidad) || 0));
   const descNum = Math.max(0, Number(descuento) || 0);
   const subtotal = unit * cantNum - descNum;
-  const maxCant = tipo === 'VENTA' ? item.producto.stockActual : Infinity;
   const cantExcedeStock = tipo === 'VENTA' && cantNum > item.producto.stockActual;
   const descExcedeSubtotal = descNum > unit * cantNum;
   const invalid = cantExcedeStock || descExcedeSubtotal || cantNum < 1;
@@ -52,11 +51,11 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
   return (
     <ModalSheet visible={visible} onClose={onClose} title={item.producto.nombre}>
       <View className="gap-3">
-        <View className="rounded-lg bg-surface-50 p-3 dark:bg-surface-800">
-          <Text className="text-xs font-medium uppercase tracking-wide text-surface-500">
+        <View className="rounded-lg bg-surface-hi p-3">
+          <Text className="text-xs font-medium uppercase tracking-wide text-ink-muted">
             Precio unitario
           </Text>
-          <Text className="text-lg font-bold tabular-nums text-surface-900 dark:text-surface-50">
+          <Text className="text-lg font-bold tabular-nums text-ink-strong">
             {format(unit)}
           </Text>
         </View>
@@ -79,12 +78,12 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
         />
         <View
           accessibilityLabel={`Subtotal de la línea: ${format(Math.max(0, subtotal))}`}
-          className="rounded-xl border border-primary-200 bg-primary-50 p-3 dark:border-primary-800 dark:bg-primary-950"
+          className="rounded-xl border border-border-subtle bg-surface-lo p-3"
         >
-          <Text className="text-xs font-semibold uppercase tracking-wide text-primary-700">
+          <Text className="text-xs font-semibold uppercase tracking-wide text-ink-strong">
             Subtotal línea
           </Text>
-          <Text className="text-2xl font-bold tabular-nums text-primary-700 dark:text-primary-300">
+          <Text className="text-2xl font-bold tabular-nums text-accent-bright">
             {format(Math.max(0, subtotal))}
           </Text>
         </View>

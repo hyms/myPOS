@@ -18,6 +18,7 @@ import { PinService } from '@/infrastructure/security/PinService';
 import { BiometricService } from '@/infrastructure/security/BiometricService';
 import { APP_NAME } from '@/shared/constants';
 import { CustomToast } from '@/presentation/components/feedback/Toast';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -34,9 +35,11 @@ export default function RootLayout() {
     if (!ready) return;
     (async () => {
       try {
-        const settings = await SettingsStore.load();
+        const [settings, hasPin] = await Promise.all([
+          SettingsStore.load(),
+          PinService.hasPin(),
+        ]);
         hydrate(settings);
-        const hasPin = await PinService.hasPin();
         setPinRequired(hasPin);
         if (!hasPin) {
           useSessionStore.getState().setUnlocked(true);
@@ -60,27 +63,41 @@ export default function RootLayout() {
   }, [bootstrapped, router, unlocked]);
 
   if (!ready || !hydrated || !bootstrapped) {
-    return <View style={{ flex: 1, backgroundColor: '#0f172a' }} />;
+    return (
+      <View
+        style={{ flex: 1, backgroundColor: DARK_PALETTE.canvas, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <StatusBar style="light" />
+      </View>
+    );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          backgroundColor: DARK_PALETTE.canvas,
+        }}
+      >
         <Stack.Screen options={{ title: 'Error' }} />
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: DARK_PALETTE.canvas }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#0f172a' },
-            headerTintColor: '#f8fafc',
+            headerStyle: { backgroundColor: DARK_PALETTE.surface },
+            headerTintColor: DARK_PALETTE.ink,
             headerTitleStyle: { fontWeight: '700' },
-            contentStyle: { backgroundColor: '#f8fafc' },
+            contentStyle: { backgroundColor: DARK_PALETTE.canvas },
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

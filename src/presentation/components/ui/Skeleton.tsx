@@ -40,7 +40,9 @@ export function Skeleton({ className, style }: SkeletonProps) {
 
   return (
     <Animated.View
-      className={cn('rounded-lg bg-surface-200 dark:bg-surface-800', className)}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      className={cn('rounded-lg bg-surface-lo bg-surface-hi', className)}
       style={[animatedStyle, style]}
     />
   );
@@ -48,10 +50,50 @@ export function Skeleton({ className, style }: SkeletonProps) {
 
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <View className={cn('rounded-2xl border border-surface-100 bg-white p-4 dark:border-surface-800 dark:bg-surface-900', className)}>
+    <View className={cn('rounded-2xl border border-border-subtle bg-surface p-4 border-border bg-surface', className)}>
       <Skeleton className="mb-3 h-32 w-full rounded-xl" />
       <Skeleton className="mb-2 h-4 w-3/4" />
       <Skeleton className="h-4 w-1/2" />
+    </View>
+  );
+}
+
+interface ListFooterLoaderProps {
+  readonly count?: number;
+  readonly itemHeight?: number;
+  readonly className?: string;
+}
+
+export function ListFooterLoader({ count = 3, itemHeight = 72, className }: ListFooterLoaderProps) {
+  return (
+    <View accessibilityLabel="Cargando más elementos" className={cn('gap-2 p-3', className)}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="rounded-2xl" style={{ height: itemHeight }} />
+      ))}
+    </View>
+  );
+}
+
+interface ListCountProps {
+  readonly count: number;
+  readonly hasMore: boolean;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly label?: string;
+  readonly className?: string;
+}
+
+export function ListCountText({ count, hasMore, page, pageSize, label = 'elementos', className }: ListCountProps) {
+  const text = `Mostrando ${count}${hasMore ? '+' : ''} · página ${page + 1} · lote ${pageSize} ${label}`;
+  return (
+    <View accessibilityRole="text" accessibilityLabel={text} className={cn('px-3 pb-2', className)}>
+      <View className="h-px bg-surface-lo bg-surface-hi" />
+      <View className="flex-row items-center justify-between pt-2">
+        <View className="h-1.5 w-24 rounded-full bg-surface-lo bg-surface-hi" />
+        {hasMore ? (
+          <View className="h-1.5 w-3 rounded-full bg-accent" />
+        ) : null}
+      </View>
     </View>
   );
 }

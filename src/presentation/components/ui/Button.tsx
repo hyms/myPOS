@@ -3,6 +3,7 @@ import { Text, View, type PressableProps, type StyleProp, type ViewStyle, Activi
 
 import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
 type Size = 'sm' | 'md' | 'lg';
@@ -20,27 +21,27 @@ interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
 }
 
 const VARIANT_BG: Record<Variant, string> = {
-  primary: 'bg-primary-600',
-  secondary: 'bg-surface-200 dark:bg-surface-800',
-  danger: 'bg-danger-600',
-  success: 'bg-success-600',
+  primary: 'bg-accent',
+  secondary: 'bg-surface-hi',
+  danger: 'bg-danger',
+  success: 'bg-success',
   ghost: 'bg-transparent',
 };
 
 const VARIANT_TEXT: Record<Variant, string> = {
   primary: 'text-white',
-  secondary: 'text-surface-900 dark:text-surface-50',
+  secondary: 'text-ink-strong',
   danger: 'text-white',
   success: 'text-white',
-  ghost: 'text-primary-600',
+  ghost: 'text-accent-bright',
 };
 
 const SPINNER_COLOR: Record<Variant, string> = {
   primary: '#ffffff',
-  secondary: '#1e293b',
+  secondary: DARK_PALETTE.inkStrong,
   danger: '#ffffff',
   success: '#ffffff',
-  ghost: '#f59e0b',
+  ghost: DARK_PALETTE.accentBright,
 };
 
 const SIZE_CLASS: Record<Size, string> = {

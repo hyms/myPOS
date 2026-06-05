@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { getRepositories } from '@/data/repositories/container';
 import type { Producto } from '@/domain/entities/Producto';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 
 export interface UseProductosArgs {
   readonly search: string;
@@ -16,34 +17,43 @@ export interface ProductoConPopularidad extends Producto {
   readonly popularidad: number;
 }
 
+function loadProductos(
+  search: string,
+  categoriaId: number | undefined,
+  sort: SortOrder,
+  page: number,
+  pageSize: number,
+): ReadonlyArray<ProductoConPopularidad> {
+  return getRepositories().productos.listar({
+    search,
+    ...(categoriaId !== undefined ? { categoriaId } : {}),
+    sort,
+    limit: pageSize,
+    offset: page * pageSize,
+  });
+}
+
 export function useProductos({ search, categoriaId, sort, page }: UseProductosArgs) {
   const pageSize = useSettingsStore((s) => s.pageSize);
-  const [items, setItems] = useState<ReadonlyArray<ProductoConPopularidad>>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    const repo = getRepositories().productos;
-    const list = repo.listar({
-      search,
-      categoriaId,
-      sort,
-      limit: pageSize,
-      offset: page * pageSize,
-    });
-    setItems(list);
-    setLoading(false);
-  }, [search, categoriaId, sort, page, pageSize]);
+  const invalidVersion = useInvalidationStore((s) => s.versions.productos);
+  const [items, setItems] = useState<ReadonlyArray<ProductoConPopularidad>>(() =>
+    loadProductos(search, categoriaId, sort, page, pageSize),
+  );
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    setItems(loadProductos(search, categoriaId, sort, page, pageSize));
+    if (!hasLoaded) setHasLoaded(true);
+  }, [search, categoriaId, sort, page, pageSize, hasLoaded, invalidVersion]);
 
   const refresh = useCallback(() => {
-    load();
-  }, [load]);
+    setItems(loadProductos(search, categoriaId, sort, page, pageSize));
+  }, [search, categoriaId, sort, page, pageSize]);
 
-  const hasMore = useMemo(() => items.length === pageSize, [items.length, pageSize]);
-
-  return { items, loading, hasMore, refresh };
+  return {
+    items,
+    loading: !hasLoaded,
+    hasMore: items.length === pageSize,
+    refresh,
+  };
 }

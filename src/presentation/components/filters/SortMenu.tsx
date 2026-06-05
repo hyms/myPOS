@@ -4,6 +4,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
 import { Icon } from '@/presentation/components/ui/Icon';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface Props {
   readonly value: SortOrder;
@@ -26,10 +27,10 @@ export function SortMenu({ value, onChange }: Props) {
         accessibilityRole="button"
         accessibilityLabel={`Ordenar productos, actual: ${current}`}
         hitSlop={8}
-        className="min-h-[44px] flex-row items-center gap-2 rounded-xl border border-surface-200 bg-white px-3 dark:border-surface-700 dark:bg-surface-900"
+        className="min-h-[44px] flex-row items-center gap-2 rounded-xl border border-border-subtle bg-surface px-3"
       >
-        <Icon name="swap-vertical" size={16} color="#64748b" />
-        <Text className="text-sm font-semibold text-surface-800 dark:text-surface-100" numberOfLines={1}>
+        <Icon name="swap-vertical" size={16} color={DARK_PALETTE.inkMuted} />
+        <Text className="text-sm font-semibold text-ink-strong" numberOfLines={1}>
           {current}
         </Text>
       </Pressable>
@@ -44,11 +45,11 @@ export function SortMenu({ value, onChange }: Props) {
           onPress={() => setOpen(false)}
           accessibilityLabel="Cerrar menú"
           accessibilityRole="button"
-          className="flex-1 items-center justify-center bg-black/55 px-6"
+          className="flex-1 items-center justify-center bg-black/70 px-6"
         >
           <View
             accessibilityRole="radiogroup"
-            className="w-full max-w-xs gap-1 rounded-2xl bg-white p-2 shadow-2xl dark:bg-surface-900"
+            className="w-full max-w-xs gap-1 rounded-2xl bg-surface p-2 shadow-2xl"
           >
             {OPTIONS.map((opt) => {
               const active = opt.value === value;
@@ -63,20 +64,26 @@ export function SortMenu({ value, onChange }: Props) {
                   accessibilityState={{ selected: active }}
                   hitSlop={4}
                   className={cn(
-                    'min-h-[44px] flex-row items-center gap-3 rounded-xl px-3 active:bg-surface-100 dark:active:bg-surface-800',
-                    active && 'bg-primary-50 dark:bg-primary-950',
+                    'min-h-[44px] flex-row items-center gap-3 rounded-xl px-3 active:bg-surface-hi',
+                    active && 'bg-surface-lo',
                   )}
                 >
-                  <Icon name={opt.icon} size={18} color={active ? '#b45309' : '#64748b'} />
+                  <Icon
+                    name={opt.icon}
+                    size={18}
+                    color={active ? DARK_PALETTE.accentBright : DARK_PALETTE.inkMuted}
+                  />
                   <Text
                     className={cn(
                       'flex-1 text-base',
-                      active ? 'font-bold text-primary-700 dark:text-primary-300' : 'text-surface-800 dark:text-surface-100',
+                      active ? 'font-bold text-accent-bright' : 'text-ink-strong',
                     )}
                   >
                     {opt.label}
                   </Text>
-                  {active ? <Icon name="checkmark" size={18} color="#b45309" /> : null}
+                  {active ? (
+                    <Icon name="checkmark" size={18} color={DARK_PALETTE.accentBright} />
+                  ) : null}
                 </Pressable>
               );
             })}

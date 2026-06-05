@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { Pressable, type PressableProps } from 'react-native';
-import Animated, {
+import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -8,6 +8,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/presentation/hooks/useReducedMotion';
+
+const AnimatedReanimatedPressable = Reanimated.createAnimatedComponent(Pressable);
 
 interface AnimatedPressableProps extends PressableProps {
   readonly scaleTo?: number;
@@ -43,28 +45,35 @@ export function AnimatedPressable({
   }));
 
   const handlePressIn = useCallback(
-    (e: any) => {
+    (e: unknown) => {
       scale.value = withTiming(effectiveScale, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
       opacity.value = withTiming(effectiveOpacity, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
-      onPressIn?.(e);
+      if (typeof onPressIn === 'function') {
+        (onPressIn as (arg: unknown) => void)(e);
+      }
     },
     [scale, opacity, effectiveScale, effectiveOpacity, effectiveDuration, onPressIn],
   );
 
   const handlePressOut = useCallback(
-    (e: any) => {
+    (e: unknown) => {
       scale.value = withTiming(1, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
       opacity.value = withTiming(1, { duration: effectiveDuration, easing: Easing.out(Easing.quad) });
-      onPressOut?.(e);
+      if (typeof onPressOut === 'function') {
+        (onPressOut as (arg: unknown) => void)(e);
+      }
     },
     [scale, opacity, effectiveDuration, onPressOut],
   );
 
   return (
-    <Animated.View style={[animatedStyle, typeof style !== 'function' ? style : undefined]}>
-      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} {...rest}>
-        {children}
-      </Pressable>
-    </Animated.View>
+    <AnimatedReanimatedPressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={typeof style === 'function' ? (state) => [animatedStyle, style(state)] : [animatedStyle, style]}
+      {...rest}
+    >
+      {children}
+    </AnimatedReanimatedPressable>
   );
 }

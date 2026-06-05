@@ -11,6 +11,7 @@ import { BiometricService } from '@/infrastructure/security/BiometricService';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import { useSessionStore } from '@/presentation/stores/sessionStore';
 import { ToastService } from '@/infrastructure/toast/ToastService';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 export default function LockScreen() {
   const router = useRouter();
@@ -59,11 +60,11 @@ export default function LockScreen() {
   }, [pin, router, setUnlocked]);
 
   return (
-    <View className="flex-1 items-center justify-center bg-surface-900 p-6">
-      <View className="mb-4 rounded-full bg-primary-500/20 p-4">
-        <Icon name="lock-closed" size={36} color="#f59e0b" />
+    <View className="flex-1 items-center justify-center bg-canvas p-6">
+      <View className="mb-4 rounded-full bg-accent/20 p-4">
+        <Icon name="lock-closed" size={36} color={DARK_PALETTE.warning} />
       </View>
-      <Text className="mb-6 text-xl font-bold text-white">MyPOS</Text>
+      <Text className="mb-6 text-xl font-bold text-ink-strong">MyPOS</Text>
       <View className="w-full max-w-sm">
         <Input
           ref={inputRef}
@@ -76,7 +77,7 @@ export default function LockScreen() {
           keyboardType="number-pad"
           secureTextEntry
           autoFocus
-          error={error ?? undefined}
+          {...(error ? { error } : {})}
           onSubmitEditing={handleUnlock}
           placeholder="••••"
         />
@@ -91,11 +92,11 @@ export default function LockScreen() {
           {biometricEnabled ? (
             <AnimatedPressable
               onPress={tryBiometric}
-              className="items-center justify-center rounded-lg bg-surface-800 px-4 py-3"
+              className="items-center justify-center rounded-lg bg-surface-hi px-4 py-3"
             >
               <View className="flex-row items-center gap-2">
-                <Icon name="finger-print" size={20} color="#f8fafc" />
-                <Text className="font-semibold text-white">Usar biometría</Text>
+                <Icon name="finger-print" size={20} color={DARK_PALETTE.inkStrong} />
+                <Text className="font-semibold text-ink-strong">Usar biometría</Text>
               </View>
             </AnimatedPressable>
           ) : null}

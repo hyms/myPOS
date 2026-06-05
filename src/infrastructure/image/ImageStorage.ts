@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import { Directory, File, Paths } from 'expo-file-system';
 import { Image } from 'react-native';
 
 export interface OptimizedImage {
@@ -8,13 +8,8 @@ export interface OptimizedImage {
   readonly size: number;
 }
 
-const PRODUCT_DIR = `${FileSystem.documentDirectory}productos/`;
-
-async function ensureDir(): Promise<void> {
-  const info = await FileSystem.getInfoAsync(PRODUCT_DIR);
-  if (!info.exists) {
-    await FileSystem.makeDirectoryAsync(PRODUCT_DIR, { intermediates: true });
-  }
+function getProductDir(): Directory {
+  return new Directory(Paths.document, 'productos');
 }
 
 function uuid(): string {
@@ -22,24 +17,32 @@ function uuid(): string {
 }
 
 export async function saveProductImage(sourceUri: string): Promise<OptimizedImage> {
-  await ensureDir();
-  const target = `${PRODUCT_DIR}${uuid()}.jpg`;
-  await FileSystem.copyAsync({ from: sourceUri, to: target });
-  const info = await FileSystem.getInfoAsync(target, { size: true });
-  const size = info.exists && 'size' in info && info.size ? info.size : 0;
+  const dir = getProductDir();
+  if (!dir.exists) {
+    dir.create({ intermediates: true, idempotent: true });
+  }
+
+  const target = new File(dir, `${uuid()}.jpg`);
+  const source = new File(sourceUri);
+  await source.copy(target);
+
+  const size = target.size;
   const dimensions = await new Promise<{ width: number; height: number }>((resolve) => {
     Image.getSize(
-      target,
+      target.uri,
       (width, height) => resolve({ width, height }),
       () => resolve({ width: 400, height: 400 }),
     );
   });
-  return { uri: target, size, width: dimensions.width, height: dimensions.height };
+  return { uri: target.uri, size, width: dimensions.width, height: dimensions.height };
 }
 
 export async function deleteProductImage(uri: string): Promise<void> {
   try {
-    await FileSystem.deleteAsync(uri, { idempotent: true });
+    const file = new File(uri);
+    if (file.exists) {
+      file.delete();
+    }
   } catch {
     // ignore
   }

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/presentation/components/ui/Icon';
 import { useReducedMotion } from '@/presentation/hooks/useReducedMotion';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 interface ModalSheetProps {
   readonly visible: boolean;
@@ -58,7 +59,7 @@ function ModalSheetComponent({ visible, onClose, title, children, footer }: Moda
     >
       <Animated.View
         style={scrimStyle}
-        className="absolute inset-0 bg-black/55"
+        className="absolute inset-0 bg-black/70"
         pointerEvents="auto"
       >
         <Pressable
@@ -81,7 +82,7 @@ function ModalSheetComponent({ visible, onClose, title, children, footer }: Moda
           },
         ]}
         className={cn(
-          'rounded-t-3xl bg-white px-5 shadow-2xl dark:bg-surface-900',
+          'rounded-t-3xl bg-surface px-5 shadow-2xl border-t border-border-subtle',
         )}
         accessibilityViewIsModal
       >
@@ -90,12 +91,12 @@ function ModalSheetComponent({ visible, onClose, title, children, footer }: Moda
           accessibilityLabel={`${title}. Modal abierto.`}
           className="mb-1 items-center pt-1"
         >
-          <View className="h-1 w-10 rounded-full bg-surface-300 dark:bg-surface-700" />
+          <View className="h-1 w-10 rounded-full bg-border" />
         </View>
         <View className="mb-3 mt-2 flex-row items-center justify-between">
           <Text
             accessibilityRole="header"
-            className="text-lg font-bold text-surface-900 dark:text-surface-50"
+            className="text-lg font-bold text-ink-strong"
           >
             {title}
           </Text>
@@ -104,9 +105,9 @@ function ModalSheetComponent({ visible, onClose, title, children, footer }: Moda
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             hitSlop={12}
-            className="rounded-full p-1 active:bg-surface-200 dark:active:bg-surface-800"
+            className="rounded-full p-1 active:bg-surface-hi"
           >
-            <Icon name="close" size={20} color="#64748b" />
+            <Icon name="close" size={20} color={DARK_PALETTE.inkMuted} />
           </Pressable>
         </View>
         <View>{children}</View>

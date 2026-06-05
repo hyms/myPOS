@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Card } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { ConfirmDialog } from '@/presentation/components/feedback/ConfirmDialog';
+import { Skeleton } from '@/presentation/components/ui/Skeleton';
 import { revertirTransaccion } from '@/application/ventas/RevertirTransaccion';
 import { getRepositories } from '@/data/repositories/container';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { usePinGate } from '@/presentation/hooks/usePinGate';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import { formatFecha } from '@/shared/utils/date';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import type { Transaccion, TipoPago } from '@/domain/entities/Transaccion';
@@ -34,6 +36,7 @@ export default function TransaccionDetailScreen() {
   const { format } = useCurrency();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pinGate = usePinGate();
+  const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
 
   const trxId = id ? Number(id) : null;
   const [transaccion, setTransaccion] = useState<Transaccion | null>(null);
@@ -74,6 +77,7 @@ export default function TransaccionDetailScreen() {
       onSuccess: () => {
         try {
           revertirTransaccion(trxId);
+          invalidateMany(['transacciones', 'caja', 'productos']);
           ToastService.success('Transacción revertida');
           router.back();
         } catch (e) {
@@ -85,17 +89,39 @@ export default function TransaccionDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface-50 dark:bg-surface-950">
-        <ActivityIndicator color="#0ea5e9" />
-      </View>
+      <ScrollView
+        className="flex-1 bg-surface"
+        contentContainerClassName="gap-3 p-4"
+        accessibilityLabel="Cargando detalle de transacción"
+      >
+        <Card>
+          <Skeleton className="mb-2 h-3 w-16" />
+          <Skeleton className="mb-3 h-10 w-44" />
+          <Skeleton className="mb-2 h-3 w-32" />
+          <Skeleton className="h-3 w-24" />
+        </Card>
+        <Card>
+          <Skeleton className="mb-3 h-3 w-20" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0 border-border">
+              <View className="flex-1 gap-1.5 pr-2">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </View>
+              <Skeleton className="h-3.5 w-16" />
+            </View>
+          ))}
+        </Card>
+        <Skeleton className="mt-2 h-12 w-full rounded-xl" />
+      </ScrollView>
     );
   }
 
   if (!transaccion) {
     return (
-      <View className="flex-1 items-center justify-center bg-surface-50 p-6">
-        <Text className="text-base font-semibold text-surface-800 dark:text-surface-100">No encontrada</Text>
-        <Text className="mt-1 text-sm text-surface-600">La transacción #{trxId ?? '?'} no existe o fue eliminada.</Text>
+      <View className="flex-1 items-center justify-center bg-surface p-6">
+        <Text className="text-base font-semibold text-ink-strong">No encontrada</Text>
+        <Text className="mt-1 text-sm text-ink-muted">La transacción #{trxId ?? '?'} no existe o fue eliminada.</Text>
         <View className="mt-4 w-full">
           <Button title="Volver" variant="secondary" onPress={() => router.back()} fullWidth />
         </View>
@@ -106,46 +132,46 @@ export default function TransaccionDetailScreen() {
   const sign = transaccion.tipo === 'VENTA' ? '+' : '-';
   const amountClass =
     transaccion.tipo === 'VENTA'
-      ? 'text-success-800'
+      ? 'text-success'
       : transaccion.tipo === 'COMPRA'
-        ? 'text-warning-800'
-        : 'text-danger-800';
+        ? 'text-warning'
+        : 'text-danger';
 
   return (
-    <ScrollView className="flex-1 bg-surface-50 dark:bg-surface-950" contentContainerClassName="gap-3 p-4">
+    <ScrollView className="flex-1 bg-surface" contentContainerClassName="gap-3 p-4">
       <Card>
-        <Text className="text-xs font-semibold uppercase tracking-wide text-surface-700">{transaccion.tipo}</Text>
+        <Text className="text-xs font-semibold uppercase tracking-wide text-ink">{transaccion.tipo}</Text>
         <Text className={`mt-1 text-4xl font-extrabold ${amountClass}`}>
           {sign}{format(Math.abs(transaccion.montoTotal))}
         </Text>
-        <Text className="mt-1 text-xs text-surface-600">{formatFecha(transaccion.fechaRegistro)}</Text>
-        <Text className="mt-2 text-sm text-surface-700 dark:text-surface-200">
-          Pago: <Text className="font-semibold text-surface-900 dark:text-surface-50">{TIPO_PAGO_LABEL[transaccion.tipoPago]}</Text>
+        <Text className="mt-1 text-xs text-ink-muted">{formatFecha(transaccion.fechaRegistro)}</Text>
+        <Text className="mt-2 text-sm text-ink">
+          Pago: <Text className="font-semibold text-ink-strong">{TIPO_PAGO_LABEL[transaccion.tipoPago]}</Text>
         </Text>
         {transaccion.detalle ? (
-          <Text className="mt-1 text-sm text-surface-700 dark:text-surface-200">
-            Detalle: <Text className="font-semibold text-surface-900 dark:text-surface-50">{transaccion.detalle}</Text>
+          <Text className="mt-1 text-sm text-ink">
+            Detalle: <Text className="font-semibold text-ink-strong">{transaccion.detalle}</Text>
           </Text>
         ) : null}
       </Card>
 
       {detalles.length > 0 ? (
         <Card>
-          <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-surface-700">
+          <Text className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink">
             Productos
           </Text>
           {detalles.map((d) => (
             <View
               key={d.id}
-              className="flex-row items-center justify-between border-b border-surface-100 py-2 last:border-b-0 dark:border-surface-800"
+              className="flex-row items-center justify-between border-b border-border-subtle py-2 last:border-b-0 border-border"
             >
               <View className="flex-1 pr-2">
-                <Text className="text-sm font-semibold text-surface-800 dark:text-surface-100">{d.nombre}</Text>
-                <Text className="text-xs text-surface-500">
+                <Text className="text-sm font-semibold text-ink-strong">{d.nombre}</Text>
+                <Text className="text-xs text-ink-muted">
                   {d.cantidad} × {format(d.precioUnitario)}
                 </Text>
               </View>
-              <Text className="font-bold text-surface-900 dark:text-surface-50">
+              <Text className="font-bold text-ink-strong">
                 {format(d.cantidad * d.precioUnitario)}
               </Text>
             </View>

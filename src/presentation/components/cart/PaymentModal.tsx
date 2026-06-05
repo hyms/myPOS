@@ -10,6 +10,7 @@ import { Input } from '@/presentation/components/ui/Input';
 import { ModalSheet } from '@/presentation/components/ui/ModalSheet';
 import { Icon } from '@/presentation/components/ui/Icon';
 import type { IconName } from '@/presentation/components/ui/Icon';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 import { cn } from '@/shared/utils/cn';
 
 interface Props {
@@ -69,17 +70,17 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
       title={tipo === 'VENTA' ? 'Cobrar venta' : 'Pagar compra'}
     >
       <View className="gap-3">
-        <View className="rounded-xl border border-primary-200 bg-primary-50 p-4">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-primary-700">
+        <View className="rounded-xl border border-border-subtle bg-surface-hi p-4">
+          <Text className="text-xs font-semibold uppercase tracking-wide text-ink-strong">
             Total a {tipo === 'VENTA' ? 'cobrar' : 'pagar'}
           </Text>
-          <Text className="text-4xl font-extrabold text-primary-800">{format(totals.total)}</Text>
+          <Text className="text-4xl font-extrabold text-ink-strong" selectable>{format(totals.total)}</Text>
         </View>
 
         <View>
           <Text
             accessibilityRole="header"
-            className="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200"
+            className="mb-2 text-sm font-semibold text-ink"
           >
             Tipo de pago
           </Text>
@@ -99,19 +100,19 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
                   className={cn(
                     'min-h-[44px] flex-row items-center gap-2 rounded-xl border px-4 py-2.5',
                     active
-                      ? 'border-primary-600 bg-primary-600'
-                      : 'border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900',
+                      ? 'border-accent bg-accent'
+                      : 'border-border bg-surface',
                   )}
                 >
                   <Icon
                     name={tp.icon}
                     size={18}
-                    color={active ? '#ffffff' : '#475569'}
+                    color={active ? '#ffffff' : DARK_PALETTE.inkMuted}
                   />
                   <Text
                     className={cn(
                       'text-sm font-semibold',
-                      active ? 'text-white' : 'text-surface-800 dark:text-surface-100',
+                      active ? 'text-white' : 'text-ink-strong',
                     )}
                   >
                     {tp.label}
@@ -135,9 +136,9 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
                   accessibilityRole="button"
                   accessibilityLabel="Establecer monto exacto"
                   hitSlop={12}
-                  className="rounded-md bg-primary-50 px-2 py-1 active:bg-primary-100 dark:bg-primary-950"
+                  className="rounded-md bg-surface-hi px-2 py-1 active:bg-surface-lo"
                 >
-                  <Text className="text-xs font-bold uppercase tracking-wide text-primary-700">
+                  <Text className="text-xs font-bold uppercase tracking-wide text-ink-strong">
                     Exacto
                   </Text>
                 </Pressable>
@@ -147,14 +148,14 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               className={cn(
                 'rounded-xl border p-4',
                 cambio >= 0
-                  ? 'border-success-200 bg-success-50'
-                  : 'border-danger-200 bg-danger-50',
+                  ? 'border-border-subtle bg-success-soft'
+                  : 'border-border-subtle bg-danger-soft',
               )}
             >
               <Text
                 className={cn(
                   'text-xs font-semibold uppercase tracking-wide',
-                  cambio >= 0 ? 'text-success-700' : 'text-danger-700',
+                  cambio >= 0 ? 'text-success' : 'text-danger',
                 )}
               >
                 Cambio
@@ -162,8 +163,9 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               <Text
                 className={cn(
                   'text-3xl font-extrabold',
-                  cambio >= 0 ? 'text-success-800' : 'text-danger-800',
+                  cambio >= 0 ? 'text-success' : 'text-danger',
                 )}
+                selectable
               >
                 {format(Math.abs(cambio))}
               </Text>

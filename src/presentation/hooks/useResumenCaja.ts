@@ -2,22 +2,19 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { obtenerResumenCaja } from '@/application/reportes/ResumenPeriodo';
 import type { ResumenCaja } from '@/domain/entities/ResumenCaja';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 
 export function useResumenCaja() {
-  const [resumen, setResumen] = useState<ResumenCaja>({
-    totalVentas: 0,
-    totalCompras: 0,
-    totalGastos: 0,
-    saldoActual: 0,
-  });
+  const [resumen, setResumen] = useState<ResumenCaja>(() => obtenerResumenCaja());
+  const invalidVersion = useInvalidationStore((s) => s.versions.caja);
+
+  useEffect(() => {
+    setResumen(obtenerResumenCaja());
+  }, [invalidVersion]);
 
   const refresh = useCallback(() => {
     setResumen(obtenerResumenCaja());
   }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   return { resumen, refresh };
 }

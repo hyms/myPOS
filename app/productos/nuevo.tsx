@@ -15,6 +15,7 @@ import {
 } from '@/application/productos/GestionProductos';
 import { getRepositories } from '@/data/repositories/container';
 import { ToastService } from '@/infrastructure/toast/ToastService';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import { parseFloatStrict, parseIntStrict } from '@/shared/utils/format';
 
 export default function ProductoFormScreen() {
@@ -26,6 +27,7 @@ export default function ProductoFormScreen() {
   const setDraft = useProductoDraftStore((s) => s.setDraft);
   const resetDraft = useProductoDraftStore((s) => s.resetDraft);
   const startEdit = useProductoDraftStore((s) => s.startEdit);
+  const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
   const [categoriaError, setCategoriaError] = useState<string | null>(null);
   const [quickCatOpen, setQuickCatOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,6 +80,7 @@ export default function ProductoFormScreen() {
         await crearProducto(input);
         ToastService.success('Producto creado');
       }
+      invalidateMany(['productos', 'categorias']);
       resetDraft();
       router.back();
     } catch (e) {
@@ -89,7 +92,7 @@ export default function ProductoFormScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-surface-50 dark:bg-surface-950"
+      className="flex-1 bg-surface"
       contentContainerClassName="pb-12"
       keyboardShouldPersistTaps="handled"
     >
@@ -134,7 +137,7 @@ export default function ProductoFormScreen() {
         <CategorySelector
           categorias={categorias}
           onRequestNew={() => setQuickCatOpen(true)}
-          error={categoriaError ?? undefined}
+          {...(categoriaError ? { error: categoriaError } : {})}
         />
       </View>
 

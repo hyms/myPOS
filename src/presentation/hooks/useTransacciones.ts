@@ -1,71 +1,93 @@
 import { useCallback, useEffect, useState } from 'react';
-import dayjs from 'dayjs';
 
 import { getRepositories } from '@/data/repositories/container';
 import type { Transaccion, TipoTransaccion } from '@/domain/entities/Transaccion';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 
 export interface TransaccionResumen {
   readonly transaccion: Transaccion;
   readonly detalles: ReadonlyArray<{ id: number; nombre: string; cantidad: number; precioUnitario: number }>;
 }
 
+function loadResumen(
+  tipo: TipoTransaccion | undefined,
+  page: number,
+  pageSize: number,
+): ReadonlyArray<TransaccionResumen> {
+  const repo = getRepositories();
+  const list = repo.transacciones.listar({
+    ...(tipo ? { tipo } : {}),
+    limit: pageSize,
+    offset: page * pageSize,
+  });
+  return list.map((trx) => {
+    const detalles = repo.transacciones.findDetalles(trx.id);
+    const productoIds = detalles.map((d) => d.productoId);
+    const productos = repo.productos.findByIds(productoIds);
+    const map = new Map(productos.map((p) => [p.id, p.nombre] as const));
+    return {
+      transaccion: trx,
+      detalles: detalles.map((d) => ({
+        id: d.id,
+        nombre: map.get(d.productoId) ?? '—',
+        cantidad: d.cantidad,
+        precioUnitario: d.precioUnitario,
+      })),
+    };
+  });
+}
+
 export function useTransacciones({ tipo, page }: { tipo?: TipoTransaccion; page: number }) {
   const pageSize = useSettingsStore((s) => s.pageSize);
-  const [items, setItems] = useState<ReadonlyArray<TransaccionResumen>>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    const repo = getRepositories();
-    const list = repo.transacciones.listar({ tipo, limit: pageSize, offset: page * pageSize });
-    const enriched = list.map((trx) => {
-      const detalles = repo.transacciones.findDetalles(trx.id);
-      const productoIds = detalles.map((d) => d.productoId);
-      const productos = repo.productos.findByIds(productoIds);
-      const map = new Map(productos.map((p) => [p.id, p.nombre]));
-      return {
-        transaccion: trx,
-        detalles: detalles.map((d) => ({
-          id: d.id,
-          nombre: map.get(d.productoId) ?? '—',
-          cantidad: d.cantidad,
-          precioUnitario: d.precioUnitario,
-        })),
-      };
-    });
-    setItems(enriched);
-    setLoading(false);
-  }, [tipo, page, pageSize]);
+  const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
+  const [items, setItems] = useState<ReadonlyArray<TransaccionResumen>>(() =>
+    loadResumen(tipo, page, pageSize),
+  );
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    setItems(loadResumen(tipo, page, pageSize));
+    if (!hasLoaded) setHasLoaded(true);
+  }, [tipo, page, pageSize, hasLoaded, invalidVersion]);
 
-  return { items, loading, refresh: load, hasMore: items.length === pageSize };
+  const refresh = useCallback(() => {
+    setItems(loadResumen(tipo, page, pageSize));
+  }, [tipo, page, pageSize]);
+
+  return {
+    items,
+    loading: !hasLoaded,
+    refresh,
+    hasMore: items.length === pageSize,
+  };
+}
+
+function loadGastosDelMes(page: number, pageSize: number): ReadonlyArray<Transaccion> {
+  return getRepositories().transacciones.gastosDelMes(pageSize, page * pageSize);
 }
 
 export function useGastosDelMes(page: number) {
   const pageSize = useSettingsStore((s) => s.pageSize);
-  const [items, setItems] = useState<ReadonlyArray<Transaccion>>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    const list = getRepositories().transacciones.gastosDelMes(pageSize, page * pageSize);
-    setItems(list);
-    setLoading(false);
-  }, [page, pageSize]);
+  const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
+  const [items, setItems] = useState<ReadonlyArray<Transaccion>>(() =>
+    loadGastosDelMes(page, pageSize),
+  );
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    setItems(loadGastosDelMes(page, pageSize));
+    if (!hasLoaded) setHasLoaded(true);
+  }, [page, pageSize, hasLoaded, invalidVersion]);
 
-  return { items, loading, refresh: load, hasMore: items.length === pageSize };
-}
+  const refresh = useCallback(() => {
+    setItems(loadGastosDelMes(page, pageSize));
+  }, [page, pageSize]);
 
-export function resumenPeriodo() {
   return {
-    label: dayjs().format('MMMM YYYY'),
+    items,
+    loading: !hasLoaded,
+    refresh,
+    hasMore: items.length === pageSize,
   };
 }

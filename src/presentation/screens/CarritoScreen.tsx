@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
@@ -12,12 +12,13 @@ import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 import { useProductos } from '@/presentation/hooks/useProductos';
 import { useCategorias } from '@/presentation/hooks/useCategorias';
 import { useStockAlert } from '@/presentation/hooks/useStockAlert';
-import { useCarritoTotals } from '@/presentation/hooks/useCarrito';
+import { calcTotals } from '@/domain/rules/cartRules';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { useDebouncedValue, useInfiniteScroll } from '@/presentation/hooks/useInfiniteScroll';
 import { SearchBar } from '@/presentation/components/filters/SearchBar';
 import { SortMenu } from '@/presentation/components/filters/SortMenu';
 import { CategoryChipsRow } from '@/presentation/components/filters/CategoryChipsRow';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 import { ProductGridCard } from '@/presentation/components/product/ProductGridCard';
 import { LineItemModal } from '@/presentation/components/cart/LineItemModal';
 import { PaymentModal } from '@/presentation/components/cart/PaymentModal';
@@ -25,10 +26,12 @@ import { CartSummaryBar } from '@/presentation/components/cart/CartSummaryBar';
 import { EmptyState } from '@/presentation/components/feedback/EmptyState';
 import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { Icon } from '@/presentation/components/ui/Icon';
+import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
 import { generarYCompartirComprobante } from '@/infrastructure/pdf/ComprobanteService';
 import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
 import { ToastService } from '@/infrastructure/toast/ToastService';
+import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import type { TipoPago } from '@/domain/entities/Transaccion';
 import type { ProductoConPopularidad } from '@/presentation/hooks/useProductos';
 
@@ -40,6 +43,19 @@ interface RenderProductProps {
 const RenderProduct = React.memo(function RenderProduct({ item, onPress }: RenderProductProps) {
   return <ProductGridCard producto={item} onPress={onPress} />;
 });
+
+function ProductSkeleton() {
+  return (
+    <View className="m-1 flex-1 overflow-hidden rounded-2xl border border-border-subtle bg-surface border-border bg-surface">
+      <Skeleton className="aspect-square w-full rounded-none" />
+      <View className="gap-1.5 p-2">
+        <Skeleton className="h-3.5 w-3/4" />
+        <Skeleton className="h-3.5 w-1/2" />
+        <Skeleton className="h-3 w-1/3" />
+      </View>
+    </View>
+  );
+}
 
 interface CartLineProps {
   readonly item: CarritoItem;
@@ -62,21 +78,21 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
       accessibilityHint="Toca para editar, mantén presionado para ver más opciones"
-      className="flex-row items-center justify-between border-b border-surface-100 py-2 dark:border-surface-800"
+      className="flex-row items-center justify-between border-b border-border-subtle py-2 border-border"
     >
       <View className="flex-1 pr-3">
         <Text
           numberOfLines={1}
-          className="text-sm font-semibold text-surface-900 dark:text-surface-50"
+          className="text-sm font-semibold text-ink-strong"
         >
           {item.producto.nombre}
         </Text>
-        <Text className="mt-0.5 text-xs tabular-nums text-surface-500">
+        <Text className="mt-0.5 text-xs tabular-nums text-ink-muted">
           {item.cantidad} × {format(unit)}
           {item.descuento > 0 ? `  ·  desc ${format(item.descuento)}` : ''}
         </Text>
       </View>
-      <Text className="text-base font-bold tabular-nums text-primary-700 dark:text-primary-300">
+      <Text className="text-base font-bold tabular-nums text-ink-strong text-accent-bright">
         {format(lineTotal)}
       </Text>
       <Pressable
@@ -84,9 +100,9 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
         accessibilityRole="button"
         accessibilityLabel={`Quitar ${item.producto.nombre} del carrito`}
         hitSlop={12}
-        className="ml-2 rounded-full p-1 active:bg-danger-50 dark:active:bg-danger-950"
+        className="ml-2 rounded-full p-1 active:bg-danger-soft active:bg-danger-soft"
       >
-        <Icon name="close-circle" size={20} color="#dc2626" />
+        <Icon name="close-circle" size={20} color={DARK_PALETTE.danger} />
       </Pressable>
     </AnimatedPressable>
   );
@@ -102,11 +118,12 @@ export function CarritoScreen({ tipo, store }: Props) {
   const agregar = store((s) => s.agregar);
   const eliminar = store((s) => s.eliminar);
   const vaciar = store((s) => s.vaciar);
-  const totals = useCarritoTotals(store, tipo);
+  const totals = useMemo(() => calcTotals(items, tipo), [items, tipo]);
   const { format } = useCurrency();
   const currency = useSettingsStore((s) => s.currency);
   const stockAlert = useStockAlert();
   const { categorias } = useCategorias();
+  const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
 
   const [search, setSearch] = useState('');
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
@@ -116,7 +133,7 @@ export function CarritoScreen({ tipo, store }: Props) {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 200);
 
-  const { items: productos, hasMore } = useProductos({
+  const { items: productos, hasMore, loading } = useProductos({
     search: debouncedSearch,
     ...(categoriaId !== null ? { categoriaId } : {}),
     sort,
@@ -153,7 +170,7 @@ export function CarritoScreen({ tipo, store }: Props) {
     setPage(0);
   }, []);
 
-  const { onEndReached } = useInfiniteScroll(() => setPage((p) => p + 1), hasMore, false);
+  const { onEndReached } = useInfiniteScroll(() => setPage((p) => p + 1), hasMore, loading);
 
   const renderItem: ListRenderItem<ProductoConPopularidad> = useCallback(
     ({ item }) => <RenderProduct item={item} onPress={handlePress} />,
@@ -206,6 +223,7 @@ export function CarritoScreen({ tipo, store }: Props) {
         setPaymentOpen(false);
         vaciar();
         setPage(0);
+        invalidateMany(['transacciones', 'caja', 'productos']);
 
         void generarYCompartirComprobante(comprobanteData).catch((e) => {
           ToastService.warning(
@@ -240,7 +258,7 @@ export function CarritoScreen({ tipo, store }: Props) {
   }, [vaciar]);
 
   return (
-    <View className="flex-1 bg-surface-50 dark:bg-surface-950">
+    <View className="flex-1 bg-surface">
       <View className="p-3">
         <View className="mb-2 flex-row gap-2">
           <View className="flex-1">
@@ -262,9 +280,9 @@ export function CarritoScreen({ tipo, store }: Props) {
       {items.length > 0 ? (
         <View
           accessibilityLabel="Resumen del carrito"
-          className="border-y border-surface-200 bg-white px-3 py-2 dark:border-surface-800 dark:bg-surface-900"
+          className="border-y border-border-subtle bg-surface px-3 py-2 border-border bg-surface"
         >
-          <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-surface-500">
+          <Text className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Carrito {tipo === 'VENTA' ? 'de venta' : 'de compra'}
           </Text>
           {items.map((it) => (
@@ -277,49 +295,61 @@ export function CarritoScreen({ tipo, store }: Props) {
             />
           ))}
           <View className="mt-2 flex-row justify-between">
-            <Text className="text-sm text-surface-600">Subtotal</Text>
-            <Text className="font-semibold tabular-nums text-surface-900 dark:text-surface-50">
+            <Text className="text-sm text-ink-muted">Subtotal</Text>
+            <Text className="font-semibold tabular-nums text-ink-strong">
               {format(totals.subtotal)}
             </Text>
           </View>
           {totals.descuento > 0 ? (
             <View className="flex-row justify-between">
-              <Text className="text-sm text-surface-600">Descuento</Text>
-              <Text className="font-semibold tabular-nums text-danger-600">
+              <Text className="text-sm text-ink-muted">Descuento</Text>
+              <Text className="font-semibold tabular-nums text-danger">
                 -{format(totals.descuento)}
               </Text>
             </View>
           ) : null}
           <View className="mt-1 flex-row justify-between">
-            <Text className="text-base font-bold text-surface-900 dark:text-surface-50">
+            <Text className="text-base font-bold text-ink-strong">
               Total
             </Text>
-            <Text className="text-lg font-bold tabular-nums text-primary-700 dark:text-primary-300">
+            <Text className="text-lg font-bold tabular-nums text-ink-strong text-accent-bright">
               {format(totals.total)}
             </Text>
           </View>
         </View>
       ) : null}
 
-      <FlashList
-        data={productos}
-        numColumns={3}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.5}
-        contentContainerClassName="px-2 pb-32"
-        ListEmptyComponent={
-          <EmptyState
-            icon="cube-outline"
-            title="Sin productos"
-            description="Ajusta filtros o crea productos nuevos."
-          />
-        }
-      />
+      {loading && productos.length === 0 ? (
+        <View className="flex-row flex-wrap px-2">
+          {Array.from({ length: 6 }).map((_, i) => <ProductSkeleton key={`skel-${i}`} />)}
+        </View>
+      ) : (
+        <FlashList
+          data={productos}
+          numColumns={3}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.5}
+          contentContainerClassName="px-2 pb-32"
+          ListEmptyComponent={
+            <EmptyState
+              icon="cube-outline"
+              title="Sin productos"
+              description={
+                tipo === 'VENTA'
+                  ? 'No hay productos para vender. Crea productos en la pestaña Productos.'
+                  : 'No hay productos para comprar. Crea productos en la pestaña Productos.'
+              }
+            />
+          }
+          ListFooterComponent={hasMore && loading ? <ListFooterLoader count={3} itemHeight={140} /> : null}
+        />
+      )}
 
       <CartSummaryBar
-        store={store}
+        count={items.length}
+        total={totals.total}
         tipo={tipo}
         onCheckout={handleOpenPayment}
         onClear={handleClearCart}

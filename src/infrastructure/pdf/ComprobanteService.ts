@@ -4,14 +4,6 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import { buildComprobanteHTML, type ComprobanteData } from './ComprobanteRenderer';
 
-function getComprobantesDir(): Directory {
-  const dir = new Directory(Paths.document, 'comprobantes');
-  if (!dir.exists) {
-    dir.create();
-  }
-  return dir;
-}
-
 function buildFileName(data: ComprobanteData): string {
   const ts = new Date()
     .toISOString()
@@ -20,11 +12,15 @@ function buildFileName(data: ComprobanteData): string {
   return `${data.tipo.toLowerCase()}-${data.transaccionId}-${ts}.pdf`;
 }
 
-async function safeShare(uri: string): Promise<void> {
+function getComprobantesDir(): Directory {
+  return new Directory(Paths.document, 'comprobantes');
+}
+
+async function safeShare(file: File): Promise<void> {
   try {
     const isAvailable = await Sharing.isAvailableAsync();
     if (!isAvailable) return;
-    await Sharing.shareAsync(uri, {
+    await Sharing.shareAsync(file.uri, {
       dialogTitle: 'Compartir comprobante',
       mimeType: 'application/pdf',
       UTI: '.pdf',
@@ -38,13 +34,27 @@ export async function generarYCompartirComprobante(data: ComprobanteData): Promi
   const html = buildComprobanteHTML(data);
   const { uri: tempUri } = await Print.printToFileAsync({ html });
 
+  const source = new File(tempUri);
+
   const dir = getComprobantesDir();
+  if (!dir.exists) {
+    dir.create({ intermediates: true, idempotent: true });
+  }
+
   const target = new File(dir, buildFileName(data));
   if (target.exists) {
     target.delete();
   }
-  const source = new File(tempUri);
-  await source.move(target);
+  target.create();
 
-  await safeShare(target.uri);
+  const bytes = await source.bytes();
+  target.write(bytes);
+
+  try {
+    source.delete();
+  } catch {
+    // temp file may be in a protected location; not critical
+  }
+
+  await safeShare(target);
 }

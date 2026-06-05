@@ -7,25 +7,38 @@ import {
   useVentaCarritoStore,
 } from '@/presentation/stores/carritoStore';
 import { useRegistroSubtabStore } from '@/presentation/stores/registroSubtabStore';
+import { Icon } from '@/presentation/components/ui/Icon';
+import type { IconName } from '@/presentation/components/ui/Icon';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
-function TabIcon({ glyph, focused, badge }: { glyph: string; focused: boolean; badge?: number }) {
+const TAB_TINT_ACTIVE = DARK_PALETTE.ink;
+const TAB_TINT_INACTIVE = DARK_PALETTE.inkMuted;
+const TAB_BG = DARK_PALETTE.surface;
+const TAB_BORDER = DARK_PALETTE.border;
+
+function TabIcon({
+  name,
+  focused,
+  badge,
+}: {
+  name: IconName;
+  focused: boolean;
+  badge?: number;
+}) {
   return (
     <View style={{ position: 'relative' }}>
-      <Text
-        style={{
-          fontSize: 22,
-          color: focused ? '#0ea5e9' : '#64748b',
-        }}
-      >
-        {glyph}
-      </Text>
+      <Icon
+        name={name}
+        size={22}
+        color={focused ? TAB_TINT_ACTIVE : TAB_TINT_INACTIVE}
+      />
       {badge && badge > 0 ? (
         <View
           style={{
             position: 'absolute',
             right: -8,
             top: -4,
-            backgroundColor: '#dc2626',
+            backgroundColor: DARK_PALETTE.danger,
             borderRadius: 999,
             minWidth: 16,
             height: 16,
@@ -34,7 +47,7 @@ function TabIcon({ glyph, focused, badge }: { glyph: string; focused: boolean; b
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{badge}</Text>
+          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{badge}</Text>
         </View>
       ) : null}
     </View>
@@ -49,41 +62,46 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="caja"
       screenOptions={{
-        tabBarActiveTintColor: '#0ea5e9',
-        tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { borderTopColor: '#e2e8f0' },
-        headerStyle: { backgroundColor: '#0f172a' },
-        headerTintColor: '#f8fafc',
+        tabBarActiveTintColor: TAB_TINT_ACTIVE,
+        tabBarInactiveTintColor: TAB_TINT_INACTIVE,
+        tabBarStyle: {
+          backgroundColor: TAB_BG,
+          borderTopColor: TAB_BORDER,
+          borderTopWidth: 0.5,
+        },
+        headerStyle: { backgroundColor: DARK_PALETTE.surface },
+        headerTintColor: DARK_PALETTE.ink,
         headerTitleStyle: { fontWeight: '700' },
       }}
     >
       <Tabs.Screen
+        name="caja"
+        options={{
+          title: 'Cuentas',
+          tabBarIcon: ({ focused }) => <TabIcon name="cash-outline" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="registro"
         options={{
           title: 'Registro',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="📝" focused={focused} badge={registroBadge} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="receipt-outline" focused={focused} badge={registroBadge} />,
         }}
       />
       <Tabs.Screen
         name="productos"
         options={{
           title: 'Productos',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="📦" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="caja"
-        options={{
-          title: 'Caja',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="💵" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="cube-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="mas"
         options={{
           title: 'Más',
-          tabBarIcon: ({ focused }) => <TabIcon glyph="⋯" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="ellipsis-horizontal" focused={focused} />,
         }}
       />
     </Tabs>

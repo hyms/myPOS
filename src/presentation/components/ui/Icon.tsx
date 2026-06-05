@@ -1,6 +1,8 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
+
 export type IconName = keyof typeof Ionicons.glyphMap;
 
 interface IconProps {
@@ -10,6 +12,6 @@ interface IconProps {
   readonly className?: string;
 }
 
-export function Icon({ name, size = 24, color = '#64748b' }: IconProps) {
-  return <Ionicons name={name} size={size} color={color} />;
+export function Icon({ name, size = 24, color = DARK_PALETTE.inkMuted, className }: IconProps) {
+  return <Ionicons name={name} size={size} color={color} className={className} />;
 }

@@ -1,7 +1,7 @@
 import { exportarBackup } from '@/application/backup/ExportarDB';
 
-import { resetFileSystem } from 'expo-file-system/legacy';
 import { mockDocumentPickerResult, resetDocumentPicker } from 'expo-document-picker';
+import { resetFileSystem } from 'expo-file-system';
 
 // These modules are auto-mocked via jest config pointing to __mocks__
 

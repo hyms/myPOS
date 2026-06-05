@@ -1,0 +1,23 @@
+{
+  "primary": "#2F578A",
+  "secondary": "#36ADA3",
+  "accent": "#943EA3",
+  "dark": "#232F72",
+  "darkPage": "#121358",
+  "positive": "#4ECB6F",
+  "negative": "#E85A6B",
+  "info": "#53A7B8",
+  "warning": "#E0B23A",
+  "surfaceHi": "#2F578A",
+  "surfaceLo": "#080A22",
+  "border": "#2F578A",
+  "borderSubtle": "rgba(47, 87, 138, 0.45)",
+  "ink": "#E2E5EE",
+  "inkStrong": "#F8F9FC",
+  "inkMuted": "rgba(226, 229, 238, 0.72)",
+  "inkFaint": "rgba(226, 229, 238, 0.62)",
+  "successSoft": "rgba(78, 203, 111, 0.20)",
+  "dangerSoft": "rgba(232, 90, 107, 0.20)",
+  "warningSoft": "rgba(224, 178, 58, 0.20)",
+  "infoSoft": "rgba(83, 167, 184, 0.20)"
+}

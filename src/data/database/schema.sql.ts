@@ -53,14 +53,20 @@ CREATE INDEX IF NOT EXISTS idx_productos_categoria
   ON productos(categoria_id) WHERE fecha_delete IS NULL;
 CREATE INDEX IF NOT EXISTS idx_productos_nombre
   ON productos(nombre) WHERE fecha_delete IS NULL;
+CREATE INDEX IF NOT EXISTS idx_productos_delete
+  ON productos(fecha_delete) WHERE fecha_delete IS NULL;
 CREATE INDEX IF NOT EXISTS idx_transacciones_fecha
   ON transacciones(fecha_registro) WHERE fecha_delete IS NULL;
 CREATE INDEX IF NOT EXISTS idx_transacciones_tipo
   ON transacciones(tipo) WHERE fecha_delete IS NULL;
+CREATE INDEX IF NOT EXISTS idx_transacciones_fecha_tipo
+  ON transacciones(fecha_registro, tipo, fecha_delete);
 CREATE INDEX IF NOT EXISTS idx_detalle_trx
   ON detalle_transacciones(transaccion_id);
 CREATE INDEX IF NOT EXISTS idx_detalle_producto
   ON detalle_transacciones(producto_id);
+CREATE INDEX IF NOT EXISTS idx_detalle_transaccion
+  ON detalle_transacciones(transaccion_id);
 `;
 
 export const SEED_SQL = `

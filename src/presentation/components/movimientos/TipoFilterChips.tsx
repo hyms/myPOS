@@ -1,7 +1,9 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo } from 'react';
 import { Pressable, ScrollView, Text } from 'react-native';
 
+import { Icon, type IconName } from '@/presentation/components/ui/Icon';
 import { cn } from '@/shared/utils/cn';
+import { DARK_PALETTE } from '@/presentation/theme/tokens';
 
 export type TipoFilter = 'ALL' | 'VENTA' | 'COMPRA' | 'GASTO';
 
@@ -10,11 +12,48 @@ interface Props {
   readonly onChange: (value: TipoFilter) => void;
 }
 
-const OPTIONS: ReadonlyArray<{ value: TipoFilter; label: string }> = [
-  { value: 'ALL', label: 'Todas' },
-  { value: 'VENTA', label: 'Ventas' },
-  { value: 'COMPRA', label: 'Compras' },
-  { value: 'GASTO', label: 'Gastos' },
+interface ChipOption {
+  value: TipoFilter;
+  label: string;
+  icon: IconName;
+  activeClass: string;
+  activeTextClass: string;
+  activeIconColor: string;
+}
+
+const OPTIONS: ReadonlyArray<ChipOption> = [
+  {
+    value: 'ALL',
+    label: 'Todas',
+    icon: 'apps',
+    activeClass: 'bg-surface-lo border-border',
+    activeTextClass: 'text-ink-strong',
+    activeIconColor: DARK_PALETTE.inkStrong,
+  },
+  {
+    value: 'VENTA',
+    label: 'Ventas',
+    icon: 'trending-up',
+    activeClass: 'bg-success border-success',
+    activeTextClass: 'text-white',
+    activeIconColor: '#ffffff',
+  },
+  {
+    value: 'COMPRA',
+    label: 'Compras',
+    icon: 'cart',
+    activeClass: 'bg-warning border-warning',
+    activeTextClass: 'text-white',
+    activeIconColor: '#ffffff',
+  },
+  {
+    value: 'GASTO',
+    label: 'Gastos',
+    icon: 'receipt',
+    activeClass: 'bg-danger border-danger',
+    activeTextClass: 'text-white',
+    activeIconColor: '#ffffff',
+  },
 ];
 
 function TipoFilterChipsComponent({ value, onChange }: Props) {
@@ -24,40 +63,39 @@ function TipoFilterChipsComponent({ value, onChange }: Props) {
       showsHorizontalScrollIndicator={false}
       contentContainerClassName="gap-2 px-3 py-2"
     >
-      {OPTIONS.map((opt) => (
-        <Chip
-          key={opt.value}
-          label={opt.label}
-          active={value === opt.value}
-          onPress={() => onChange(opt.value)}
-        />
-      ))}
+      {OPTIONS.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            hitSlop={4}
+            className={cn(
+              'min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3.5 py-1.5',
+              active
+                ? opt.activeClass
+                : 'border-border bg-surface',
+            )}
+          >
+            <Icon
+              name={opt.icon}
+              size={14}
+              color={active ? opt.activeIconColor : DARK_PALETTE.inkMuted}
+            />
+            <Text
+              className={cn(
+                'text-sm font-semibold',
+                active ? opt.activeTextClass : 'text-ink',
+              )}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
-  );
-}
-
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      className={cn(
-        'rounded-full border px-3 py-1.5',
-        active
-          ? 'border-surface-900 bg-surface-900 dark:border-surface-50 dark:bg-surface-50'
-          : 'border-surface-300 bg-white dark:border-surface-700 dark:bg-surface-900',
-      )}
-    >
-      <Text
-        className={cn(
-          'text-sm font-medium',
-          active ? 'text-white dark:text-surface-900' : 'text-surface-700 dark:text-surface-200',
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

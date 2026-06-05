@@ -12,10 +12,10 @@ interface ToneStyle {
 }
 
 const TONE_STYLES: Readonly<Record<StatTone, ToneStyle>> = {
-  success: { bg: 'bg-success-50', bar: 'bg-success-500', text: 'text-success-800' },
-  warning: { bg: 'bg-warning-50', bar: 'bg-warning-500', text: 'text-warning-800' },
-  danger: { bg: 'bg-danger-50', bar: 'bg-danger-500', text: 'text-danger-800' },
-  neutral: { bg: 'bg-surface-100 dark:bg-surface-800', bar: 'bg-surface-500', text: 'text-surface-900 dark:text-surface-50' },
+  success: { bg: 'bg-success-soft', bar: 'bg-success', text: 'text-success' },
+  warning: { bg: 'bg-warning-soft', bar: 'bg-warning', text: 'text-warning' },
+  danger: { bg: 'bg-danger-soft', bar: 'bg-danger', text: 'text-danger' },
+  neutral: { bg: 'bg-surface-lo bg-surface-hi', bar: 'bg-surface-hi', text: 'text-ink-strong' },
 };
 
 interface Props {
@@ -32,7 +32,7 @@ function StatComponent({ label, value, tone = 'neutral', className }: Props) {
       <View className={cn('h-1 w-full', s.bar)} />
       <View className="p-2.5">
         <Text
-          className="text-xs font-semibold uppercase tracking-wide text-surface-700 dark:text-surface-300"
+          className="text-xs font-semibold uppercase tracking-wide text-ink"
           numberOfLines={1}
         >
           {label}

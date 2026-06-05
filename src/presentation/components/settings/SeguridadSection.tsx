@@ -14,8 +14,8 @@ function BiometricRowComponent() {
   return (
     <Card className="flex-row items-center justify-between">
       <View className="flex-1 pr-3">
-        <Text className="text-base font-semibold text-surface-900 dark:text-surface-50">Biometría</Text>
-        <Text className="text-xs text-surface-500">
+        <Text className="text-base font-semibold text-ink-strong">Biometría</Text>
+        <Text className="text-xs text-ink-muted">
           {biometricAvailable ? 'Disponible en este dispositivo.' : 'No disponible en este dispositivo.'}
         </Text>
       </View>
@@ -54,7 +54,7 @@ function PinFormComponent() {
   return (
     <>
       <Card className="gap-3">
-        <Text className="text-sm font-semibold text-surface-700 dark:text-surface-200">
+        <Text className="text-sm font-semibold text-ink">
           {hasPin ? 'Cambiar PIN' : 'Configurar PIN'}
         </Text>
         {hasPin ? (
