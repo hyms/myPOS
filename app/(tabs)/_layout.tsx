@@ -62,7 +62,6 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="caja"
       screenOptions={{
         tabBarActiveTintColor: TAB_TINT_ACTIVE,
         tabBarInactiveTintColor: TAB_TINT_INACTIVE,

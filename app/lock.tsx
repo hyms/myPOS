@@ -29,7 +29,7 @@ export default function LockScreen() {
       const ok = await BiometricService.authenticate('Desbloquear TPV');
       if (ok) {
         setUnlocked(true);
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/caja');
       } else {
         ToastService.info('Cancelado', 'Ingresa tu PIN.');
       }

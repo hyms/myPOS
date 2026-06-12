@@ -35,7 +35,7 @@ export function useSettingsBackup() {
         useSessionStore.getState().setUnlocked(true);
         useSettingsStore.setState({ hydrated: false });
         refreshCaja();
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/caja');
       }, 500);
     } catch (e) {
       ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo restaurar.');

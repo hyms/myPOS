@@ -58,7 +58,7 @@ export default function RootLayout() {
     if (useSessionStore.getState().pinRequired && !unlocked) {
       router.replace('/lock');
     } else {
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/caja');
     }
   }, [bootstrapped, router, unlocked]);
 
@@ -100,6 +100,7 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: DARK_PALETTE.canvas },
           }}
         >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="lock" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen
