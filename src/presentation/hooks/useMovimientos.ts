@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getRepositories } from '@/data/repositories/container';
 import type { Transaccion, TipoTransaccion } from '@/domain/entities/Transaccion';
@@ -21,6 +21,7 @@ export function useMovimientos({ tipo, search, page }: UseMovimientosArgs) {
   const pageSize = useSettingsStore((s) => s.pageSize);
   const debounced = useDebouncedValue(search, 200);
   const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
+  const mounted = useRef(false);
   const [items, setItems] = useState<ReadonlyArray<MovimientoItem>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +39,16 @@ export function useMovimientos({ tipo, search, page }: UseMovimientosArgs) {
     }));
     setItems(enriched);
     setLoading(false);
-  }, [tipo, page, pageSize, invalidVersion]);
+  }, [tipo, page, pageSize]);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      load();
+      return;
+    }
     load();
-  }, [load]);
+  }, [load, invalidVersion]);
 
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getRepositories } from '@/data/repositories/container';
 import type { Producto } from '@/domain/entities/Producto';
@@ -36,15 +36,18 @@ function loadProductos(
 export function useProductos({ search, categoriaId, sort, page }: UseProductosArgs) {
   const pageSize = useSettingsStore((s) => s.pageSize);
   const invalidVersion = useInvalidationStore((s) => s.versions.productos);
+  const mounted = useRef(false);
   const [items, setItems] = useState<ReadonlyArray<ProductoConPopularidad>>(() =>
     loadProductos(search, categoriaId, sort, page, pageSize),
   );
-  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     setItems(loadProductos(search, categoriaId, sort, page, pageSize));
-    if (!hasLoaded) setHasLoaded(true);
-  }, [search, categoriaId, sort, page, pageSize, hasLoaded, invalidVersion]);
+  }, [search, categoriaId, sort, page, pageSize, invalidVersion]);
 
   const refresh = useCallback(() => {
     setItems(loadProductos(search, categoriaId, sort, page, pageSize));
@@ -52,7 +55,7 @@ export function useProductos({ search, categoriaId, sort, page }: UseProductosAr
 
   return {
     items,
-    loading: !hasLoaded,
+    loading: false,
     hasMore: items.length === pageSize,
     refresh,
   };

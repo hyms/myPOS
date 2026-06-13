@@ -97,6 +97,7 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: DARK_PALETTE.surface },
             headerTintColor: DARK_PALETTE.ink,
             headerTitleStyle: { fontWeight: '700' },
+            headerShadowVisible: false,
             contentStyle: { backgroundColor: DARK_PALETTE.canvas },
           }}
         >

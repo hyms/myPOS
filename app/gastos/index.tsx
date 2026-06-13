@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import type { ListRenderItem } from '@shopify/flash-list';
 import { router } from 'expo-router';
@@ -71,7 +71,6 @@ export default function GastosIndexScreen() {
   const [page, setPage] = useState(0);
   const { items, hasMore, loading, refresh } = useGastosDelMes(page);
   const { format } = useCurrency();
-  useEffect(() => { refresh(); }, [refresh]);
   const { onEndReached } = useInfiniteScroll(() => setPage((p) => p + 1), hasMore, loading);
 
   const renderItem: ListRenderItem<Transaccion> = useCallback(

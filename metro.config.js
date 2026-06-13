@@ -6,6 +6,5 @@ const config = getDefaultConfig(__dirname);
 
 module.exports = withNativeWind(config, {
   input: './global.css',
-  output: './nativewind-output.css',
   configPath: path.join(__dirname, 'tailwind.config.js'),
 });

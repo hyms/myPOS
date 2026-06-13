@@ -73,6 +73,7 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: DARK_PALETTE.surface },
         headerTintColor: DARK_PALETTE.ink,
         headerTitleStyle: { fontWeight: '700' },
+        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen

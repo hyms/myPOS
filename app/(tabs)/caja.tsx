@@ -43,7 +43,7 @@ function SkeletonCaja() {
 }
 
 export default function CajaScreen() {
-  const { resumen, refresh } = useResumenCaja();
+  const { resumen, loading, refresh } = useResumenCaja();
   const { format } = useCurrency();
   const [mes, setMes] = useState<ResumenPeriodo>(obtenerResumenMes());
   const [anio, setAnio] = useState<ResumenPeriodo>(obtenerResumenAnio());
@@ -65,12 +65,6 @@ export default function CajaScreen() {
     setTimeout(() => setRefreshing(false), 400);
   }, [refresh]);
 
-  const isInitialLoad =
-    resumen.totalVentas === 0 &&
-    resumen.totalCompras === 0 &&
-    resumen.totalGastos === 0 &&
-    resumen.saldoActual === 0;
-
   const saldoTone: ResumenTone =
     resumen.saldoActual > 0
       ? 'success'
@@ -78,7 +72,7 @@ export default function CajaScreen() {
         ? 'danger'
         : 'neutral';
 
-  if (isInitialLoad) {
+  if (loading) {
     return (
       <ScrollView
         className="flex-1 bg-canvas"

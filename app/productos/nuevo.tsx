@@ -7,11 +7,13 @@ import { Input } from '@/presentation/components/ui/Input';
 import { ProductFormHeader } from '@/presentation/components/product/ProductFormHeader';
 import { CategorySelector } from '@/presentation/components/product/CategorySelector';
 import { QuickCategoryModal } from '@/presentation/components/product/QuickCategoryModal';
+import { ConfirmDialog } from '@/presentation/components/feedback/ConfirmDialog';
 import { useProductoDraftStore } from '@/presentation/stores/productoDraftStore';
 import { useCategorias } from '@/presentation/hooks/useCategorias';
 import {
   crearProducto,
   actualizarProducto,
+  eliminarProducto,
 } from '@/application/productos/GestionProductos';
 import { getRepositories } from '@/data/repositories/container';
 import { ToastService } from '@/infrastructure/toast/ToastService';
@@ -31,6 +33,8 @@ export default function ProductoFormScreen() {
   const [categoriaError, setCategoriaError] = useState<string | null>(null);
   const [quickCatOpen, setQuickCatOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (editingId) {
@@ -89,6 +93,23 @@ export default function ProductoFormScreen() {
       setSaving(false);
     }
   }, [draft, editingId, resetDraft]);
+
+  const handleDelete = useCallback(async () => {
+    if (!editingId) return;
+    setDeleting(true);
+    try {
+      await eliminarProducto(editingId);
+      ToastService.success('Producto eliminado');
+      invalidateMany(['productos']);
+      resetDraft();
+      router.back();
+    } catch (e) {
+      ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo eliminar.');
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmOpen(false);
+    }
+  }, [editingId, invalidateMany, resetDraft]);
 
   return (
     <ScrollView
@@ -151,10 +172,34 @@ export default function ProductoFormScreen() {
         />
       </View>
 
+      {editingId && (
+        <View className="mt-3 px-4">
+          <Button
+            title="Eliminar producto"
+            variant="danger"
+            onPress={() => setDeleteConfirmOpen(true)}
+            busy={deleting}
+            fullWidth
+          />
+        </View>
+      )}
+
       <QuickCategoryModal
         visible={quickCatOpen}
         onClose={() => setQuickCatOpen(false)}
         onCreated={(id) => setDraft({ categoriaId: id })}
+      />
+
+      <ConfirmDialog
+        visible={deleteConfirmOpen}
+        title="Eliminar producto"
+        message="¿Eliminar este producto? Se ocultará del catálogo pero se conservarán las ventas y compras históricas."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        busy={deleting}
       />
     </ScrollView>
   );

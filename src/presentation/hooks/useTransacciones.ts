@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getRepositories } from '@/data/repositories/container';
 import type { Transaccion, TipoTransaccion } from '@/domain/entities/Transaccion';
@@ -41,15 +41,18 @@ function loadResumen(
 export function useTransacciones({ tipo, page }: { tipo?: TipoTransaccion; page: number }) {
   const pageSize = useSettingsStore((s) => s.pageSize);
   const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
+  const mounted = useRef(false);
   const [items, setItems] = useState<ReadonlyArray<TransaccionResumen>>(() =>
     loadResumen(tipo, page, pageSize),
   );
-  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     setItems(loadResumen(tipo, page, pageSize));
-    if (!hasLoaded) setHasLoaded(true);
-  }, [tipo, page, pageSize, hasLoaded, invalidVersion]);
+  }, [tipo, page, pageSize, invalidVersion]);
 
   const refresh = useCallback(() => {
     setItems(loadResumen(tipo, page, pageSize));
@@ -57,7 +60,7 @@ export function useTransacciones({ tipo, page }: { tipo?: TipoTransaccion; page:
 
   return {
     items,
-    loading: !hasLoaded,
+    loading: false,
     refresh,
     hasMore: items.length === pageSize,
   };
@@ -70,15 +73,18 @@ function loadGastosDelMes(page: number, pageSize: number): ReadonlyArray<Transac
 export function useGastosDelMes(page: number) {
   const pageSize = useSettingsStore((s) => s.pageSize);
   const invalidVersion = useInvalidationStore((s) => s.versions.transacciones);
+  const mounted = useRef(false);
   const [items, setItems] = useState<ReadonlyArray<Transaccion>>(() =>
     loadGastosDelMes(page, pageSize),
   );
-  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     setItems(loadGastosDelMes(page, pageSize));
-    if (!hasLoaded) setHasLoaded(true);
-  }, [page, pageSize, hasLoaded, invalidVersion]);
+  }, [page, pageSize, invalidVersion]);
 
   const refresh = useCallback(() => {
     setItems(loadGastosDelMes(page, pageSize));
@@ -86,7 +92,7 @@ export function useGastosDelMes(page: number) {
 
   return {
     items,
-    loading: !hasLoaded,
+    loading: false,
     refresh,
     hasMore: items.length === pageSize,
   };

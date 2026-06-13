@@ -16,5 +16,5 @@ export function useResumenCaja() {
     setResumen(obtenerResumenCaja());
   }, []);
 
-  return { resumen, refresh };
+  return { resumen, loading: false, refresh };
 }
