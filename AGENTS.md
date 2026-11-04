@@ -36,13 +36,14 @@ myPOS/
 ├── app/                              # Expo Router (Presentation layer)
 │   ├── _layout.tsx                   # Root: providers, theme, DB init gate
 │   ├── lock.tsx                      # Pantalla de PIN/Biometría
+│   ├── index.tsx                     # Ventas (carrito)
+│   ├── compras.tsx                   # Compras (carrito, sub-tab de Registro)
+│   ├── productos.tsx                 # Catálogo
+│   ├── caja.tsx                      # Cuentas / Resumen
+│   ├── mas.tsx                       # Gastos + Settings (entry)
 │   ├── (tabs)/
-│   │   ├── _layout.tsx               # Tabs: Ventas, Compras, Productos, Caja, Más
-│   │   ├── index.tsx                 # Ventas (carrito)
-│   │   ├── compras.tsx               # Compras (carrito)
-│   │   ├── productos.tsx             # Catálogo
-│   │   ├── caja.tsx                  # Cuentas / Resumen
-│   │   └── mas.tsx                   # Gastos + Settings (entry)
+│   │   ├── _layout.tsx               # Tabs: Caja, Registro, Productos, Más
+│   │   └── registro.tsx              # Registro: sub-tabs VENTA/COMPRA
 │   ├── gastos/
 │   │   ├── index.tsx                 # Lista mes/año actual
 │   │   └── nuevo.tsx                 # Formulario gasto
@@ -71,16 +72,17 @@ myPOS/
 │   │   │   ├── Money.ts              # Manejo de divisa (Bs/$/€)
 │   │   │   └── Currency.ts
 │   │   └── rules/
-│   │       ├── stockRules.ts         # validateStock, isBelowMin
-│   │       └── cartRules.ts          # calcTotal, applyDiscount, calcChange
+│   │       ├── stockRules.ts         # validateStockDisponible, isBelowMin, StockError
+│   │       └── cartRules.ts          # calcTotals
 │   │
 │   ├── data/                         # 🟢 Capa de datos
 │   │   ├── database/
-│   │   │   ├── client.ts             # openDatabaseSync singleton + migraciones
+│   │   │   ├── client.ts             # getDatabase singleton + migraciones + close/reset
 │   │   │   ├── schema.sql.ts         # CREATE TABLE strings
 │   │   │   ├── migrations.ts         # Runner versionado (PRAGMA user_version)
-│   │   │   └── seed.ts               # INSERT resumen_caja id=1
+│   │   │   └── seed.sql.ts           # INSERT resumen_caja id=1
 │   │   ├── repositories/             # Interfaces segregadas (I en SOLID)
+│   │   │   ├── container.ts          # Inyección única de SQLite (SOLID-D)
 │   │   │   ├── IProductoRepository.ts
 │   │   │   ├── ICategoriaRepository.ts
 │   │   │   ├── ITransaccionRepository.ts
@@ -94,20 +96,17 @@ myPOS/
 │   │
 │   ├── application/                  # 🟡 Use cases (orquestan repositorios)
 │   │   ├── ventas/
-│   │   │   ├── RegistrarVenta.ts     # withTransactionSync atómica
-│   │   │   └── RevertirVenta.ts      # ⚠️ stock+, caja-
+│   │   │   └── RegistrarVenta.ts     # withTransactionSync atómica
 │   │   ├── compras/
-│   │   │   ├── RegistrarCompra.ts
-│   │   │   └── RevertirCompra.ts     # ⚠️ stock-, caja+ (devolver costo)
+│   │   │   └── RegistrarCompra.ts
 │   │   ├── gastos/
-│   │   │   ├── RegistrarGasto.ts
-│   │   │   └── RevertirGasto.ts      # ⚠️ caja+ (devolver gasto)
+│   │   │   └── RegistrarGasto.ts
 │   │   ├── productos/
-│   │   │   ├── CrearProducto.ts
-│   │   │   ├── ActualizarProducto.ts
-│   │   │   └── EliminarProducto.ts   # soft delete
+│   │   │   └── GestionProductos.ts   # create + update + soft delete
+│   │   ├── transacciones/
+│   │   │   └── RevertirTransaccion.ts# ⚠️ reversión unificada VENTA/COMPRA/GASTO
 │   │   ├── reportes/
-│   │   │   └── ResumenMesAnio.ts
+│   │   │   └── ResumenPeriodo.ts     # resumen mes/año (reemplaza ResumenMesAnio)
 │   │   └── backup/
 │   │       ├── ExportarDB.ts
 │   │       └── RestaurarDB.ts
@@ -117,7 +116,8 @@ myPOS/
 │   │   │   ├── ImageOptimizer.ts     # 400x400, JPEG 70%, <40KB
 │   │   │   └── ImageStorage.ts       # documentDirectory/productos/
 │   │   ├── pdf/
-│   │   │   └── ComprobanteRenderer.ts
+│   │   │   ├── ComprobanteRenderer.ts
+│   │   │   └── ComprobanteService.ts
 │   │   ├── security/
 │   │   │   ├── PinService.ts         # SecureStore + hash sha256
 │   │   │   └── BiometricService.ts   # expo-local-authentication
@@ -128,7 +128,7 @@ myPOS/
 │   │
 │   ├── presentation/                 # 🟣 UI compartida
 │   │   ├── components/
-│   │   │   ├── ui/                   # Button, Input, Modal, Card, Badge
+│   │   │   ├── ui/                   # Button, Input, Modal, Card, Badge, Skeleton, AnimatedPressable
 │   │   │   ├── product/
 │   │   │   │   ├── ProductGridCard.tsx       # memo + 3 col
 │   │   │   │   ├── ProductFallbackAvatar.tsx # inicial sobre color sólido
@@ -144,8 +144,13 @@ myPOS/
 │   │   │   │   ├── CategoryChipsRow.tsx      # texto limpio sin colores
 │   │   │   │   └── SortMenu.tsx              # por popularidad
 │   │   │   ├── feedback/
+│   │   │   │   ├── EmptyState.tsx
 │   │   │   │   ├── Toast.tsx                 # stock mínimo alert
 │   │   │   │   └── ConfirmDialog.tsx
+│   │   │   ├── registro/               # RegistroSegmented (VENTA/COMPRA)
+│   │   │   ├── reports/                # ReportRow, Stat, ReportCard, BreakdownBar
+│   │   │   ├── settings/               # Divisa, Paginacion, Seguridad, Backup, SectionHeader
+│   │   │   ├── movimientos/            # MovimientoListItem, TipoFilterChips
 │   │   │   └── lists/
 │   │   │       └── PaginatedFlashList.tsx    # LIMIT/OFFSET + infinite scroll
 │   │   ├── hooks/
@@ -155,25 +160,36 @@ myPOS/
 │   │   │   ├── useCarrito.ts          # Zustand selector
 │   │   │   ├── useResumenCaja.ts      # lectura directa, sin agregaciones
 │   │   │   ├── useTransacciones.ts    # paginado
+│   │   │   ├── useMovimientos.ts
 │   │   │   ├── useGastos.ts           # filtro mes/año actual
 │   │   │   ├── useStockAlert.ts
 │   │   │   ├── useCurrency.ts
 │   │   │   ├── usePinGate.ts          # bloqueo para acciones críticas
-│   │   │   └── useInfiniteScroll.ts   # con pageSize de settings
+│   │   │   ├── useInfiniteScroll.ts   # con pageSize de settings
+│   │   │   ├── useSettingsCurrency.ts
+│   │   │   ├── useSettingsPageSize.ts
+│   │   │   ├── useSettingsSecurity.ts
+│   │   │   ├── useSettingsBackup.ts
+│   │   │   └── useReducedMotion.ts
 │   │   ├── stores/                    # Zustand
 │   │   │   ├── carritoStore.ts        # tipo: 'VENTA' | 'COMPRA'
 │   │   │   ├── settingsStore.ts       # divisa, pageSize, biometric
-│   │   │   └── sessionStore.ts        # unlocked: boolean
+│   │   │   ├── sessionStore.ts        # unlocked: boolean
+│   │   │   ├── productoDraftStore.ts  # draft del form de producto (modal categoría rápida)
+│   │   │   ├── registroSubtabStore.ts # sub-tab activo VENTA/COMPRA
+│   │   │   └── invalidationStore.ts   # invalidación manual estilo TanStack Query
 │   │   └── theme/
 │   │       ├── tokens.ts              # colors, spacing, radii
-│   │       └── tailwind.config.js
+│   │       ├── palette.json
+│   │       ├── index.ts
+│   │       └── README.md
 │   │
 │   └── shared/
 │       ├── types/                     # Tipos transversales
 │       ├── utils/
 │       │   ├── date.ts                # mes/año actual, formato
 │       │   ├── format.ts              # currency, números
-│       │   └── id.ts
+│       │   └── cn.ts                  # clsx/tailwind-merge
 │       └── constants.ts
 │
 ├── assets/
@@ -184,7 +200,7 @@ myPOS/
 ├── global.css
 ├── tsconfig.json                      # strict, noUncheckedIndexedAccess
 ├── package.json
-└── pnpm-lock.yaml
+└── package-lock.json
 ```
 
 ### Aplicación de SOLID
@@ -328,48 +344,13 @@ detalle de productos.
 ### 4.4 `EliminarTransaccion(id)` — reversión con soft delete
 
 ```ts
-db.withTransactionSync(() => {
-  const trx = repo.findById(id);              // tipo, monto_total
-  const items = repo.findDetalles(id);        // [{producto_id, cantidad}]
-
-  switch (trx.tipo) {
-    case 'VENTA':
-      for (const it of items) {
-        db.runSync(
-          'UPDATE productos SET stock_actual = stock_actual + ?, fecha_update = CURRENT_TIMESTAMP WHERE id = ?',
-          it.cantidad, it.producto_id
-        );
-      }
-      db.runSync(
-        'UPDATE resumen_caja SET total_ventas = total_ventas - ?, saldo_actual = saldo_actual - ? WHERE id = 1',
-        trx.monto_total, trx.monto_total
-      );
-      break;
-    case 'COMPRA':
-      for (const it of items) {
-        db.runSync(
-          'UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ?',
-          it.cantidad, it.producto_id
-        );
-      }
-      db.runSync(
-        'UPDATE resumen_caja SET total_compras = total_compras - ?, saldo_actual = saldo_actual + ? WHERE id = 1',
-        trx.monto_total, trx.monto_total
-      );
-      break;
-    case 'GASTO':
-      db.runSync(
-        'UPDATE resumen_caja SET total_gastos = total_gastos - ?, saldo_actual = saldo_actual + ? WHERE id = 1',
-        trx.monto_total, trx.monto_total
-      );
-      break;
-  }
-
-  db.runSync(
-    'UPDATE transacciones SET fecha_delete = CURRENT_TIMESTAMP WHERE id = ?',
-    id
-  );
-});
+// RevertirTransaccion.ts maneja los tres tipos (VENTA, COMPRA, GASTO):
+case 'VENTA':
+  // Stock Actual = Stock Actual + Cantidad; total_ventas -= monto_total, saldo_actual -= monto_total
+case 'COMPRA':
+  // Stock Actual = Stock Actual - Cantidad; total_compras -= monto_total, saldo_actual += monto_total
+case 'GASTO':
+  // total_gastos -= monto_total, saldo_actual += monto_total
 ```
 
 ### Reglas de stock en reversión
