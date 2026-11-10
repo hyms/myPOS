@@ -56,8 +56,8 @@ graph TD
         SEC[PinService, BiometricService]
         IMG[ImageOptimizer, ImageStorage]
         PDF[ComprobanteRenderer, ComprobanteService]
-        SET[SettingsStore (SQLite hydration)]
-        AD[AdBanner (AdMob wrapper)]
+        SET["SettingsStore (SQLite hydration)"]
+        AD["AdBanner (AdMob wrapper)"]
         FS[FileSystem, SecureStore, Sharing, DocumentPicker, Print]
     end
 
