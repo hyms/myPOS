@@ -1,8 +1,9 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { SCHEMA_SQL, SEED_SQL } from './schema.sql';
+import financialAccumulatorsMigrationSql from './migrations/v2_0_0_financial_accumulators_migration.sql?raw';
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 interface Migration {
   version: number;
@@ -15,6 +16,12 @@ const MIGRATIONS: ReadonlyArray<Migration> = [
     up: (db) => {
       db.execSync(SCHEMA_SQL);
       db.execSync(SEED_SQL);
+    },
+  },
+  {
+    version: 2,
+    up: (db) => {
+      db.execSync(financialAccumulatorsMigrationSql);
     },
   },
 ];
