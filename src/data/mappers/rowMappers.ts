@@ -2,11 +2,14 @@ import type { Categoria } from '@/domain/entities/Categoria';
 import type { DetalleTransaccion } from '@/domain/entities/DetalleTransaccion';
 import type { Producto } from '@/domain/entities/Producto';
 import type { ResumenCaja } from '@/domain/entities/ResumenCaja';
-import type {
-  TipoPago,
-  TipoTransaccion,
-  Transaccion,
-} from '@/domain/entities/Transaccion';
+import type { Transaccion } from '@/domain/entities/Transaccion';
+import { hydrateCategory } from '@/domain/factories/CategoryFactory';
+import { hydrateFinancialSummary } from '@/domain/factories/FinancialAccumulatorFactory';
+import { hydrateProduct } from '@/domain/factories/ProductFactory';
+import {
+  hydrateTransaction,
+  hydrateTransactionDetail,
+} from '@/domain/factories/TransactionFactory';
 
 export interface CategoriaRow {
   id: number;
@@ -60,18 +63,19 @@ export interface ProductoPopularidadRow extends ProductoRow {
 }
 
 export function toCategoria(row: CategoriaRow): Categoria {
-  return {
+  return hydrateCategory({
     id: row.id,
     nombre: row.name,
     fechaRegistro: row.registered_at,
     fechaDelete: row.deleted_at,
-  };
+  });
 }
 
-export function toProducto(row: ProductoRow): Producto {
-  return {
+export function toProducto(row: ProductoRow): Producto & { readonly sku: string | null } {
+  return hydrateProduct({
     id: row.id,
     categoriaId: row.category_id,
+    sku: row.sku,
     nombre: row.name,
     precioVenta: row.selling_price,
     precioCompra: row.purchase_price,
@@ -81,36 +85,36 @@ export function toProducto(row: ProductoRow): Producto {
     fechaRegistro: row.registered_at,
     fechaUpdate: row.updated_at,
     fechaDelete: row.deleted_at,
-  };
+  });
 }
 
 export function toTransaccion(row: TransaccionRow): Transaccion {
-  return {
+  return hydrateTransaction({
     id: row.id,
-    tipo: row.type as TipoTransaccion,
+    tipo: row.type,
     montoTotal: row.total_amount,
-    tipoPago: row.payment_method as TipoPago,
+    tipoPago: row.payment_method,
     detalle: row.detail,
     fechaRegistro: row.registered_at,
     fechaDelete: row.deleted_at,
-  };
+  });
 }
 
 export function toDetalleTransaccion(row: DetalleTransaccionRow): DetalleTransaccion {
-  return {
+  return hydrateTransactionDetail({
     id: row.id,
     transaccionId: row.transaction_id,
     productoId: row.product_id,
     cantidad: row.quantity,
     precioUnitario: row.unit_price,
-  };
+  });
 }
 
 export function toResumenCaja(row: ResumenCajaRow): ResumenCaja {
-  return {
+  return hydrateFinancialSummary({
     totalVentas: row.total_sales,
     totalCompras: row.total_purchases,
     totalGastos: row.total_expenses,
     saldoActual: row.net_balance,
-  };
+  });
 }

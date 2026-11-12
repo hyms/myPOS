@@ -8,10 +8,15 @@ import {
   type DetalleTransaccionRow,
   type TransaccionRow,
 } from '@/data/mappers/rowMappers';
-import type { ITransaccionRepository } from './ITransaccionRepository';
+import type {
+  CreateDetalleInput,
+  CreateTransaccionInput,
+  ITransaccionRepository,
+} from './ITransaccionRepository';
 
 const TRANSACTION_COLUMNS =
   'id, type, total_amount, payment_method, detail, registered_at, deleted_at';
+const DETAIL_COLUMNS = 'id, transaction_id, product_id, quantity, unit_price';
 
 export class SqliteTransaccionRepository implements ITransaccionRepository {
   constructor(private readonly db: SQLiteDatabase) {}
@@ -26,7 +31,7 @@ export class SqliteTransaccionRepository implements ITransaccionRepository {
 
   findDetalles(id: number): ReadonlyArray<DetalleTransaccion> {
     const rows = this.db.getAllSync<DetalleTransaccionRow>(
-      'SELECT id, transaction_id, product_id, quantity, unit_price FROM transaction_details WHERE transaction_id = ?',
+      `SELECT ${DETAIL_COLUMNS} FROM transaction_details WHERE transaction_id = ?`,
       id,
     );
     return rows.map(toDetalleTransaccion);
@@ -78,5 +83,48 @@ export class SqliteTransaccionRepository implements ITransaccionRepository {
       offset,
     );
     return rows.map(toTransaccion);
+  }
+
+  crearTransaccion(input: CreateTransaccionInput): Transaccion {
+    let createdId = 0;
+    this.db.withTransactionSync(() => {
+      const result = this.db.runSync(
+        `INSERT INTO sales_transactions (type, total_amount, payment_method, detail)
+         VALUES (?, ?, ?, ?)`,
+        input.tipo,
+        input.montoTotal,
+        input.tipoPago,
+        input.detalle,
+      );
+      createdId = Number(result.lastInsertRowId);
+    });
+    const created = this.findById(createdId);
+    if (!created) {
+      throw new Error('No se pudo crear la transacción.');
+    }
+    return created;
+  }
+
+  crearDetalle(transaccionId: number, input: CreateDetalleInput): DetalleTransaccion {
+    let createdId = 0;
+    this.db.withTransactionSync(() => {
+      const result = this.db.runSync(
+        `INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price)
+         VALUES (?, ?, ?, ?)`,
+        transaccionId,
+        input.productoId,
+        input.cantidad,
+        input.precioUnitario,
+      );
+      createdId = Number(result.lastInsertRowId);
+    });
+    const row = this.db.getFirstSync<DetalleTransaccionRow>(
+      `SELECT ${DETAIL_COLUMNS} FROM transaction_details WHERE id = ?`,
+      createdId,
+    );
+    if (!row) {
+      throw new Error('No se pudo crear el detalle de la transacción.');
+    }
+    return toDetalleTransaccion(row);
   }
 }

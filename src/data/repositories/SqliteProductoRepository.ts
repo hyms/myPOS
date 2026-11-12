@@ -9,6 +9,7 @@ import type {
   ProductoId,
   UpdateProductoInput,
 } from '@/domain/entities/Producto';
+import { normalizeProductWrite, normalizeSku } from '@/domain/factories/ProductFactory';
 import { toProducto, type ProductoPopularidadRow, type ProductoRow } from '@/data/mappers/rowMappers';
 import type { IProductoRepository, ProductoQuery } from './IProductoRepository';
 
@@ -59,6 +60,16 @@ export class SqliteProductoRepository implements IProductoRepository {
     return row ? toProducto(row) : null;
   }
 
+  findBySku(sku: string): Producto | null {
+    const normalized = normalizeSku(sku);
+    if (!normalized) return null;
+    const row = this.db.getFirstSync<ProductoRow>(
+      `SELECT ${PRODUCT_COLUMNS} FROM products WHERE sku = ? AND deleted_at IS NULL`,
+      normalized,
+    );
+    return row ? toProducto(row) : null;
+  }
+
   findByIds(ids: ReadonlyArray<ProductoId>): ReadonlyArray<Producto> {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(',');
@@ -72,20 +83,27 @@ export class SqliteProductoRepository implements IProductoRepository {
   }
 
   crear(input: CreateProductoInput): Producto {
-    this.validate(input.categoriaId, input);
-    const result = this.db.runSync(
-      `INSERT INTO products
-        (category_id, name, selling_price, purchase_price, current_stock, min_stock, image_uri)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      input.categoriaId,
-      input.nombre.trim(),
-      input.precioVenta,
-      input.precioCompra,
-      input.stockActual,
-      input.stockMinimo,
-      input.imagenUri,
-    );
-    const created = this.findById(result.lastInsertRowId);
+    const data = normalizeProductWrite(input);
+    let createdId = 0;
+    this.db.withTransactionSync(() => {
+      this.assertCategoryExists(data.categoriaId);
+      this.assertSkuAvailable(data.sku, null);
+      const result = this.db.runSync(
+        `INSERT INTO products
+          (category_id, sku, name, selling_price, purchase_price, current_stock, min_stock, image_uri)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        data.categoriaId,
+        data.sku,
+        data.nombre,
+        data.precioVenta,
+        data.precioCompra,
+        data.stockActual,
+        data.stockMinimo,
+        data.imagenUri,
+      );
+      createdId = Number(result.lastInsertRowId);
+    });
+    const created = this.findById(createdId);
     if (!created) {
       throw new Error('No se pudo crear el producto.');
     }
@@ -93,22 +111,27 @@ export class SqliteProductoRepository implements IProductoRepository {
   }
 
   actualizar(id: ProductoId, input: UpdateProductoInput): Producto {
-    this.validate(input.categoriaId, input);
-    this.db.runSync(
-      `UPDATE products
-          SET category_id = ?, name = ?, selling_price = ?, purchase_price = ?,
-              current_stock = ?, min_stock = ?, image_uri = ?,
-              updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND deleted_at IS NULL`,
-      input.categoriaId,
-      input.nombre.trim(),
-      input.precioVenta,
-      input.precioCompra,
-      input.stockActual,
-      input.stockMinimo,
-      input.imagenUri,
-      id,
-    );
+    const data = normalizeProductWrite(input);
+    this.db.withTransactionSync(() => {
+      this.assertCategoryExists(data.categoriaId);
+      this.assertSkuAvailable(data.sku, id);
+      this.db.runSync(
+        `UPDATE products
+            SET category_id = ?, sku = ?, name = ?, selling_price = ?, purchase_price = ?,
+                current_stock = ?, min_stock = ?, image_uri = ?,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND deleted_at IS NULL`,
+        data.categoriaId,
+        data.sku,
+        data.nombre,
+        data.precioVenta,
+        data.precioCompra,
+        data.stockActual,
+        data.stockMinimo,
+        data.imagenUri,
+        id,
+      );
+    });
     const updated = this.findById(id);
     if (!updated) {
       throw new Error('No se pudo actualizar el producto.');
@@ -117,24 +140,35 @@ export class SqliteProductoRepository implements IProductoRepository {
   }
 
   eliminar(id: ProductoId): void {
-    this.db.runSync(
-      'UPDATE products SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      id,
-    );
+    this.db.withTransactionSync(() => {
+      this.db.runSync(
+        'UPDATE products SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL',
+        id,
+      );
+    });
   }
 
-  private validate(categoriaId: CategoriaId, input: CreateProductoInput | UpdateProductoInput): void {
-    if (!categoriaId) {
+  private assertCategoryExists(categoriaId: CategoriaId): void {
+    const row = this.db.getFirstSync<{ id: number }>(
+      'SELECT id FROM categories WHERE id = ? AND deleted_at IS NULL',
+      categoriaId,
+    );
+    if (!row) {
       throw new Error('La categoría es obligatoria.');
     }
-    if (!input.nombre.trim()) {
-      throw new Error('El nombre del producto es obligatorio.');
-    }
-    if (input.precioVenta < 0 || input.precioCompra < 0) {
-      throw new Error('Los precios no pueden ser negativos.');
-    }
-    if (input.stockActual < 0 || input.stockMinimo < 0) {
-      throw new Error('El stock no puede ser negativo.');
+  }
+
+  private assertSkuAvailable(sku: string | null, excludeId: ProductoId | null): void {
+    if (!sku) return;
+    const row = this.db.getFirstSync<{ id: number }>(
+      `SELECT id FROM products
+        WHERE sku = ? AND deleted_at IS NULL AND (? IS NULL OR id <> ?)`,
+      sku,
+      excludeId,
+      excludeId,
+    );
+    if (row) {
+      throw new Error('El SKU ya existe.');
     }
   }
 }

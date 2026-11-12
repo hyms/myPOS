@@ -19,6 +19,7 @@ export interface ProductoQuery {
 export interface IProductoRepository {
   listar(query: ProductoQuery): ReadonlyArray<Producto & { popularidad: number }>;
   findById(id: ProductoId): Producto | null;
+  findBySku(sku: string): Producto | null;
   crear(input: CreateProductoInput): Producto;
   actualizar(id: ProductoId, input: UpdateProductoInput): Producto;
   eliminar(id: ProductoId): void;

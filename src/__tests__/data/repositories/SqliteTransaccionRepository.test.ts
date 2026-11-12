@@ -85,6 +85,23 @@ describe('SqliteTransaccionRepository', () => {
     });
   });
 
+  describe('crearTransaccion y crearDetalle', () => {
+    it('crea transaccion y detalles mapeados', () => {
+      const trx = repo.crearTransaccion({
+        tipo: 'VENTA',
+        montoTotal: 150,
+        tipoPago: 'EFECTIVO',
+        detalle: 'prueba',
+      });
+      expect(trx.id).toBeGreaterThan(0);
+      expect(trx.tipo).toBe('VENTA');
+      const det = repo.crearDetalle(trx.id, { productoId: 1, cantidad: 1.5, precioUnitario: 100 });
+      expect(det.transaccionId).toBe(trx.id);
+      expect(det.cantidad).toBe(1.5);
+      expect(det.precioUnitario).toBe(100);
+    });
+  });
+
   describe('listarPorMesAnio', () => {
     it('retorna totales agrupados por tipo', () => {
       insertVenta(100);

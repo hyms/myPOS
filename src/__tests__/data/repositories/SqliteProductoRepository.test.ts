@@ -33,7 +33,19 @@ describe('SqliteProductoRepository', () => {
       expect(p.stockActual).toBe(10);
       expect(p.stockMinimo).toBe(2);
       expect(p.categoriaId).toBe(1);
+      expect(p.sku).toBeNull();
       expect(p.id).toBeGreaterThan(0);
+    });
+
+    it('persiste y normaliza SKU opcional', () => {
+      const p = repo.crear(makeInput({ sku: ' ab-01 ' }));
+      expect(p.sku).toBe('AB-01');
+      expect(repo.findBySku('ab-01')?.id).toBe(p.id);
+    });
+
+    it('rechaza SKU duplicado entre productos activos', () => {
+      repo.crear(makeInput({ nombre: 'A', sku: 'SKU-1' }));
+      expect(() => repo.crear(makeInput({ nombre: 'B', sku: 'sku-1' }))).toThrow('SKU');
     });
 
     it('lanza error si la categoría no existe', () => {
@@ -118,9 +130,10 @@ describe('SqliteProductoRepository', () => {
   describe('actualizar', () => {
     it('actualiza campos del producto', () => {
       const p = repo.crear(makeInput());
-      const updated = repo.actualizar(p.id, makeInput({ nombre: 'Coca Zero', precioVenta: 120 }));
+      const updated = repo.actualizar(p.id, makeInput({ nombre: 'Coca Zero', precioVenta: 120, sku: 'CZ-1' }));
       expect(updated.nombre).toBe('Coca Zero');
       expect(updated.precioVenta).toBe(120);
+      expect(updated.sku).toBe('CZ-1');
     });
 
     it('lanza error si producto no existe', () => {

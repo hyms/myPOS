@@ -30,4 +30,25 @@ describe('SqliteResumenCajaRepository', () => {
       expect(r.saldoActual).toBe(500);
     });
   });
+
+  describe('aplicarDelta', () => {
+    it('actualiza acumuladores de forma atomica y consistente', () => {
+      const r = repo.aplicarDelta({ salesDelta: 200, expensesDelta: 50 });
+      expect(r.totalVentas).toBe(200);
+      expect(r.totalGastos).toBe(50);
+      expect(r.saldoActual).toBe(150);
+    });
+
+    it('revierte cambios si falla dentro de la transaccion', () => {
+      expect(() => {
+        db.withTransactionSync(() => {
+          repo.aplicarDelta({ salesDelta: 100 });
+          throw new Error('boom');
+        });
+      }).toThrow('boom');
+      const r = repo.obtener();
+      expect(r.totalVentas).toBe(0);
+      expect(r.saldoActual).toBe(0);
+    });
+  });
 });

@@ -28,4 +28,6 @@ export interface ITransaccionRepository {
     readonly periodo: 'MONTH' | 'YEAR';
   }): ReadonlyArray<{ tipo: TipoTransaccion; total: number }>;
   gastosDelMes(limit: number, offset: number): ReadonlyArray<Transaccion>;
+  crearTransaccion(input: CreateTransaccionInput): Transaccion;
+  crearDetalle(transaccionId: number, input: CreateDetalleInput): DetalleTransaccion;
 }

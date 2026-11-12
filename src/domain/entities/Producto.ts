@@ -5,6 +5,7 @@ export type ProductoId = number;
 export interface Producto {
   readonly id: ProductoId;
   readonly categoriaId: CategoriaId;
+  readonly sku?: string | null;
   readonly nombre: string;
   readonly precioVenta: number;
   readonly precioCompra: number;
@@ -19,10 +20,12 @@ export interface Producto {
 export type ProductoResumen = Pick<
   Producto,
   'id' | 'nombre' | 'precioVenta' | 'precioCompra' | 'stockActual' | 'imagenUri' | 'categoriaId'
->;
+> & { readonly sku?: string | null };
+
 
 export type CreateProductoInput = {
   readonly categoriaId: CategoriaId;
+  readonly sku?: string | null;
   readonly nombre: string;
   readonly precioVenta: number;
   readonly precioCompra: number;
@@ -33,6 +36,7 @@ export type CreateProductoInput = {
 
 export type UpdateProductoInput = {
   readonly categoriaId: CategoriaId;
+  readonly sku?: string | null;
   readonly nombre: string;
   readonly precioVenta: number;
   readonly precioCompra: number;
