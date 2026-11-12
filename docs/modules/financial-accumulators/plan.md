@@ -1,10 +1,10 @@
-# Financial Accumulators Module — Implementation Plan (v2.0.0)
+# Financial Accumulators Module — Implementation Plan (v2.0.0 KMP)
 
-> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. Domain entities still use their existing names; presentation/entity renaming remains pending.
+> **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 3 after Sales & Checkout.
 
 ## Overview
 
-This plan covers the implementation of the Financial Accumulators module v2.0.0, including:
+This plan covers the implementation of the Financial Accumulators module v2.0.0 KMP, including:
 - Domain layer: English entities (`FinancialSummary`, `PeriodSummary`), shared `TransactionType`
 - Data layer: Table rename `resumen_caja` → `financial_accumulators` with English columns, `IAccumulatorRepository`
 - Application layer: `GetCashSummary`, `GetPeriodSummary`, `UpdateAccumulator`, `ReverseTransaction`
@@ -16,167 +16,130 @@ This plan covers the implementation of the Financial Accumulators module v2.0.0,
 ## Phase 1: Database Migration (Coordinate with sales-checkout)
 
 ### 1.1 Migration Runner Update
-**File:** `src/data/database/migrations.ts`
-- Register the accumulators step in the version-2 group (all v2 modules share one `withTransactionSync`)
-- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
+**File:** `commonMain/data/database/DatabaseDriverFactory.kt`
+- Register the accumulators step in the version-2 migration list (all v2 modules share one transaction)
+- `user_version = 2` is set centrally by `DatabaseDriverFactory` after every v2 step succeeds
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql.ts` (`FINANCIAL_ACCUMULATORS_MIGRATION_SQL`, plus `FINANCIAL_ACCUMULATORS_COLUMNS_MIGRATION_SQL` recovery variant)
+**File:** `commonMain/sqldelight/migrations/v2_financial_accumulators.sqm` (see spec.md section 4.3)
 
-```sql
--- Runs inside the shared v2.0.0 transaction (single db.withTransactionSync)
+### 1.3 Recovery Migration
+**File:** `commonMain/sqldelight/migrations/v2_financial_accumulators_columns.sqm`
+- For databases from an earlier half-applied v2.0.0 attempt (table already renamed, columns still Spanish)
+- Applies column renames, `updated_at` backfill, and index without re-renaming the table
 
--- Step 1: Rename table
-ALTER TABLE resumen_caja RENAME TO financial_accumulators;
-
--- Step 2: Rename columns
-ALTER TABLE financial_accumulators RENAME COLUMN total_ventas TO total_sales;
-ALTER TABLE financial_accumulators RENAME COLUMN total_compras TO total_purchases;
-ALTER TABLE financial_accumulators RENAME COLUMN total_gastos TO total_expenses;
-ALTER TABLE financial_accumulators RENAME COLUMN saldo_actual TO net_balance;
-
--- Step 3: Add updated_at (SQLite forbids non-constant defaults in ALTER TABLE ADD COLUMN)
-ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT NULL;
-
--- Step 4: Backfill the existing singleton row
-UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
-
--- Step 5: Index for freshness checks
-CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
-  ON financial_accumulators(updated_at);
-
--- Step 6: user_version = 2 is set centrally by `runMigrations`
-```
-
-> **Recovery:** databases from an earlier half-applied v2.0.0 attempt (table already
-> renamed, columns still Spanish) are handled by
-> `FINANCIAL_ACCUMULATORS_COLUMNS_MIGRATION_SQL`, which applies the column renames,
-> `updated_at` backfill, and index without re-renaming the table.
-
-### 1.3 Migration Checklist
-- [x] Register the accumulators step in `migrations.ts` v2 group
-- [x] Write `v2_0_0_financial_accumulators_migration.sql.ts` with atomic transaction
-- [x] Rename table: `resumen_caja` → `financial_accumulators`
-- [x] Rename columns: `total_ventas`→`total_sales`, `total_compras`→`total_purchases`, `total_gastos`→`total_expenses`, `saldo_actual`→`net_balance`
-- [x] Add `updated_at` with `DEFAULT NULL` + backfill (SQLite ALTER TABLE limitation)
-- [x] Provide half-migrated recovery variant
-- [x] `user_version` = 2 (centralized)
-- [x] Verify row counts match pre-migration (single row id=1)
+### 1.4 Migration Checklist
+- [ ] Register the accumulators step in `DatabaseDriverFactory` v2 migration list
+- [ ] Write `v2_financial_accumulators.sqm` with atomic transaction
+- [ ] Rename table: `resumen_caja` → `financial_accumulators`
+- [ ] Rename columns: `total_ventas`→`total_sales`, `total_compras`→`total_purchases`, `total_gastos`→`total_expenses`, `saldo_actual`→`net_balance`
+- [ ] Add `updated_at` with `DEFAULT NULL` + backfill (SQLite ALTER TABLE limitation)
+- [ ] Provide half-migrated recovery variant
+- [ ] `user_version` = 2 (centralized)
+- [ ] Verify row counts match pre-migration (single row id=1)
 - [ ] Test restore from backup scenario
 
 ---
 
-## Phase 2: Domain Layer
+## Phase 2: Domain Layer (`commonMain/domain/`)
 
-### 2.1 Entity Renames & New Entities
-| Old File | New File | Changes |
-|---|---|---|
-| `ResumenCaja.ts` | `FinancialSummary.ts` | English fields, `Money` VOs, `updatedAt` |
-| *(new)* | `PeriodSummary.ts` | Period aggregation with `Money` VOs |
-| `Transaccion.ts` | `Transaction.ts` | English fields, shared with sales-checkout |
+### 2.1 Entity Files
+| New File | Purpose |
+|---|---|
+| `entities/FinancialSummary.kt` | English fields, `Money` VOs, `updatedAt` |
+| `entities/PeriodSummary.kt` | Period aggregation with `Money` VOs |
+| `entities/TransactionType.kt` | Shared with sales-checkout: `SALE` \| `PURCHASE` \| `EXPENSE` |
 
 ### 2.2 Shared Value Objects (from sales-checkout)
-- `TransactionType.ts` — `SALE` | `PURCHASE` | `EXPENSE`
-- `PaymentMethod.ts` — `CASH` | `CARD` | `TRANSFER` | `QR`
-- `Money.ts` / `Currency.ts` — from `system-settings`
+- `entities/PaymentMethod.kt` — `CASH` \| `CARD` \| `TRANSFER` \| `QR`
+- `valueobjects/Money.kt` / `Currency.kt` — from `system-settings`
 
 ---
 
-## Phase 3: Data Layer
+## Phase 3: Data Layer (`commonMain/data/repositories/`)
 
 ### 3.1 Repository
 | File | Description |
 |---|---|
-| `src/data/repositories/IAccumulatorRepository.ts` | English interface with `Money` VOs |
-| `src/data/repositories/SqliteAccumulatorRepository.ts` | Implementation with English column mappers |
+| `IAccumulatorRepository.kt` | English interface with `Money` VOs |
+| `impl/SqlDelightAccumulatorRepository.kt` | Implementation with SQLDelight queries |
 
-### 3.2 Mappers
-**File:** `src/data/mappers/rowMappers.ts`
-- `mapFinancialSummaryRow` — Spanish → English column mapping
-- `mapPeriodSummaryRow` — Aggregation from `sales_transactions`
+### 3.2 SQLDelight Mappers
+- `mapFinancialSummaryRow` — row → `FinancialSummary` entity
+- `mapPeriodSummaryRow` — aggregation from `sales_transactions`
 
-### 3.3 Container Registration
-**File:** `src/data/repositories/container.ts`
-- Register `SqliteAccumulatorRepository` as `IAccumulatorRepository`
+### 3.3 Registration
+**File:** `commonMain/data/database/DatabaseDriverFactory.kt`
+- Register `SqlDelightAccumulatorRepository` as `IAccumulatorRepository`
 
 ---
 
-## Phase 4: Application Layer
+## Phase 4: Application Layer (`commonMain/application/`)
 
-### 4.1 GetCashSummary.ts
-**File:** `src/application/accumulators/GetCashSummary.ts`
+### 4.1 GetCashSummary.kt
+**File:** `accumulators/GetCashSummary.kt`
 - Direct read from `financial_accumulators` where `id = 1`
 - Returns `FinancialSummary` with `Money` VOs
 
-### 4.2 GetPeriodSummary.ts
-**File:** `src/application/accumulators/GetPeriodSummary.ts`
-- Input: `period: 'MONTH' | 'YEAR'`
+### 4.2 GetPeriodSummary.kt
+**File:** `accumulators/GetPeriodSummary.kt`
+- Input: `period: Period` (MONTH | YEAR)
 - Aggregates from `sales_transactions` by `type` for period
 - Returns `PeriodSummary` with computed `net`
 
-### 4.3 UpdateAccumulator.ts
-**File:** `src/application/accumulators/UpdateAccumulator.ts`
+### 4.3 UpdateAccumulator.kt
+**File:** `accumulators/UpdateAccumulator.kt`
 - Input: `salesDelta`, `purchasesDelta`, `expensesDelta` (Money)
-- Atomic `withTransactionSync`:
+- Atomic transaction block:
   1. Single UPDATE on `financial_accumulators` with all deltas + `updated_at`
 - Called by: `RegisterSale`, `RegisterPurchase`, `RegisterExpense`, `ReverseTransaction`
 
-### 4.4 ReverseTransaction.ts
-**File:** `src/application/transactions/ReverseTransaction.ts` (shared)
+### 4.4 ReverseTransaction.kt
+**File:** `transactions/ReverseTransaction.kt` (shared)
 - Handles `SALE`, `PURCHASE`, `EXPENSE` reversal
 - Pre-check: PURCHASE revert validates stock won't go negative
-- Atomic `withTransactionSync` for stock + accumulator updates
+- Atomic transaction block for stock + accumulator updates
 - Soft delete: `UPDATE deleted_at = CURRENT_TIMESTAMP`
 
 ---
 
 ## Phase 5: Presentation Layer
 
-### 5.1 Zustand Stores (existing)
-| Store | File | Description |
+### 5.1 ViewModels (`commonMain/presentation/viewmodels/`)
+| ViewModel | File | Description |
 |---|---|---|
-| `sessionStore` | `src/presentation/stores/sessionStore.ts` | `unlocked: boolean` |
-| `invalidationStore` | `src/presentation/stores/invalidationStore.ts` | Cache invalidation versions |
+| `CashSummaryViewModel` | `CashSummaryViewModel.kt` | Reads accumulator, auto-refresh |
+| `PeriodSummaryViewModel` | `PeriodSummaryViewModel.kt` | MONTH/YEAR period summaries |
+| `MovementsViewModel` | `MovementsViewModel.kt` | Paginated, filterable, searchable list |
+| `PinGateViewModel` | `PinGateViewModel.kt` | PIN verification gate |
 
-### 5.2 Hooks
-| Hook | File | Description |
-|---|---|---|
-| `useCashSummary` | `src/presentation/hooks/useCashSummary.ts` | Reads accumulator, auto-refresh |
-| `usePeriodSummary` | `src/presentation/hooks/usePeriodSummary.ts` | MONTH/YEAR period summaries |
-| `useMovements` | `src/presentation/hooks/useMovements.ts` | Paginated, filterable, searchable list |
-| `usePinGate` | `src/presentation/hooks/usePinGate.ts` | PIN verification gate |
+### 5.2 Compose UI Components (`composeApp/src/commonMain/compose/`)
 
-### 5.3 Components
 | Component | File | Description |
 |---|---|---|
-| `CashBalanceCard` | `src/presentation/components/accumulators/CashBalanceCard.tsx` | Large balance with tone |
-| `StatCard` | `src/presentation/components/reports/Stat.tsx` | Memoized stat (exists) |
-| `PeriodBreakdown` | `src/presentation/components/reports/BreakdownBar.tsx` | Horizontal bars (exists) |
-| `ReportRow` | `src/presentation/components/reports/ReportRow.tsx` | Key-value row (exists) |
-| `MovementListItem` | `src/presentation/components/movimientos/MovimientoListItem.tsx` | Transaction row (exists) |
-| `TypeFilterChips` | `src/presentation/components/movimientos/TipoFilterChips.tsx` | Filter chips (exists) |
-| `AdBanner` | `src/presentation/components/ad/AdBanner.tsx` | **ALLOWED** in Caja/Movimientos footers |
+| `CashSummaryScreen.kt` | `accumulators/CashSummaryScreen.kt` | Uses `CashBalanceCard`, `StatCard`, `BreakdownBar`, `ReportRow`, `AdBanner` |
+| `CashBalanceCard.kt` | `accumulators/CashBalanceCard.kt` | Large balance with tone |
+| `StatCard.kt` | `reports/StatCard.kt` | Memoized stat |
+| `BreakdownBar.kt` | `reports/BreakdownBar.kt` | Horizontal bars |
+| `ReportRow.kt` | `reports/ReportRow.kt` | Key-value row |
+| `MovementsListScreen.kt` | `movimientos/MovementsListScreen.kt` | Uses `MovementListItem`, `TypeFilterChips`, `SearchBar`, `AdBanner` |
+| `MovementListItem.kt` | `movimientos/MovementListItem.kt` | Transaction row |
+| `TypeFilterChips.kt` | `movimientos/TypeFilterChips.kt` | Filter chips |
+| `AdBanner.kt` | `ads/AdBanner.kt` | **ALLOWED** in Caja/Movimientos footers |
 
-### 5.4 AdWare Integration
+### 5.3 AdWare Integration
 **Files to modify:**
-- `app/(tabs)/caja.tsx` — Add `AdBanner` to footer when `AD_ENABLED=true`
-- `app/movimientos/index.tsx` — Add `AdBanner` to `ListFooterComponent` when `AD_ENABLED=true`
-- `app/transacciones/[id].tsx` — **NO** ads
-- PIN gate / ConfirmDialog — **NO** ads
+- `CashSummaryScreen.kt` — Add `AdBanner` to footer when `AD_ENABLED=true`
+- `MovementsListScreen.kt` — Add `AdBanner` to footer when `AD_ENABLED=true`
+- `TransactionDetailScreen.kt` — **NO** ads
+- `PinGateDialog.kt` / `ConfirmDialog.kt` — **NO** ads
 
 **Rule:** `AD_ENABLED` flag respected in dashboard/report views only.
 
-### 5.5 i18n
-**File:** `src/presentation/i18n/es/accumulator.json`
-- All 40+ keys from spec.md section 14
-- Namespace: `accumulator`
-
-### 5.6 Screens
-| Screen | File | Changes |
-|---|---|---|
-| Caja Dashboard | `app/(tabs)/caja.tsx` | Use `CashBalanceCard`, `StatCard`, `PeriodBreakdown`, `ReportRow`, AdBanner |
-| Movements List | `app/movimientos/index.tsx` | Use `MovementListItem`, `TypeFilterChips`, `SearchBar`, AdBanner |
-| Transaction Detail | `app/transacciones/[id].tsx` | Already handles reversal, PIN gate |
+### 5.4 i18n
+**File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
+- All 40+ keys from spec.md section 13
+- Namespace: `accumulator_`
 
 ---
 
@@ -205,52 +168,53 @@ CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
 ## Phase 7: Testing
 
 ### 7.1 Unit Tests
-**Directory:** `tests/unit/financial-accumulators/`
-- `FinancialSummary.test.ts` — Entity construction with Money VOs
-- `PeriodSummary.test.ts` — Entity construction, net calculation
-- `UpdateAccumulator.test.ts` — Delta calculations, net formula
+**Directory:** `commonTest/unit/financial-accumulators/`
+- `FinancialSummaryTest.kt` — Entity construction with Money VOs
+- `PeriodSummaryTest.kt` — Entity construction, net calculation
+- `UpdateAccumulatorTest.kt` — Delta calculations, net formula
 
 ### 7.2 Integration Tests
-**Directory:** `tests/integration/financial-accumulators/`
-- `GetCashSummary.test.ts` — Direct read, updated values
-- `GetPeriodSummary.test.ts` — Month/year aggregation, net calculation
-- `UpdateAccumulator.test.ts` — Atomic update, multiple deltas
-- `ReverseTransaction.test.ts` — SALE, PURCHASE, EXPENSE, stock safety check
+**Directory:** `commonTest/integration/financial-accumulators/`
+- `GetCashSummaryTest.kt` — Direct read, updated values
+- `GetPeriodSummaryTest.kt` — Month/year aggregation, net calculation
+- `UpdateAccumulatorTest.kt` — Atomic update, multiple deltas
+- `ReverseTransactionTest.kt` — SALE, PURCHASE, EXPENSE, stock safety check
 
 ### 7.3 Migration Tests
-**Directory:** `tests/migration/financial-accumulators/`
-- `v2_0_0_migration.test.ts` — Seed v1 schema, run migration, assert all mappings, idempotency
+**Directory:** `commonTest/migration/financial-accumulators/`
+- `V2FinancialAccumulatorsMigrationTest.kt` — Seed v1 schema, run migration, assert all mappings, idempotency
 
 ### 7.4 Atomic Transaction Tests
-**Directory:** `tests/integration/atomic/`
-- `accumulatorAtomicRollback.test.ts` — Simulate DB failure mid-transaction → full rollback
-- `reverseAtomicRollback.test.ts` — Failure during reversal → no partial state
+**Directory:** `commonTest/atomic/`
+- `AccumulatorAtomicRollbackTest.kt` — Simulate DB failure mid-transaction → full rollback
+- `ReverseAtomicRollbackTest.kt` — Failure during reversal → no partial state
 
-### 7.5 Hook Tests
-**Directory:** `tests/unit/hooks/`
-- `useCashSummary.test.ts` — Invalidation refresh, loading states
-- `usePeriodSummary.test.ts` — Period switching, data refresh
-- `useMovements.test.ts` — Pagination, filtering, search, infinite scroll
+### 7.5 ViewModel Tests (Turbine)
+**Directory:** `commonTest/viewmodels/financial-accumulators/`
+- `CashSummaryViewModelTest.kt` — Invalidation refresh, loading states
+- `PeriodSummaryViewModelTest.kt` — Period switching, data refresh
+- `MovementsViewModelTest.kt` — Pagination, filtering, search, infinite scroll
+- `PinGateViewModelTest.kt` — PIN gate logic
 
-### 7.6 UI Component Tests
-**Directory:** `tests/components/accumulators/`
-- `CashBalanceCard.test.tsx` — Tone rendering (success/danger/neutral), formatted amount
-- `StatCard.test.tsx` — Label, value, tone variants
-- `PeriodBreakdown.test.tsx` — Bar percentages, max calculation
-- `ReportRow.test.tsx` — Bold, tone, last-row border
+### 7.6 Compose UI Tests (Robolectric)
+**Directory:** `androidTest/compose/accumulators/`
+- `CashBalanceCardTest.kt` — Tone rendering (success/danger/neutral), formatted amount
+- `StatCardTest.kt` — Label, value, tone variants
+- `BreakdownBarTest.kt` — Bar percentages, max calculation
+- `ReportRowTest.kt` — Bold, tone, last-row border
 
-**Directory:** `tests/components/movimientos/`
-- `MovementListItem.test.tsx` — Type badge, amount, date, detail count
-- `TypeFilterChips.test.tsx` — Filter selection, callback
+**Directory:** `androidTest/compose/movimientos/`
+- `MovementListItemTest.kt` — Type badge, amount, date, detail count
+- `TypeFilterChipsTest.kt` — Filter selection, callback
 
-**Directory:** `tests/components/ad/`
-- `AdBanner.test.tsx` — Renders when enabled, hidden when disabled
+**Directory:** `androidTest/compose/ads/`
+- `AdBannerTest.kt` — Renders when enabled, hidden when disabled
 
-### 7.7 E2E Tests
-**Directory:** `tests/e2e/financial-accumulators/`
-- `cashSummaryFlow.test.ts` — Create transactions → verify accumulator updates → verify period reports
-- `reverseTransactionFlow.test.ts` — Revert each type → verify accumulator/stock restoration
-- `adBannerVisibility.test.ts` — Ad in Caja/Movimientos, no ad in detail/PIN gate
+### 7.7 E2E Tests (Maestro)
+**Directory:** `maestro/financial-accumulators/`
+- `cashSummaryFlow.yaml` — Create transactions → verify accumulator updates → verify period reports
+- `reverseTransactionFlow.yaml` — Revert each type → verify accumulator/stock restoration
+- `adBannerVisibility.yaml` — Ad in Caja/Movimientos, no ad in detail/PIN gate
 
 ---
 
@@ -276,30 +240,32 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 | Risk | Mitigation |
 |---|---|
 | Migration order with sales-checkout | Single migration runner with ordered migrations; test combined migration |
-| `AD_ENABLED` in wrong views | CI grep check: `grep -r "AdBanner" --include="*.tsx" src/presentation/components/accumulators src/presentation/components/movimientos` |
+| `AD_ENABLED` in wrong views | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../accumulators composeApp/.../movimientos` |
 | Accumulator drift on reversal | Integration test: create + revert → assert balance = 0 |
 | Stock negative on purchase revert | Pre-check throws `StockError` before transaction opens |
-| i18n keys missing | CI check: `grep -r "accumulator\." --include="*.tsx" src/presentation/components/` |
-| Fractional amounts | `Money` VO handles precision; `keyboardType="decimal-pad"` in forms |
+| i18n keys missing | CI check: `grep -r "accumulator_" --include="*.kt" composeApp/.../` |
+| Fractional amounts | `Money` VO handles precision; `KeyboardType.Decimal` in forms |
 
 ---
 
 ## Definition of Done
 
-- [x] Migration renames table/columns atomically, preserves all data
+- [ ] Migration renames table/columns atomically, preserves all data
 - [ ] All entities/repos/use cases use English identifiers with `Money` VOs
-- [x] `GetCashSummary`/`GetPeriodSummary`/`UpdateAccumulator`/`ReverseTransaction` work correctly
-- [x] Atomic accumulator updates on all transaction types (SALE/PURCHASE/EXPENSE)
-- [x] Atomic reversal with stock safety for PURCHASE
+- [ ] `GetCashSummary`/`GetPeriodSummary`/`UpdateAccumulator`/`ReverseTransaction` work correctly
+- [ ] Atomic accumulator updates on all transaction types (SALE/PURCHASE/EXPENSE)
+- [ ] Atomic reversal with stock safety for PURCHASE
 - [ ] AdBanner renders in Caja/Movimientos footers when `AD_ENABLED=true`, absent elsewhere
 - [ ] All 40+ i18n keys implemented
-- [x] Unit tests: 100% pass
-- [x] Integration tests: 100% pass
-- [x] Migration tests: 100% pass
-- [x] Atomic rollback tests: 100% pass
-- [x] TypeScript strict: no errors
-- [ ] Lint: no errors
+- [ ] Unit tests: 100% pass
+- [ ] Integration tests: 100% pass
+- [ ] Migration tests: 100% pass
+- [ ] Atomic rollback tests: 100% pass
+- [ ] ViewModel tests: 100% pass
+- [ ] Compose UI tests: 100% pass
+- [ ] Kotlin strict: no errors
+- [ ] Detekt: no errors
 
 ---
 
-*Plan version: 1.0 — 2026-11-10*
+*Plan version: 2.0 — 2026-11-12 — KMP Migration*

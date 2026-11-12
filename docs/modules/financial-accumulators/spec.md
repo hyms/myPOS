@@ -1,4 +1,4 @@
-# Financial Accumulators — Specification (v2.0.0)
+# Financial Accumulators — Specification (v2.0.0 KMP)
 
 ## 1. Bounded Context
 
@@ -8,56 +8,76 @@ Responsible for the singleton cash accumulator (`financial_accumulators`), real-
 
 ## 2. Domain Entities & Value Objects
 
-All identifiers, fields, and types in code and database are in **English**. Only visible UI strings remain in Spanish via i18n keys.
+All identifiers, fields, and types in code and database are in **English**. Only visible UI strings remain in Spanish via i18n keys (`composeResources/values-es/strings.xml`).
 
 ### 2.1 FinancialSummary (Aggregate Root)
 
-**File:** `src/domain/entities/FinancialSummary.ts`
+**File:** `commonMain/domain/entities/FinancialSummary.kt`
 
-```ts
-import type { Money } from '../value-objects/Money';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export interface FinancialSummary {
-  readonly totalSales: Money;
-  readonly totalPurchases: Money;
-  readonly totalExpenses: Money;
-  readonly netBalance: Money;
-  readonly updatedAt: string;
-}
+import com.tpvmovil.domain.valueobjects.Money
+
+data class FinancialSummary(
+    val totalSales: Money,
+    val totalPurchases: Money,
+    val totalExpenses: Money,
+    val netBalance: Money,
+    val updatedAt: String
+)
 ```
 
 ### 2.2 PeriodSummary (Value Object)
 
-**File:** `src/domain/entities/PeriodSummary.ts`
+**File:** `commonMain/domain/entities/PeriodSummary.kt`
 
-```ts
-import type { Money } from '../value-objects/Money';
-import type { TransactionType } from './Transaction';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export type Period = 'MONTH' | 'YEAR';
+import com.tpvmovil.domain.valueobjects.Money
 
-export interface PeriodSummary {
-  readonly period: Period;
-  readonly totals: ReadonlyArray<{ type: TransactionType; total: Money }>;
-  readonly totalSales: Money;
-  readonly totalPurchases: Money;
-  readonly totalExpenses: Money;
-  readonly net: Money;
-}
+enum class Period { MONTH, YEAR }
+
+data class PeriodSummary(
+    val period: Period,
+    val totals: List<TypeTotal>,
+    val totalSales: Money,
+    val totalPurchases: Money,
+    val totalExpenses: Money,
+    val net: Money
+)
+
+data class TypeTotal(
+    val type: TransactionType,
+    val total: Money
+)
 ```
 
 ### 2.3 TransactionType (Shared)
 
-**File:** `src/domain/entities/Transaction.ts` — shared with `sales-checkout` and `expenses-cashflow` modules.
+**File:** `commonMain/domain/entities/TransactionType.kt` — shared with `sales-checkout` and `expenses-cashflow` modules.
 
-```ts
-export type TransactionType = 'SALE' | 'PURCHASE' | 'EXPENSE';
-export type PaymentMethodCode = 'CASH' | 'CARD' | 'TRANSFER' | 'QR';
+```kotlin
+package com.tpvmovil.domain.entities
+
+sealed class TransactionType {
+    object SALE : TransactionType()
+    object PURCHASE : TransactionType()
+    object EXPENSE : TransactionType()
+}
+
+sealed class PaymentMethodCode {
+    object CASH : PaymentMethodCode()
+    object CARD : PaymentMethodCode()
+    object TRANSFER : PaymentMethodCode()
+    object QR : PaymentMethodCode()
+}
 ```
 
 ### 2.4 Money / Currency (Shared Kernel)
 
-**Files:** `src/domain/value-objects/Money.ts`, `src/domain/value-objects/Currency.ts` — see `system-settings/spec.md` section 2.1.
+**Files:** `commonMain/domain/valueobjects/Money.kt`, `Currency.kt` — see `system-settings/spec.md` section 2.1.
 
 ---
 
@@ -67,33 +87,35 @@ export type PaymentMethodCode = 'CASH' | 'CARD' | 'TRANSFER' | 'QR';
 |---|---|---|
 | RULE-FA-01 | Singleton accumulator | `financial_accumulators` table has exactly one row (`id = 1`, `CHECK (id = 1)`). Never deleted. |
 | RULE-FA-02 | Single-row read | `getCashSummary()` reads only `SELECT ... FROM financial_accumulators WHERE id = 1`. No runtime aggregation. |
-| RULE-FA-03 | Atomic reversal | `reverseTransaction` adjusts stock and cash within `db.withTransactionSync`. Full rollback on any failure. |
+| RULE-FA-03 | Atomic reversal | `reverseTransaction` adjusts stock and cash within SQLDelight transaction block. Full rollback on any failure. |
 | RULE-FA-04 | Stock safety on purchase reversal | If reversing a purchase would make `currentStock < 0`, throw `StockError` before opening transaction. |
 | RULE-FA-05 | Already reversed check | If `deletedAt !== null`, throw error: "already reversed". |
 | RULE-FA-06 | Net calculation | `net = totalSales - totalPurchases - totalExpenses` for both accumulator and period summaries. |
-| RULE-FA-07 | Period filtering | Month: `strftime('%Y-%m', registered_at) = strftime('%Y-%m', 'now', 'localtime')`. Year: `strftime('%Y', registered_at) = strftime('%Y', 'now', 'localtime')`. |
+| RULE-FA-07 | Period filtering | Month: `strftime('%Y-%m', registered_at/1000, 'unixepoch', 'localtime') = strftime('%Y-%m', 'now', 'localtime')`. Year: `strftime('%Y', registered_at/1000, 'unixepoch', 'localtime') = strftime('%Y', 'now', 'localtime')`. |
 
-Global invariants: **INV-01** (non-negative financial math), **INV-03** (atomic `withTransactionSync`), **INV-04** (single payment method), **INV-06** (singleton id=1).
+Global invariants: **INV-01** (non-negative financial math), **INV-03** (atomic transaction block), **INV-04** (single payment method), **INV-06** (singleton id=1).
 
 ---
 
-## 4. Database Contract
+## 4. Database Contract (SQLDelight)
 
 ### 4.1 Target Schema (v2.0.0 — English Columns)
 
+**File:** `commonMain/sqldelight/schema.sq` (accumulators section)
+
 ```sql
 -- financial_accumulators (renamed from resumen_caja)
-CREATE TABLE IF NOT EXISTS financial_accumulators (
+CREATE TABLE financial_accumulators (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     total_sales REAL DEFAULT 0.0,
     total_purchases REAL DEFAULT 0.0,
     total_expenses REAL DEFAULT 0.0,
     net_balance REAL DEFAULT 0.0,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
 
-INSERT OR IGNORE INTO financial_accumulators (id, total_sales, total_purchases, total_expenses, net_balance)
-VALUES (1, 0.0, 0.0, 0.0, 0.0);
+INSERT OR IGNORE INTO financial_accumulators (id, total_sales, total_purchases, total_expenses, net_balance, updated_at)
+VALUES (1, 0.0, 0.0, 0.0, 0.0, strftime('%s', 'now') * 1000);
 
 -- sales_transactions (unified table — see sales-checkout/spec.md)
 -- Relevant indexes for period queries:
@@ -116,11 +138,11 @@ CREATE INDEX IF NOT EXISTS idx_sales_transactions_period
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql.ts`
-(`FINANCIAL_ACCUMULATORS_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
+**File:** `commonMain/sqldelight/migrations/v2_financial_accumulators.sqm`
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
+-- v2_financial_accumulators.sqm
+-- Atomic migration transaction (single transaction block)
 
 -- Step 1: Rename table
 ALTER TABLE resumen_caja RENAME TO financial_accumulators;
@@ -134,19 +156,21 @@ ALTER TABLE financial_accumulators RENAME COLUMN saldo_actual TO net_balance;
 -- Step 3: Add updated_at column
 -- SQLite forbids non-constant defaults in ALTER TABLE ADD COLUMN, so the
 -- default is NULL and existing rows are backfilled immediately after.
-ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT NULL;
+ALTER TABLE financial_accumulators ADD COLUMN updated_at INTEGER DEFAULT NULL;
 
 -- Step 4: Update existing row's updated_at
-UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
+UPDATE financial_accumulators SET updated_at = strftime('%s', 'now') * 1000 WHERE id = 1;
 
+-- Step 5: Index for freshness checks
 CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
   ON financial_accumulators(updated_at);
 
--- Step 5: user_version = 2 is set centrally by `runMigrations` after every
--- v2.0.0 module step succeeds inside the same transaction.
+-- Step 6: user_version = 2 is set centrally by DatabaseDriverFactory
 ```
 
-> **Important:** This migration must run AFTER or in the same transaction as the `sales-checkout` migration (shared `user_version = 2`). Coordinate via `migrations.ts` ordering.
+> **Important:** This migration must run AFTER or in the same transaction as the `sales-checkout` migration (shared `user_version = 2`). Coordinate via `DatabaseDriverFactory` ordering.
+
+> **Recovery:** databases from an earlier half-applied v2.0.0 attempt (table already renamed, columns still Spanish) are handled by a recovery variant `v2_financial_accumulators_columns.sqm`, which applies the column renames, `updated_at` backfill, and index without re-renaming the table.
 
 ---
 
@@ -154,107 +178,113 @@ CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
 
 ### 5.1 IAccumulatorRepository
 
-**File:** `src/data/repositories/IAccumulatorRepository.ts`
+**File:** `commonMain/data/repositories/IAccumulatorRepository.kt`
 
-```ts
-import type { FinancialSummary } from '@/domain/entities/FinancialSummary';
-import type { PeriodSummary } from '@/domain/entities/PeriodSummary';
-import type { Money } from '@/domain/value-objects/Money';
-import type { TransactionType } from '@/domain/entities/Transaction';
+```kotlin
+package com.tpvmovil.data.repositories
 
-export interface UpdateAccumulatorInput {
-  readonly salesDelta: Money;
-  readonly purchasesDelta: Money;
-  readonly expensesDelta: Money;
-}
+import com.tpvmovil.domain.entities.*
+import com.tpvmovil.domain.valueobjects.Money
 
-export interface IAccumulatorRepository {
-  getSummary(): FinancialSummary;
-  updateAccumulator(input: UpdateAccumulatorInput): void;
-  getPeriodSummary(period: 'MONTH' | 'YEAR'): PeriodSummary;
+data class UpdateAccumulatorInput(
+    val salesDelta: Money,
+    val purchasesDelta: Money,
+    val expensesDelta: Money
+)
+
+interface IAccumulatorRepository {
+    fun getSummary(): FinancialSummary
+    fun updateAccumulator(input: UpdateAccumulatorInput)
+    fun getPeriodSummary(period: Period): PeriodSummary
 }
 ```
 
 ---
 
-## 6. Use Cases (Application Layer)
+## 6. Use Cases (Application Layer — `commonMain`)
 
 ### 6.1 GetCashSummary
 
-**File:** `src/application/accumulators/GetCashSummary.ts`
+**File:** `commonMain/application/accumulators/GetCashSummary.kt`
 
-```ts
-import type { FinancialSummary } from '@/domain/entities/FinancialSummary';
+```kotlin
+package com.tpvmovil.application.accumulators
 
-export function getCashSummary(): FinancialSummary;
+import com.tpvmovil.domain.entities.FinancialSummary
+
+suspend fun getCashSummary(): FinancialSummary
 ```
 
 **Flow:** Direct read from `financial_accumulators` where `id = 1`. Returns `FinancialSummary` with `Money` value objects.
 
 ### 6.2 GetPeriodSummary
 
-**File:** `src/application/accumulators/GetPeriodSummary.ts`
+**File:** `commonMain/application/accumulators/GetPeriodSummary.kt`
 
-```ts
-import type { PeriodSummary } from '@/domain/entities/PeriodSummary';
+```kotlin
+package com.tpvmovil.application.accumulators
 
-export function getPeriodSummary(period: 'MONTH' | 'YEAR'): PeriodSummary;
+import com.tpvmovil.domain.entities.PeriodSummary
+
+suspend fun getPeriodSummary(period: Period): PeriodSummary
 ```
 
 **Flow:** Aggregates from `sales_transactions` by `type` for the given period. Returns `PeriodSummary` with `Money` values and computed `net`.
 
 ### 6.3 UpdateAccumulator (Internal)
 
-**File:** `src/application/accumulators/UpdateAccumulator.ts`
+**File:** `commonMain/application/accumulators/UpdateAccumulator.kt`
 
-```ts
-import type { Money } from '@/domain/value-objects/Money';
+```kotlin
+package com.tpvmovil.application.accumulators
 
-export interface UpdateAccumulatorInput {
-  readonly salesDelta: Money;
-  readonly purchasesDelta: Money;
-  readonly expensesDelta: Money;
-}
+import com.tpvmovil.domain.valueobjects.Money
 
-export function updateAccumulator(input: UpdateAccumulatorInput): void;
+data class UpdateAccumulatorInput(
+    val salesDelta: Money,
+    val purchasesDelta: Money,
+    val expensesDelta: Money
+)
+
+suspend fun updateAccumulator(input: UpdateAccumulatorInput)
 ```
 
-**Atomic Flow (`db.withTransactionSync`):**
-1. `UPDATE financial_accumulators SET total_sales = total_sales + salesDelta, total_purchases = total_purchases + purchasesDelta, total_expenses = total_expenses + expensesDelta, net_balance = net_balance + salesDelta - purchasesDelta - expensesDelta, updated_at = CURRENT_TIMESTAMP WHERE id = 1`.
+**Atomic Flow (SQLDelight transaction block):**
+1. `UPDATE financial_accumulators SET total_sales = total_sales + salesDelta.amount, total_purchases = total_purchases + purchasesDelta.amount, total_expenses = total_expenses + expensesDelta.amount, net_balance = net_balance + salesDelta.amount - purchasesDelta.amount - expensesDelta.amount, updated_at = CURRENT_TIMESTAMP WHERE id = 1`.
 
 > **Usage:** Called by `RegisterSale`, `RegisterPurchase`, `RegisterExpense`, and `ReverseTransaction` use cases.
 
 ### 6.4 ReverseTransaction (Unified)
 
-**File:** `src/application/transactions/ReverseTransaction.ts` — shared with `sales-checkout` and `expenses-cashflow`.
+**File:** `commonMain/application/transactions/ReverseTransaction.kt` — shared with `sales-checkout` and `expenses-cashflow`.
 
-```ts
-export interface ReverseTransactionResult {
-  readonly transactionId: number;
-  readonly type: 'SALE' | 'PURCHASE' | 'EXPENSE';
-}
+```kotlin
+data class ReverseTransactionResult(
+    val transactionId: TransactionId,
+    val type: TransactionType
+)
 
-export function reverseTransaction(id: number): ReverseTransactionResult;
+suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 ```
 
-**Atomic Flow (`db.withTransactionSync`):**
+**Atomic Flow (SQLDelight transaction block):**
 1. Find transaction by ID (must exist, `deleted_at IS NULL`).
-2. If `type === 'SALE'`:
+2. If `type === SALE`:
    - For each detail: `UPDATE products SET current_stock = current_stock + quantity, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
    - `UPDATE financial_accumulators SET total_sales = total_sales - amount, net_balance = net_balance - amount, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
-3. Else if `type === 'PURCHASE'`:
+3. Else if `type === PURCHASE`:
    - Pre-check: For each detail, verify `product.currentStock - quantity >= 0` (throw `StockError` if fails)
    - For each detail: `UPDATE products SET current_stock = current_stock - quantity WHERE id = ?`
    - `UPDATE financial_accumulators SET total_purchases = total_purchases - amount, net_balance = net_balance + amount, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
-4. Else (`type === 'EXPENSE'`):
+4. Else (`type === EXPENSE`):
    - `UPDATE financial_accumulators SET total_expenses = total_expenses - amount, net_balance = net_balance + amount, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
 5. `UPDATE sales_transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?`
 
 ---
 
-## 7. UI State Machines (Spanish visible text)
+## 7. UI State Machines (Spanish visible text via `stringResource`)
 
-### 7.1 Cash Summary Screen (`app/(tabs)/caja.tsx`)
+### 7.1 Cash Summary Screen (`CashSummaryScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -262,7 +292,7 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 | `Loaded` | Data received | — | Balance card (green/red/neutral), 3 Stat cards, Month/Year breakdown |
 | `Refreshing` | Pull-to-refresh | `Loaded` | Spinner, 60s auto-refresh interval |
 
-### 7.2 Transaction Detail / Reversal (`app/transacciones/[id].tsx`)
+### 7.2 Transaction Detail / Reversal (`TransactionDetailScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -270,10 +300,10 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 | `PinGate` | Tap "Revertir" | `ConfirmDialog` | `"Ingrese su PIN"` |
 | `ConfirmDialog` | PIN correct | `Reverting` | `"Esta acción restaurará el stock y ajustará la caja. No se puede deshacer."` |
 | `Reverting` | Confirm tapped | `Success` / `Error` | Loading spinner |
-| `Success` | Atomic commit | Back to list | Toast: `"Transacción revertida"` |
-| `Error` | PIN wrong / StockError / DB error | `DetailLoaded` | Toast: `"PIN incorrecto"` / `"Stock insuficiente"` / `"No se pudo revertir"` |
+| `Success` | Atomic commit | Back to list | Snackbar: `"Transacción revertida"` |
+| `Error` | PIN wrong / StockError / DB error | `DetailLoaded` | Snackbar: `"PIN incorrecto"` / `"Stock insuficiente"` / `"No se pudo revertir"` |
 
-### 7.3 Movements List (`app/movimientos/index.tsx`)
+### 7.3 Movements List (`MovementsListScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -283,64 +313,57 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 
 ---
 
-## 8. UI Components
+## 8. Compose UI Components
 
 | Component | File | Type | Memoized | Description |
 |---|---|---|---|---|
-| `CashBalanceCard` | `src/presentation/components/accumulators/CashBalanceCard.tsx` | UI | No | Large balance display with tone (success/danger/neutral), icon |
-| `StatCard` | `src/presentation/components/reports/Stat.tsx` | UI | Yes | Small stat: label, value, color tone (success/warning/danger/neutral) |
-| `PeriodBreakdown` | `src/presentation/components/reports/BreakdownBar.tsx` | UI | Yes | Horizontal bars for Sales/Purchases/Expenses with percentage |
-| `ReportRow` | `src/presentation/components/reports/ReportRow.tsx` | UI | Yes | Key-value row with tone, bold option |
-| `MovementListItem` | `src/presentation/components/movimientos/MovimientoListItem.tsx` | UI | Yes | Transaction row: type badge, description, date, amount, detail count |
-| `TypeFilterChips` | `src/presentation/components/movimientos/TipoFilterChips.tsx` | UI | No | Filter chips: TODOS / VENTA / COMPRA / GASTO |
-| `SearchBar` | `src/presentation/components/filters/SearchBar.tsx` | UI | No | Debounced search input |
-| `AdBanner` | `src/presentation/components/ad/AdBanner.tsx` | UI | No | **ALLOWED** in Caja and Movimientos footers (AD_ENABLED check) |
+| `CashSummaryScreen` | `composeApp/.../accumulators/CashSummaryScreen.kt` | Screen | N/A | Main dashboard with balance, stats, breakdown |
+| `CashBalanceCard` | `composeApp/.../accumulators/CashBalanceCard.kt` | Composable | No | Large balance display with tone (success/danger/neutral), icon |
+| `StatCard` | `composeApp/.../reports/StatCard.kt` | Composable | `key = label` | Small stat: label, value, color tone (success/warning/danger/neutral) |
+| `BreakdownBar` | `composeApp/.../reports/BreakdownBar.kt` | Composable | `key = period` | Horizontal bars for Sales/Purchases/Expenses with percentage |
+| `ReportRow` | `composeApp/.../reports/ReportRow.kt` | Composable | `key = label` | Key-value row with tone, bold option |
+| `MovementsListScreen` | `composeApp/.../movimientos/MovementsListScreen.kt` | Screen | N/A | List with search, filter chips, pagination |
+| `MovementListItem` | `composeApp/.../movimientos/MovementListItem.kt` | Composable | `key = transaction.id` | Transaction row: type badge, description, date, amount, detail count |
+| `TypeFilterChips` | `composeApp/.../movimientos/TypeFilterChips.kt` | Composable | No | Filter chips: TODOS / VENTA / COMPRA / GASTO |
+| `SearchBar` | `composeApp/.../filters/SearchBar.kt` | Composable | No | Debounced search input |
+| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | **ALLOWED** in Caja and Movimientos footers (AD_ENABLED check) |
 
 ---
 
-## 9. Hooks
+## 9. ViewModels
 
-| Hook | File | Responsibility |
+| ViewModel | File | Responsibility |
 |---|---|---|
-| `useCashSummary` | `src/presentation/hooks/useCashSummary.ts` | Reads `FinancialSummary` via `GetCashSummary`, auto-refresh on invalidation |
-| `usePeriodSummary` | `src/presentation/hooks/usePeriodSummary.ts` | Reads `PeriodSummary` for MONTH/YEAR |
-| `useMovements` | `src/presentation/hooks/useMovements.ts` | Paginated, filterable, searchable transaction list |
-| `usePinGate` | `src/presentation/hooks/usePinGate.ts` | PIN verification gate for critical actions |
+| `CashSummaryViewModel` | `commonMain/presentation/viewmodels/CashSummaryViewModel.kt` | Reads `FinancialSummary` via `GetCashSummary`, auto-refresh on invalidation |
+| `PeriodSummaryViewModel` | `commonMain/presentation/viewmodels/PeriodSummaryViewModel.kt` | Reads `PeriodSummary` for MONTH/YEAR |
+| `MovementsViewModel` | `commonMain/presentation/viewmodels/MovementsViewModel.kt` | Paginated, filterable, searchable transaction list |
+| `PinGateViewModel` | `commonMain/presentation/viewmodels/PinGateViewModel.kt` | PIN verification gate for critical actions |
 
 ---
 
-## 10. Zustand Stores
-
-| Store | File | Responsibility |
-|---|---|---|
-| `sessionStore` | `src/presentation/stores/sessionStore.ts` | `unlocked: boolean` — auth state for PIN/biometric |
-| `invalidationStore` | `src/presentation/stores/invalidationStore.ts` | Manual cache invalidation versions (TanStack Query style) |
-
----
-
-## 11. AdWare Governance
+## 10. AdWare Governance
 
 **Rule:** **Banner ads ARE ALLOWED** in financial summary (Caja) and reports (Movimientos) views.
 
 **Implementation:**
-- `AD_ENABLED` flag **respected** in `CajaScreen` and `MovimientosIndexScreen` → `ListFooterComponent` renders `AdBanner` when enabled.
+- `AD_ENABLED` flag **respected** in `CashSummaryScreen` and `MovementsListScreen` → footer item renders `AdBanner` when enabled.
 - Ads shown in passive browsing views; **NOT** in transaction detail, PIN gate, or confirmation dialogs.
 - Monetizes dashboard/report views without interrupting critical flows.
 
 ---
 
-## 12. Applicable NFRs
+## 11. Applicable NFRs
 
 - **NFR-03:** 0ms cash calculations — read from `financial_accumulators` accumulator only.
 - **NFR-04:** Pagination `LIMIT ? OFFSET ?` with `pageSize` from settings (default 15).
-- **NFR-07:** Atomic rollback via `withTransactionSync` on all accumulator updates and reversals.
-- **NFR-08:** UI strings in Spanish; code/DB/identifiers in English.
-- **NFR-09:** Strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
+- **NFR-07:** Atomic rollback via SQLDelight transaction blocks on all accumulator updates and reversals.
+- **NFR-08:** UI strings in Spanish via `stringResource`; code/DB/identifiers in English.
+- **NFR-09:** Strict Kotlin (`explicit-api`, `-Xlint`).
 - **NFR-10:** Tests: 100% pass unit + integration + migration + atomic + cash/stock integrity.
 
 ---
 
-## 13. Extension Points (v2.0.0 Roadmap)
+## 12. Extension Points (v2.0.0 Roadmap)
 
 - [ ] **Forensic reports**: Include `deleted_at IS NOT NULL` for audit trails.
 - [ ] **PDF/CSV export**: Period summary export for accounting.
@@ -350,56 +373,63 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 
 ---
 
-## 14. i18n Keys (Spanish UI Dictionary)
+## 13. i18n Keys (Spanish UI Dictionary — `composeResources/values-es/strings.xml`)
 
-| Key | Text (ES) | Context |
-|---|---|---|
-| `accumulator.cash.title` | Caja | Screen title |
-| `accumulator.cash.balance_label` | Saldo actual | Balance card label |
-| `accumulator.cash.positive` | Positivo | Balance > 0 tone |
-| `accumulator.cash.negative` | Negativo | Balance < 0 tone |
-| `accumulator.cash.neutral` | Neutro | Balance = 0 tone |
-| `accumulator.cash.sales` | Ventas | Stat label |
-| `accumulator.cash.purchases` | Compras | Stat label |
-| `accumulator.cash.expenses` | Gastos | Stat label |
-| `accumulator.cash.month_title` | Resumen del mes | Month card title |
-| `accumulator.cash.year_title` | Resumen del año | Year card title |
-| `accumulator.cash.net_month` | Neto del mes | Month net row |
-| `accumulator.cash.net_year` | Neto del año | Year net row |
-| `accumulator.cash.pull_refresh` | Actualizar | Pull-to-refresh |
-| `accumulator.movements.title` | Movimientos | Screen title |
-| `accumulator.movements.search_placeholder` | Buscar en {filter}… | Search input |
-| `accumulator.movements.filter_all` | Todos | Filter chip |
-| `accumulator.movements.filter_sale` | Ventas | Filter chip |
-| `accumulator.movements.filter_purchase` | Compras | Filter chip |
-| `accumulator.movements.filter_expense` | Gastos | Filter chip |
-| `accumulator.movements.total_badge` | {count} · página {page} · lote {pageSize} | List header badge |
-| `accumulator.movements.empty_title` | Sin movimientos | EmptyState title |
-| `accumulator.movements.empty_desc_search` | No hay "{search}" en {filter}. | EmptyState with search |
-| `accumulator.movements.empty_desc_none` | Aún no hay {filter}. Registra tu primera transacción en la pestaña Registro. | EmptyState no results |
-| `accumulator.movements.empty_action` | Ir a Registro | EmptyState action |
-| `accumulator.detail.title` | Detalle de transacción | Detail screen title |
-| `accumulator.detail.type_venta` | VENTA | Type badge |
-| `accumulator.detail.type_compra` | COMPRA | Type badge |
-| `accumulator.detail.type_expense` | GASTO | Type badge |
-| `accumulator.detail.amount` | Monto: {amount} | Amount display |
-| `accumulator.detail.date` | Fecha: {date} | Date display |
-| `accumulator.detail.payment` | Pago: {method} | Payment method display |
-| `accumulator.detail.description` | Descripción: {description} | Description display |
-| `accumulator.detail.products_header` | Productos | Products section header |
-| `accumulator.detail.revert_button` | Revertir transacción | Revert button |
-| `accumulator.revert.pin_title` | Ingrese su PIN | PIN gate title |
-| `accumulator.revert.confirm_title` | Revertir | Confirm title |
-| `accumulator.revert.confirm_message` | Esta acción restaurará el stock y ajustará la caja. No se puede deshacer. | Confirm message |
-| `accumulator.revert.success` | Transacción revertida | Success toast |
-| `accumulator.revert.error_pin` | PIN incorrecto | PIN error toast |
-| `accumulator.revert.error_stock` | Stock insuficiente para {product}. Disponible: {stock} | Stock error toast |
-| `accumulator.revert.error_generic` | No se pudo revertir | Generic error toast |
-| `accumulator.toast.refresh` | Caja actualizada | Refresh toast |
+```xml
+<!-- Cash Summary (Caja) -->
+<string name="accumulator_cash_title">Caja</string>
+<string name="accumulator_cash_balance_label">Saldo actual</string>
+<string name="accumulator_cash_positive">Positivo</string>
+<string name="accumulator_cash_negative">Negativo</string>
+<string name="accumulator_cash_neutral">Neutro</string>
+<string name="accumulator_cash_sales">Ventas</string>
+<string name="accumulator_cash_purchases">Compras</string>
+<string name="accumulator_cash_expenses">Gastos</string>
+<string name="accumulator_cash_month_title">Resumen del mes</string>
+<string name="accumulator_cash_year_title">Resumen del año</string>
+<string name="accumulator_cash_net_month">Neto del mes</string>
+<string name="accumulator_cash_net_year">Neto del año</string>
+<string name="accumulator_cash_pull_refresh">Actualizar</string>
+<string name="accumulator_toast_refresh">Caja actualizada</string>
+
+<!-- Movements (Movimientos) -->
+<string name="accumulator_movements_title">Movimientos</string>
+<string name="accumulator_movements_search_placeholder">Buscar en %1$s…</string>
+<string name="accumulator_movements_filter_all">Todos</string>
+<string name="accumulator_movements_filter_sale">Ventas</string>
+<string name="accumulator_movements_filter_purchase">Compras</string>
+<string name="accumulator_movements_filter_expense">Gastos</string>
+<string name="accumulator_movements_total_badge">%1$d · página %2$d · lote %3$d</string>
+<string name="accumulator_movements_empty_title">Sin movimientos</string>
+<string name="accumulator_movements_empty_desc_search">No hay "%1$s" en %2$s.</string>
+<string name="accumulator_movements_empty_desc_none">Aún no hay %1$s. Registra tu primera transacción en la pestaña Registro.</string>
+<string name="accumulator_movements_empty_action">Ir a Registro</string>
+
+<!-- Transaction Detail -->
+<string name="accumulator_detail_title">Detalle de transacción</string>
+<string name="accumulator_detail_type_venta">VENTA</string>
+<string name="accumulator_detail_type_compra">COMPRA</string>
+<string name="accumulator_detail_type_expense">GASTO</string>
+<string name="accumulator_detail_amount">Monto: %1$s</string>
+<string name="accumulator_detail_date">Fecha: %1$s</string>
+<string name="accumulator_detail_payment">Pago: %1$s</string>
+<string name="accumulator_detail_description">Descripción: %1$s</string>
+<string name="accumulator_detail_products_header">Productos</string>
+<string name="accumulator_detail_revert_button">Revertir transacción</string>
+
+<!-- Reversal -->
+<string name="accumulator_revert_pin_title">Ingrese su PIN</string>
+<string name="accumulator_revert_confirm_title">Revertir</string>
+<string name="accumulator_revert_confirm_message">Esta acción restaurará el stock y ajustará la caja. No se puede deshacer.</string>
+<string name="accumulator_revert_success">Transacción revertida</string>
+<string name="accumulator_revert_error_pin">PIN incorrecto</string>
+<string name="accumulator_revert_error_stock">Stock insuficiente para %1$s. Disponible: %2$s</string>
+<string name="accumulator_revert_error_generic">No se pudo revertir</string>
+```
 
 ---
 
-## 15. Cross-References
+## 14. Cross-References
 
 - `sales-checkout/spec.md` — `RegisterSale`, `RegisterPurchase`, `ReverseTransaction` (SALE/PURCHASE), `sales_transactions` table, atomic accumulator updates.
 - `expenses-cashflow/spec.md` — `RegisterExpense`, `ReverseTransaction` (EXPENSE), unified `sales_transactions` type EXPENSE.
@@ -408,4 +438,4 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 
 ---
 
-*Last updated: 2026-11-10 — v2.0.0 Specification*
+*Last updated: 2026-11-12 — v2.0.0 KMP Specification*

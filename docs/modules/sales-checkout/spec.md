@@ -1,4 +1,4 @@
-# Sales & Checkout — Specification (v2.0.0)
+# Sales & Checkout — Specification (v2.0.0 KMP)
 
 ## 1. Bounded Context
 
@@ -8,172 +8,167 @@ Responsible for the shopping cart, sales/purchase registration, payment methods,
 
 ## 2. Domain Entities & Value Objects
 
-All identifiers, fields, and types in code and database are in **English**. Only visible UI strings remain in Spanish via i18n keys.
+All identifiers, fields, and types in code and database are in **English**. Only visible UI strings remain in Spanish via i18n keys (`composeResources/values-es/strings.xml`).
 
 ### 2.1 CartItem (Composite Pattern)
 
-**File:** `src/domain/entities/CartItem.ts`
+**File:** `commonMain/domain/entities/CartItem.kt`
 
-```ts
-import type { Product } from './Product';
-import type { Money } from '../value-objects/Money';
-import type { Stock } from '../value-objects/Stock';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export type CartType = 'SALE' | 'PURCHASE';
+import com.tpvmovil.domain.valueobjects.*
 
-/**
- * ICartItem — Composite interface unifying single product lines
- * and future bundle/combo lines.
- * Currently only SimpleCartItem is implemented.
- */
-export interface ICartItem {
-  readonly productId: number;
-  readonly productName: string;
-  readonly productImageUri: string | null;
-  readonly quantity: number;
-  readonly discount: Money;
-  readonly unitPrice: Money;
-  readonly lineSubtotal: Money;
-  readonly lineTotal: Money;
+sealed interface ICartItem {
+    val productId: ProductId
+    val productName: String
+    val productImageUri: String?
+    val quantity: Double
+    val discount: Money
+    val unitPrice: Money
+    val lineSubtotal: Money
+    val lineTotal: Money
 }
 
-/**
- * Simple product line item — leaf in the Composite pattern.
- */
-export interface SimpleCartItem extends ICartItem {
-  readonly product: Pick<
-    Product,
-    'id' | 'name' | 'sellingPrice' | 'purchasePrice' | 'currentStock' | 'imageUri'
-  >;
-  readonly discount: Money;
+data class SimpleCartItem(
+    override val productId: ProductId,
+    override val productName: String,
+    override val productImageUri: String?,
+    override val quantity: Double,
+    override val discount: Money,
+    override val unitPrice: Money,
+    override val lineSubtotal: Money,
+    override val lineTotal: Money,
+    val product: ProductSummary // subset: id, name, sellingPrice, purchasePrice, currentStock, imageUri
+) : ICartItem
+
+sealed class CartType {
+    object SALE : CartType()
+    object PURCHASE : CartType()
 }
 
-/**
- * Factory for creating simple cart items.
- */
-export interface SimpleCartItemFactory {
-  createFromProduct(
-    product: Pick<Product, 'id' | 'name' | 'sellingPrice' | 'purchasePrice' | 'currentStock' | 'imageUri'>,
-    quantity: number,
-    discount: Money,
-    cartType: CartType
-  ): SimpleCartItem;
+interface SimpleCartItemFactory {
+    fun createFromProduct(
+        product: ProductSummary,
+        quantity: Double,
+        discount: Money,
+        cartType: CartType
+    ): SimpleCartItem
 }
 
 // DTOs for use cases
-export type CreateCartItemInput = {
-  readonly productId: number;
-  readonly quantity: number;
-  readonly discount: number;
-};
+data class CreateCartItemInput(
+    val productId: ProductId,
+    val quantity: Double,
+    val discount: Double
+)
 
-export type UpdateCartItemInput = {
-  readonly quantity: number;
-  readonly discount: number;
-};
+data class UpdateCartItemInput(
+    val quantity: Double,
+    val discount: Double
+)
 ```
 
 ### 2.2 SaleTransaction (Aggregate Root)
 
-**File:** `src/domain/entities/SaleTransaction.ts`
+**File:** `commonMain/domain/entities/SaleTransaction.kt`
 
-```ts
-import type { PaymentMethod } from './PaymentMethod';
-import type { Money } from '../value-objects/Money';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export type TransactionId = number;
-export type TransactionType = 'SALE' | 'PURCHASE' | 'EXPENSE';
+import com.tpvmovil.domain.valueobjects.Money
 
-export interface SaleTransaction {
-  readonly id: TransactionId;
-  readonly type: TransactionType;
-  readonly totalAmount: Money;
-  readonly paymentMethod: PaymentMethod;
-  readonly detail: string | null;
-  readonly registeredAt: string;
-  readonly deletedAt: string | null;
+@JvmInline
+value class TransactionId(val value: Long) : Comparable<TransactionId> {
+    override fun compareTo(other: TransactionId) = value.compareTo(other.value)
 }
+
+sealed class TransactionType {
+    object SALE : TransactionType()
+    object PURCHASE : TransactionType()
+    object EXPENSE : TransactionType()
+}
+
+data class SaleTransaction(
+    val id: TransactionId,
+    val type: TransactionType,
+    val totalAmount: Money,
+    val paymentMethod: PaymentMethod,
+    val detail: String?,
+    val registeredAt: String,    // ISO 8601
+    val deletedAt: String?
+)
 ```
 
 ### 2.3 TransactionDetail (Value Object)
 
-**File:** `src/domain/entities/TransactionDetail.ts`
+**File:** `commonMain/domain/entities/TransactionDetail.kt`
 
-```ts
-import type { Money } from '../value-objects/Money';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export interface TransactionDetail {
-  readonly id: number;
-  readonly transactionId: TransactionId;
-  readonly productId: number;
-  readonly quantity: number;
-  readonly unitPrice: Money;
-  readonly lineTotal: Money;
-}
+import com.tpvmovil.domain.valueobjects.Money
+
+data class TransactionDetail(
+    val id: Long,
+    val transactionId: TransactionId,
+    val productId: ProductId,
+    val quantity: Double,
+    val unitPrice: Money,
+    val lineTotal: Money
+)
 ```
 
 ### 2.4 PaymentMethod (Value Object)
 
-**File:** `src/domain/entities/PaymentMethod.ts`
+**File:** `commonMain/domain/entities/PaymentMethod.kt`
 
-```ts
-export type PaymentMethodCode = 'CASH' | 'CARD' | 'TRANSFER' | 'QR';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export class PaymentMethod {
-  readonly code: PaymentMethodCode;
+sealed class PaymentMethod(val code: String) {
+    object CASH : PaymentMethod("CASH")
+    object CARD : PaymentMethod("CARD")
+    object TRANSFER : PaymentMethod("TRANSFER")
+    object QR : PaymentMethod("QR")
 
-  constructor(code: PaymentMethodCode) {
-    if (!['CASH', 'CARD', 'TRANSFER', 'QR'].includes(code)) {
-      throw new Error(`Invalid payment method: ${code}`);
+    companion object {
+        fun fromCode(code: String): PaymentMethod = when (code.uppercase()) {
+            "CASH" -> CASH
+            "CARD" -> CARD
+            "TRANSFER" -> TRANSFER
+            "QR" -> QR
+            else -> throw IllegalArgumentException("Invalid payment method: $code")
+        }
     }
-    this.code = code;
-  }
 
-  equals(other: PaymentMethod): boolean {
-    return this.code === other.code;
-  }
+    fun isCash(): Boolean = this == CASH
 
-  isCash(): boolean {
-    return this.code === 'CASH';
-  }
-
-  toString(): string {
-    return this.code;
-  }
+    override fun toString(): String = code
 }
 ```
 
 ### 2.5 ChangeAmount (Value Object)
 
-**File:** `src/domain/value-objects/ChangeAmount.ts`
+**File:** `commonMain/domain/valueobjects/ChangeAmount.kt`
 
-```ts
-import type { Money } from './Money';
+```kotlin
+package com.tpvmovil.domain.valueobjects
 
-export class ChangeAmount {
-  readonly amount: Money;
+data class ChangeAmount(val amount: Money) {
+    companion object {
+        fun zero(currency: Currency): ChangeAmount = ChangeAmount(Money.zero(currency))
+    }
 
-  constructor(amount: Money) {
-    this.amount = amount;
-  }
+    fun isSufficient(): Boolean = amount.amount >= 0
 
-  static zero(currency: Money['currency']): ChangeAmount {
-    return new ChangeAmount(new Money(0, currency));
-  }
-
-  isSufficient(): boolean {
-    return this.amount.amount >= 0;
-  }
-
-  getColorClass(): 'text-success' | 'text-danger' {
-    return this.isSufficient() ? 'text-success' : 'text-danger';
-  }
+    fun colorClass(): String = if (isSufficient()) "success" else "danger"
 }
 ```
 
 ### 2.6 Money / Currency (Shared Kernel)
 
-**Files:** `src/domain/value-objects/Money.ts`, `src/domain/value-objects/Currency.ts` — see `system-settings/spec.md` section 2.1.
+**Files:** `commonMain/domain/valueobjects/Money.kt`, `Currency.kt` — see `system-settings/spec.md` section 2.1.
 
 ---
 
@@ -184,34 +179,34 @@ export class ChangeAmount {
 | RULE-SC-01 | Stock non-negative | `currentStock - quantity >= 0` before any `SALE`. `validateStockAvailable` throws `StockError` if fails. |
 | RULE-SC-02 | Discount ≤ subtotal | `applyDiscount`: clamp discount to [0, subtotal]. |
 | RULE-SC-03 | Single payment method | Exactly one `PaymentMethod` per transaction. No mixed/split payments (INV-04). |
-| RULE-SC-04 | Cash change | `change = received - total` only if `paymentMethod === 'CASH'`. Green if ≥ 0, red if negative. |
-| RULE-SC-05 | Rounded totals | `round2(v) = Math.round(v * 100) / 100` on subtotal, discount, total, change. |
-| RULE-SC-06 | Fractional quantities | Quantities and stock captured as decimals (`keyboardType="decimal-pad"`, step `0.001`), rounded to 3dp on persist. |
-| RULE-SC-07 | Atomic transaction | Sale creation: insert transaction + details, decrement product stock, increment `resumen_caja` — all in `db.withTransactionSync`. |
-| RULE-SC-08 | Stock alerts post-commit | After successful sale, collect products where `currentStock < minStock` and emit Toast. |
+| RULE-SC-04 | Cash change | `change = received - total` only if `paymentMethod === CASH`. Green if ≥ 0, red if negative. |
+| RULE-SC-05 | Rounded totals | `round2(v) = (v * 100).roundToInt() / 100.0` on subtotal, discount, total, change. |
+| RULE-SC-06 | Fractional quantities | Quantities and stock captured as decimals (`KeyboardType.Decimal`, step `0.001`), rounded to 3dp on persist. |
+| RULE-SC-07 | Atomic transaction | Sale creation: insert transaction + details, decrement product stock, increment `financial_accumulators` — all in SQLDelight transaction block. |
+| RULE-SC-08 | Stock alerts post-commit | After successful sale, collect products where `currentStock < minStock` and emit Snackbar. |
 
 Global invariants: **INV-01, INV-03, INV-04, INV-10**.
 
 ---
 
-## 4. Database Contract
+## 4. Database Contract (SQLDelight)
 
 ### 4.1 Target Schema (v2.0.0 — English Columns)
 
+**File:** `commonMain/sqldelight/schema.sq` (sales section)
+
 ```sql
--- sales_transactions (renamed from transacciones)
-CREATE TABLE IF NOT EXISTS sales_transactions (
+CREATE TABLE sales_transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,
     total_amount REAL NOT NULL,
     payment_method TEXT NOT NULL,
     detail TEXT,
-    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP DEFAULT NULL
+    registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    deleted_at INTEGER
 );
 
--- transaction_details (renamed from detalle_transacciones)
-CREATE TABLE IF NOT EXISTS transaction_details (
+CREATE TABLE transaction_details (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
@@ -221,20 +216,25 @@ CREATE TABLE IF NOT EXISTS transaction_details (
     FOREIGN KEY(product_id) REFERENCES products(id)
 );
 
--- resumen_caja (accumulator — unchanged structure, English column names in code)
-CREATE TABLE IF NOT EXISTS resumen_caja (
+-- financial_accumulators (see financial-accumulators/spec.md)
+CREATE TABLE financial_accumulators (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     total_sales REAL DEFAULT 0.0,
     total_purchases REAL DEFAULT 0.0,
     total_expenses REAL DEFAULT 0.0,
-    current_balance REAL DEFAULT 0.0
+    net_balance REAL DEFAULT 0.0,
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
 
+INSERT OR IGNORE INTO financial_accumulators (id, total_sales, total_purchases, total_expenses, net_balance, updated_at)
+VALUES (1, 0.0, 0.0, 0.0, 0.0, strftime('%s', 'now') * 1000);
+
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_date ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_type ON sales_transactions(type) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_transaction_details_transaction ON transaction_details(transaction_id);
-CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_details(product_id);
+CREATE INDEX idx_sales_transactions_date ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_sales_transactions_type ON sales_transactions(type) WHERE deleted_at IS NULL;
+CREATE INDEX idx_sales_transactions_registered_type ON sales_transactions(registered_at, type, deleted_at);
+CREATE INDEX idx_transaction_details_transaction ON transaction_details(transaction_id);
+CREATE INDEX idx_transaction_details_product ON transaction_details(product_id);
 ```
 
 ### 4.2 Column Mapping: v1.0.0 (Spanish) → v2.0.0 (English)
@@ -256,11 +256,11 @@ CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_detail
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_sales_checkout_migration.sql.ts`
-(`SALES_CHECKOUT_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
+**File:** `commonMain/sqldelight/migrations/v2_sales_checkout.sqm`
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
+-- v2_sales_checkout.sqm
+-- Atomic migration transaction (single transaction block)
 
 -- Step 1: Rename tables
 ALTER TABLE transacciones RENAME TO sales_transactions;
@@ -287,8 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_type ON sales_trans
 CREATE INDEX IF NOT EXISTS idx_transaction_details_transaction ON transaction_details(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_details(product_id);
 
--- Step 5: user_version = 2 is set centrally by `runMigrations` after every
--- v2.0.0 module step succeeds inside the same transaction.
+-- Step 5: user_version = 2 is set centrally by DatabaseDriverFactory
 ```
 
 ---
@@ -296,126 +295,119 @@ CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_detail
 ## 5. Repository Interfaces
 
 ### 5.1 ISaleRepository
-**File:** `src/data/repositories/ISaleRepository.ts`
+**File:** `commonMain/data/repositories/ISaleRepository.kt`
 
-```ts
-import type { SaleTransaction, TransactionId } from '@/domain/entities/SaleTransaction';
-import type { TransactionDetail } from '@/domain/entities/TransactionDetail';
-import type { TransactionType } from '@/domain/entities/SaleTransaction';
-import type { PaymentMethod } from '@/domain/entities/PaymentMethod';
+```kotlin
+package com.tpvmovil.data.repositories
 
-export interface CreateSaleTransactionInput {
-  readonly type: TransactionType;
-  readonly totalAmount: number;
-  readonly paymentMethod: PaymentMethod;
-  readonly detail: string | null;
+import com.tpvmovil.domain.entities.*
+
+interface ISaleRepository {
+    fun findById(id: TransactionId): SaleTransaction?
+    fun findDetails(transactionId: TransactionId): List<TransactionDetail>
+    fun list(options: ListOptions): List<SaleTransaction>
+    fun listByPeriod(period: Period): List<TypeTotal>
+    fun listExpensesThisMonth(limit: Int, offset: Int): List<SaleTransaction>
 }
 
-export interface CreateTransactionDetailInput {
-  readonly productId: number;
-  readonly quantity: number;
-  readonly unitPrice: number;
-}
+data class ListOptions(
+    val type: TransactionType? = null,
+    val limit: Int = 15,
+    val offset: Int = 0
+)
 
-export interface ISaleRepository {
-  findById(id: TransactionId): SaleTransaction | null;
-  findDetails(transactionId: TransactionId): ReadonlyArray<TransactionDetail>;
-  list(options: {
-    readonly type?: TransactionType;
-    readonly limit: number;
-    readonly offset: number;
-  }): ReadonlyArray<SaleTransaction>;
-  listByPeriod(options: {
-    readonly period: 'MONTH' | 'YEAR';
-  }): ReadonlyArray<{ type: TransactionType; total: number }>;
-  listExpensesThisMonth(limit: number, offset: number): ReadonlyArray<SaleTransaction>;
-}
+enum class Period { MONTH, YEAR }
+
+data class TypeTotal(val type: TransactionType, val total: Double)
 ```
 
 ---
 
-## 6. Use Cases (Application Layer)
+## 6. Use Cases (Application Layer — `commonMain`)
 
-### 6.1 RegisterSale (Factory + Repository Pattern)
-**File:** `src/application/sales/RegisterSale.ts`
+### 6.1 RegisterSale
+**File:** `commonMain/application/sales/RegisterSale.kt`
 
-```ts
-import type { CartItem } from '@/domain/entities/CartItem';
-import type { PaymentMethod } from '@/domain/entities/PaymentMethod';
+```kotlin
+package com.tpvmovil.application.sales
 
-export interface RegisterSaleInput {
-  readonly items: ReadonlyArray<CartItem>;
-  readonly paymentMethod: PaymentMethod;
-  readonly detail: string | null;
-}
+import com.tpvmovil.domain.entities.*
 
-export interface RegisterSaleResult {
-  readonly transactionId: TransactionId;
-  readonly total: number;
-  readonly stockAlerts: ReadonlyArray<{
-    readonly id: number;
-    readonly name: string;
-    readonly currentStock: number;
-    readonly minStock: number;
-  }>;
-}
+data class RegisterSaleInput(
+    val items: List<ICartItem>,
+    val paymentMethod: PaymentMethod,
+    val detail: String?
+)
 
-export function registerSale(input: RegisterSaleInput): RegisterSaleResult;
+data class RegisterSaleResult(
+    val transactionId: TransactionId,
+    val total: Double,
+    val stockAlerts: List<StockAlert>
+)
+
+data class StockAlert(
+    val id: ProductId,
+    val name: String,
+    val currentStock: Double,
+    val minStock: Double
+)
+
+suspend fun registerSale(input: RegisterSaleInput): RegisterSaleResult
 ```
 
-**Atomic Flow (`db.withTransactionSync`):**
+**Atomic Flow (SQLDelight transaction block):**
 1. Validate cart not empty.
 2. `calcTotals(lines, currency)`; `total.amount > 0`.
 3. `validateStockAvailable` for each item (throws `StockError` if insufficient).
 4. `INSERT INTO sales_transactions (type='SALE', total_amount, payment_method, detail)` → `lastInsertRowId`.
-5. For each item:
+3. For each item:
    - `INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price)`
    - `UPDATE products SET current_stock = current_stock - quantity, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-6. `UPDATE resumen_caja SET total_sales += total, current_balance += total WHERE id = 1`
-7. Post-commit: `collectStockAlerts` → Toast if `currentStock < minStock`.
+4. `UPDATE financial_accumulators SET total_sales += total, net_balance += total, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
+5. Post-commit: `collectStockAlerts` → Snackbar if `currentStock < minStock`.
 
 ### 6.2 RegisterPurchase
-**File:** `src/application/purchases/RegisterPurchase.ts` — mirrors `RegisterSale` with type `PURCHASE`, increments stock, decrements balance.
+**File:** `commonMain/application/purchases/RegisterPurchase.kt` — mirrors `RegisterSale` with type `PURCHASE`, increments stock, decrements balance.
 
 ### 6.3 RevertTransaction (Unified)
-**File:** `src/application/transactions/RevertTransaction.ts` — handles `SALE`, `PURCHASE`, `EXPENSE` reversal with stock safety checks (see `financial-accumulators/spec.md` section 6.3).
+**File:** `commonMain/application/transactions/RevertTransaction.kt` — handles `SALE`, `PURCHASE`, `EXPENSE` reversal with stock safety checks (see `financial-accumulators/spec.md` section 6.3).
 
 ---
 
 ## 7. Domain Rules (Cart Math)
 
-**File:** `src/domain/rules/cartRules.ts`
+**File:** `commonMain/domain/rules/CartRules.kt`
 
 | Function | Signature | Description |
 |---|---|---|
-| `selectUnitPrice` | `(salePrice: Money, purchasePrice: Money, kind: CartKind) => Money` | `salePrice` if SALE, `purchasePrice` if PURCHASE. |
-| `lineSubtotal` | `(line: CartLine) => Money` | `unitPrice * quantity`, rounded to 2dp. |
-| `calcTotals` | `(lines: CartLine[], currency: CurrencyCode) => CartTotals` | `{ subtotal, discount, total }` as `Money`. |
-| `calcChange` | `(total: Money, received: Money) => ChangeAmount` | `received - total`, rounded to 2dp. |
-| `applyDiscount` | `(subtotal: Money, discount: Money) => Money` | Clamp [0, subtotal]. |
+| `selectUnitPrice` | `(salePrice: Money, purchasePrice: Money, kind: CartType) -> Money` | `salePrice` if SALE, `purchasePrice` if PURCHASE. |
+| `lineSubtotal` | `(line: CartLine) -> Money` | `unitPrice * quantity`, rounded to 2dp. |
+| `calcTotals` | `(lines: List<CartLine>, currency: CurrencyCode) -> CartTotals` | `{ subtotal, discount, total }` as `Money`. |
+| `calcChange` | `(total: Money, received: Money) -> ChangeAmount` | `received - total`, rounded to 2dp. |
+| `applyDiscount` | `(subtotal: Money, discount: Money) -> Money` | Clamp [0, subtotal]. |
 
-`CartLine` is `{ unitPrice: Money; quantity: Stock; discount: Money }`. The legacy `CarritoItem` entity is adapted at the boundary through `src/shared/utils/legacyCart.ts`.
+`CartLine` is `{ unitPrice: Money; quantity: Double; discount: Money }`.
 
 ---
 
-## 8. UI State Machines (Spanish visible text)
+## 8. UI State Machines (Spanish visible text via `stringResource`)
 
-### 8.1 Sale/Purchase Catalog Screen (`app/(tabs)/registro.tsx` → `CarritoScreen`)
+### 8.1 Sale/Purchase Catalog Screen (`CartScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
 | `CatalogEmpty` | Search no results | — | `"No se encontraron productos"` (EmptyState) |
-| `ProductSelected` | Tap product card | `LineItemModal` | `"Agregar al carrito"` |
+| `ProductSelected` | Tap product card | `LineItemDialog` | `"Agregar al carrito"` |
 
-### 8.2 LineItemModal
+### 8.2 LineItemDialog
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
-| `QuantityInitial` | Open modal | — | `"Cantidad"` (decimal, step 0.001) |
+| `QuantityInitial` | Open dialog | — | `"Cantidad"` (decimal, step 0.001) |
 | `DiscountEntered` | Tap discount | — | `"Descuento (monto fijo)"`, validated ≤ subtotal |
 | `Confirmed` | Tap Apply | Cart updated | `"Producto agregado"` |
 
-### 8.3 PaymentModal
+### 8.3 PaymentDialog
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -429,139 +421,143 @@ export function registerSale(input: RegisterSaleInput): RegisterSaleResult;
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
 | `Preview` | Payment success | — | `"Recibo"` / `"Comprobante"` |
-| `Shared` | Tap Share | — | `Sharing.shareAsync(uri)` |
+| `Shared` | Tap Share | — | `ShareSheet` |
 
 ---
 
-## 9. UI Components
+## 9. Compose UI Components
 
 | Component | File | Type | Memoized | Description |
 |---|---|---|---|---|
-| `CartLine` | `src/presentation/components/cart/CartLine.tsx` | UI | Yes | Cart row: name, qty × price, line total, remove button |
-| `CartSummaryBar` | `src/presentation/components/cart/CartSummaryBar.tsx` | UI | No | Bottom bar: item count, total, checkout button, clear button |
-| `LineItemModal` | `src/presentation/components/cart/LineItemModal.tsx` | UI | No | Quantity + discount input, live subtotal |
-| `PaymentModal` | `src/presentation/components/cart/PaymentModal.tsx` | UI | No | Payment method radio, cash received + change calculator |
-| `ProductGridCard` | `src/presentation/components/product/ProductGridCard.tsx` | UI | Yes | 3-col catalog card (shared with catalog) |
-| `SearchBar` | `src/presentation/components/filters/SearchBar.tsx` | UI | No | Debounce 200ms |
-| `SortMenu` | `src/presentation/components/filters/SortMenu.tsx` | UI | No | Dropdown: "Nombre A-Z" / "Más vendidos" |
-| `CategoryChipsRow` | `src/presentation/components/filters/CategoryChipsRow.tsx` | UI | No | Clean text chips |
-| `EmptyState` | `src/presentation/components/feedback/EmptyState.tsx` | UI | No | Illustration + action button |
-| `ReceiptPreview` | `src/presentation/components/receipt/ReceiptPreview.tsx` | UI | No | HTML receipt preview before share |
+| `CartScreen` | `composeApp/.../cart/CartScreen.kt` | Screen | N/A | Main cart with `LazyColumn` |
+| `CartLine` | `composeApp/.../cart/CartLine.kt` | Composable | `key = item.productId` | Cart row: name, qty × price, line total, remove button |
+| `CartSummaryBar` | `composeApp/.../cart/CartSummaryBar.kt` | Composable | No | Bottom bar: item count, total, checkout button, clear button |
+| `LineItemDialog` | `composeApp/.../cart/LineItemDialog.kt` | Composable | No | Quantity + discount input, live subtotal |
+| `PaymentDialog` | `composeApp/.../cart/PaymentDialog.kt` | Composable | No | Payment method radio, cash received + change calculator |
+| `ProductGridCard` | `composeApp/.../catalog/ProductGridCard.kt` | Composable | `key = product.id` | 3-col catalog card (shared with catalog) |
+| `SearchBar` | `composeApp/.../filters/SearchBar.kt` | Composable | No | Debounce 200ms |
+| `SortMenu` | `composeApp/.../filters/SortMenu.kt` | Composable | No | Dropdown: "Nombre A-Z" / "Más vendidos" |
+| `CategoryChipsRow` | `composeApp/.../filters/CategoryChipsRow.kt` | Composable | No | Clean text chips |
+| `EmptyState` | `composeApp/.../feedback/EmptyState.kt` | Composable | No | Illustration + action button |
+| `ReceiptPreview` | `composeApp/.../receipt/ReceiptPreview.kt` | Composable | No | HTML receipt preview before share |
 
 ---
 
-## 10. Hooks
+## 10. ViewModels
 
-| Hook | File | Responsibility |
+| ViewModel | File | Responsibility |
 |---|---|---|
-| `useCart` | `src/presentation/hooks/useCart.ts` | Granular Zustand selectors for cart items, totals |
-| `useTransactions` | `src/presentation/hooks/useTransactions.ts` | Paginated transaction list |
-| `useStockAlert` | `src/presentation/hooks/useStockAlert.ts` | Toast if `currentStock < minStock` post-sale |
+| `SaleCartViewModel` | `commonMain/presentation/viewmodels/SaleCartViewModel.kt` | SALE cart with granular `StateFlow` selectors |
+| `PurchaseCartViewModel` | `commonMain/presentation/viewmodels/PurchaseCartViewModel.kt` | PURCHASE cart with granular `StateFlow` selectors |
+| `PaymentViewModel` | `commonMain/presentation/viewmodels/PaymentViewModel.kt` | Payment flow, change calculation, receipt generation |
 
 ---
 
-## 11. Zustand Stores
+## 11. AdWare Governance
 
-| Store | File | Responsibility |
-|---|---|---|
-| `saleCartStore` | `src/presentation/stores/saleCartStore.ts` | SALE cart with granular selectors |
-| `purchaseCartStore` | `src/presentation/stores/purchaseCartStore.ts` | PURCHASE cart with granular selectors |
-
----
-
-## 12. AdWare Governance
-
-**Rule:** **ZERO ads allowed** on the Checkout screen (`CarritoScreen`, `PaymentModal`, `ReceiptPreview`).
+**Rule:** **ZERO ads allowed** on the Checkout screen (`CartScreen`, `PaymentDialog`, `ReceiptPreview`).
 
 **Implementation:**
 - `AD_ENABLED` flag is **ignored/disabled** in this view.
-- No `AdBanner` rendered in `ListFooterComponent` or any checkout UI.
+- No `AdBanner` rendered in `LazyColumn` footer or any checkout UI.
 - Prevents user distraction during payment flow.
 
 ---
 
-## 13. Applicable NFRs
+## 12. Applicable NFRs
 
-- **NFR-02:** FlashList `numColumns={3}`, sub-50ms render, no `estimatedItemSize`.
-- **NFR-03:** 0ms cash calculations — read from `resumen_caja` accumulator only.
+- **NFR-02:** `LazyColumn` / `LazyVerticalGrid`, sub-16ms render, stable keys.
+- **NFR-03:** 0ms cash calculations — read from `financial_accumulators` accumulator only.
 - **NFR-04:** Pagination `LIMIT ? OFFSET ?` with `pageSize` from settings (default 15).
-- **NFR-07:** Atomic rollback via `withTransactionSync` on sale/purchase creation.
-- **NFR-08:** UI strings in Spanish; code/DB/identifiers in English.
-- **NFR-09:** Strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
+- **NFR-07:** Atomic rollback via SQLDelight transaction blocks on sale/purchase creation.
+- **NFR-08:** UI strings in Spanish via `stringResource`; code/DB/identifiers in English.
+- **NFR-09:** Strict Kotlin (`explicit-api`, `-Xlint`).
 - **NFR-10:** Tests: 100% pass unit + integration + cash/stock integrity.
 
 ---
 
-## 14. Extension Points (v2.0.0 Roadmap)
+## 13. Extension Points (v2.0.0 Roadmap)
 
 - [ ] **Bundle/Combo products**: Composite `BundleCartItem` implementing `ICartItem`.
 - [ ] **Split payments**: Multiple `PaymentMethod` per transaction (currently blocked by INV-04).
-- [ ] **Native thermal printing**: Direct ESC/POS to Bluetooth printer (currently `expo-print` HTML → PDF → share).
+- [ ] **Native thermal printing**: Direct ESC/POS to Bluetooth printer (currently HTML → PDF → share).
 - [ ] **Offline receipt queue**: Persist unsent receipts for later sync/print.
 - [ ] **Customer-facing display**: Second screen mode for payment confirmation.
 
 ---
 
-## 15. i18n Keys (Spanish UI Dictionary)
+## 14. i18n Keys (Spanish UI Dictionary — `composeResources/values-es/strings.xml`)
 
-| Key | Text (ES) | Context |
-|---|---|---|
-| `checkout.cart.title` | Carrito de venta / Carrito de compra | Cart header |
-| `checkout.cart.empty` | Carrito vacío | Empty cart state |
-| `checkout.cart.item_count` | {count} productos | Item count badge |
-| `checkout.cart.subtotal` | Subtotal | Subtotal label |
-| `checkout.cart.discount` | Descuento | Discount label |
-| `checkout.cart.total` | Total | Total label |
-| `checkout.cart.checkout` | Cobrar / Registrar | Checkout button |
-| `checkout.cart.clear` | Vaciar carrito | Clear cart button |
-| `checkout.cart.clear_confirm` | ¿Eliminar todos los productos del carrito? | Clear confirmation |
-| `checkout.line.quantity` | Cantidad | LineItemModal label |
-| `checkout.line.discount` | Descuento (monto fijo) | LineItemModal label |
-| `checkout.line.stock_available` | Stock disponible: {stock} | LineItemModal helper |
-| `checkout.line.subtotal` | Subtotal línea | LineItemModal label |
-| `checkout.line.apply` | Aplicar | LineItemModal button |
-| `checkout.line.cancel` | Cancelar | LineItemModal button |
-| `checkout.line.error.stock_exceeded` | Máximo disponible: {stock} | Stock validation error |
-| `checkout.line.error.discount_exceeded` | El descuento no puede superar {subtotal} | Discount validation error |
-| `checkout.payment.title` | Cobrar venta / Pagar compra | PaymentModal title |
-| `checkout.payment.total_label` | Total a cobrar / Total a pagar | PaymentModal label |
-| `checkout.payment.method_label` | Tipo de pago | Payment method header |
-| `checkout.payment.cash` | Efectivo | Cash option |
-| `checkout.payment.card` | Tarjeta | Card option |
-| `checkout.payment.transfer` | Transferencia | Transfer option |
-| `checkout.payment.qr` | QR | QR option |
-| `checkout.payment.amount_received` | Monto recibido | Cash input label |
-| `checkout.payment.exact` | Exacto | Set exact amount button |
-| `checkout.payment.change` | Cambio | Change label |
-| `checkout.payment.change_sufficient` | Cambio: {amount} | Positive change |
-| `checkout.payment.change_insufficient` | Faltante: {amount} | Negative change |
-| `checkout.payment.cancel` | Cancelar | PaymentModal button |
-| `checkout.payment.confirm` | Cobrar / Registrar | PaymentModal confirm |
-| `checkout.receipt.title` | Recibo / Comprobante | Receipt title |
-| `checkout.receipt.share` | Compartir | Share button |
-| `checkout.receipt.sale_type` | VENTA / COMPRA / GASTO | Receipt type |
-| `checkout.receipt.transaction_id` | Transacción #{id} | Receipt transaction ID |
-| `checkout.receipt.date` | {date} | Receipt date |
-| `checkout.receipt.items_header` | Productos | Items section header |
-| `checkout.receipt.payment_method` | Pago: {method} | Receipt payment method |
-| `checkout.receipt.total` | Total: {amount} | Receipt total |
-| `checkout.receipt.change` | Cambio: {amount} | Receipt change (cash only) |
-| `checkout.toast.sale_created` | Venta registrada | Toast success |
-| `checkout.toast.purchase_created` | Compra registrada | Toast success |
-| `checkout.toast.error` | No se pudo registrar. | Toast error |
-| `checkout.toast.receipt_failed` | Comprobante no generado | Toast warning |
-| `checkout.alert.insufficient_stock` | Stock insuficiente para {name}. Disponible: {stock} | StockError toast |
-| `checkout.alert.cart_empty` | El carrito está vacío. | Validation error |
+```xml
+<!-- Cart -->
+<string name="checkout_cart_title_sale">Carrito de venta</string>
+<string name="checkout_cart_title_purchase">Carrito de compra</string>
+<string name="checkout_cart_empty">Carrito vacío</string>
+<string name="checkout_cart_item_count">%1$d productos</string>
+<string name="checkout_cart_subtotal">Subtotal</string>
+<string name="checkout_cart_discount">Descuento</string>
+<string name="checkout_cart_total">Total</string>
+<string name="checkout_cart_checkout_sale">Cobrar</string>
+<string name="checkout_cart_checkout_purchase">Registrar</string>
+<string name="checkout_cart_clear">Vaciar carrito</string>
+<string name="checkout_cart_clear_confirm">¿Eliminar todos los productos del carrito?</string>
+
+<!-- Line Item -->
+<string name="checkout_line_quantity">Cantidad</string>
+<string name="checkout_line_discount">Descuento (monto fijo)</string>
+<string name="checkout_line_stock_available">Stock disponible: %1$s</string>
+<string name="checkout_line_subtotal">Subtotal línea</string>
+<string name="checkout_line_apply">Aplicar</string>
+<string name="checkout_line_cancel">Cancelar</string>
+<string name="checkout_line_error_stock_exceeded">Máximo disponible: %1$s</string>
+<string name="checkout_line_error_discount_exceeded">El descuento no puede superar %1$s</string>
+
+<!-- Payment -->
+<string name="checkout_payment_title_sale">Cobrar venta</string>
+<string name="checkout_payment_title_purchase">Pagar compra</string>
+<string name="checkout_payment_total_label">Total a cobrar / Total a pagar</string>
+<string name="checkout_payment_method_label">Tipo de pago</string>
+<string name="checkout_payment_cash">Efectivo</string>
+<string name="checkout_payment_card">Tarjeta</string>
+<string name="checkout_payment_transfer">Transferencia</string>
+<string name="checkout_payment_qr">QR</string>
+<string name="checkout_payment_amount_received">Monto recibido</string>
+<string name="checkout_payment_exact">Exacto</string>
+<string name="checkout_payment_change">Cambio</string>
+<string name="checkout_payment_change_sufficient">Cambio: %1$s</string>
+<string name="checkout_payment_change_insufficient">Faltante: %1$s</string>
+<string name="checkout_payment_cancel">Cancelar</string>
+<string name="checkout_payment_confirm">Cobrar / Registrar</string>
+
+<!-- Receipt -->
+<string name="checkout_receipt_title">Recibo / Comprobante</string>
+<string name="checkout_receipt_share">Compartir</string>
+<string name="checkout_receipt_sale_type">VENTA / COMPRA / GASTO</string>
+<string name="checkout_receipt_transaction_id">Transacción #%1$d</string>
+<string name="checkout_receipt_date">%1$s</string>
+<string name="checkout_receipt_items_header">Productos</string>
+<string name="checkout_receipt_payment_method">Pago: %1$s</string>
+<string name="checkout_receipt_total">Total: %1$s</string>
+<string name="checkout_receipt_change">Cambio: %1$s</string>
+
+<!-- Toasts/Alerts -->
+<string name="checkout_toast_sale_created">Venta registrada</string>
+<string name="checkout_toast_purchase_created">Compra registrada</string>
+<string name="checkout_toast_error">No se pudo registrar.</string>
+<string name="checkout_toast_receipt_failed">Comprobante no generado</string>
+<string name="checkout_alert_insufficient_stock">Stock insuficiente para %1$s. Disponible: %2$s</string>
+<string name="checkout_alert_cart_empty">El carrito está vacío.</string>
+```
 
 ---
 
-## 16. Cross-References
+## 15. Cross-References
 
 - `catalog-inventory/spec.md` — Product catalog, stock validation, SKU/Stock VOs
-- `financial-accumulators/spec.md` — `resumen_caja` accumulator, `RevertTransaction` stock math
+- `financial-accumulators/spec.md` — `financial_accumulators` accumulator, `RevertTransaction` stock math
 - `system-settings/spec.md` — Currency/Money VOs, pagination settings, PIN gate for deletion
 - `expenses-cashflow/spec.md` — Expense registration (unified in `sales_transactions` type `EXPENSE`)
 
 ---
 
-*Last updated: 2026-11-10 — v2.0.0 Specification*
+*Last updated: 2026-11-12 — v2.0.0 KMP Specification*

@@ -1,14 +1,14 @@
-# Sales & Checkout Module — Implementation Plan (v2.0.0)
+# Sales & Checkout Module — Implementation Plan (v2.0.0 KMP)
 
-> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. Domain entities still use their existing names; presentation/entity renaming remains pending.
+> **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 2 after Catalog.
 
 ## Overview
 
-This plan covers the implementation of the Sales & Checkout module v2.0.0, including:
+This plan covers the implementation of the Sales & Checkout module v2.0.0 KMP, including:
 - Domain layer: English entities, Composite Pattern, Value Objects
-- Data layer: Repository renames, English column mappers, migration
+- Data layer: SQLDelight repositories, English column mappers, migration
 - Application layer: RegisterSale, RegisterPurchase, RevertTransaction
-- Presentation layer: Stores, hooks, components, AdWare removal
+- Presentation layer: ViewModels, Compose UI components, AdWare removal
 - Testing: Unit, integration, migration, atomic, E2E
 
 ---
@@ -16,124 +16,91 @@ This plan covers the implementation of the Sales & Checkout module v2.0.0, inclu
 ## Phase 1: Database Migration (Critical Path)
 
 ### 1.1 Migration Runner Update
-**File:** `src/data/database/migrations.ts`
-- Register the sales step in the version-2 group (all v2 modules share one `withTransactionSync`)
-- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
+**File:** `commonMain/data/database/DatabaseDriverFactory.kt`
+- Register the sales step in the version-2 migration list (all v2 modules share one transaction)
+- `user_version = 2` is set centrally by `DatabaseDriverFactory` after every v2 step succeeds
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_sales_checkout_migration.sql.ts` (`SALES_CHECKOUT_MIGRATION_SQL`)
-
-```sql
--- Atomic migration transaction (single db.withTransactionSync)
-
--- Step 1: Rename tables
-ALTER TABLE transacciones RENAME TO sales_transactions;
-ALTER TABLE detalle_transacciones RENAME TO transaction_details;
-
--- Step 2: Rename columns in sales_transactions
-ALTER TABLE sales_transactions RENAME COLUMN tipo TO type;
-ALTER TABLE sales_transactions RENAME COLUMN monto_total TO total_amount;
-ALTER TABLE sales_transactions RENAME COLUMN tipo_pago TO payment_method;
-ALTER TABLE sales_transactions RENAME COLUMN detalle TO detail;
-ALTER TABLE sales_transactions RENAME COLUMN fecha_registro TO registered_at;
-ALTER TABLE sales_transactions RENAME COLUMN fecha_delete TO deleted_at;
-
--- Step 3: Rename columns in transaction_details
-ALTER TABLE transaction_details RENAME COLUMN transaccion_id TO transaction_id;
-ALTER TABLE transaction_details RENAME COLUMN producto_id TO product_id;
-ALTER TABLE transaction_details RENAME COLUMN cantidad TO quantity;
-ALTER TABLE transaction_details RENAME COLUMN precio_unitario TO unit_price;
-
--- Step 4: Recreate indexes with English names
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_at ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_type ON sales_transactions(type) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_type ON sales_transactions(registered_at, type, deleted_at);
-CREATE INDEX IF NOT EXISTS idx_transaction_details_transaction ON transaction_details(transaction_id);
-CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_details(product_id);
-
--- Step 5: user_version = 2 is set centrally by `runMigrations`
-```
+**File:** `commonMain/sqldelight/migrations/v2_sales_checkout.sqm` (see spec.md section 4.3)
 
 ### 1.3 Migration Checklist
-- [x] Create migration v2 in `migrations.ts` (version 2)
-- [x] Write `v2_0_0_sales_checkout_migration.sql.ts` with atomic transaction
-- [x] Rename tables: `transacciones` → `sales_transactions`, `detalle_transacciones` → `transaction_details`
-- [x] Rename columns in `sales_transactions`: `tipo`→`type`, `monto_total`→`total_amount`, `tipo_pago`→`payment_method`, `detalle`→`detail`, `fecha_registro`→`registered_at`, `fecha_delete`→`deleted_at`
-- [x] Rename columns in `transaction_details`: `transaccion_id`→`transaction_id`, `producto_id`→`product_id`, `cantidad`→`quantity`, `precio_unitario`→`unit_price`
-- [x] Recreate indexes with English names
-- [x] `user_version` = 2 (centralized)
-- [x] Verify row counts match pre-migration
+- [ ] Create migration v2 in `DatabaseDriverFactory` migration list
+- [ ] Write `v2_sales_checkout.sqm` with atomic transaction
+- [ ] Rename tables: `transacciones` → `sales_transactions`, `detalle_transacciones` → `transaction_details`
+- [ ] Rename columns in `sales_transactions`: `tipo`→`type`, `monto_total`→`total_amount`, `tipo_pago`→`payment_method`, `detalle`→`detail`, `fecha_registro`→`registered_at`, `fecha_delete`→`deleted_at`
+- [ ] Rename columns in `transaction_details`: `transaccion_id`→`transaction_id`, `producto_id`→`product_id`, `cantidad`→`quantity`, `precio_unitario`→`unit_price`
+- [ ] Recreate indexes with English names
+- [ ] `user_version` = 2 (centralized)
+- [ ] Verify row counts match pre-migration
 - [ ] Test restore from backup scenario
 
 ---
 
-## Phase 2: Domain Layer
+## Phase 2: Domain Layer (`commonMain/domain/`)
 
-### 2.1 Entity Renames & New Entities
-| Old File | New File | Changes |
-|---|---|---|
-| `Transaccion.ts` | `SaleTransaction.ts` | English fields, `TransactionType` enum |
-| `DetalleTransaccion.ts` | `TransactionDetail.ts` | English fields |
-| `CarritoItem.ts` | `CartItem.ts` | Composite Pattern: `ICartItem`, `SimpleCartItem`, `SimpleCartItemFactory` |
+### 2.1 Entity Files
+| New File | Purpose |
+|---|---|
+| `entities/SaleTransaction.kt` | English fields, `TransactionType` sealed class |
+| `entities/TransactionDetail.kt` | English fields |
+| `entities/CartItem.kt` | Composite Pattern: `ICartItem`, `SimpleCartItem`, `SimpleCartItemFactory` |
 
-### 2.2 New Value Objects
-- `PaymentMethod.ts` — `CASH` | `CARD` | `TRANSFER` | `QR` with `isCash()` method
-- `ChangeAmount.ts` — cash change calculation with color coding
+### 2.2 Value Objects
+- `entities/PaymentMethod.kt` — `CASH` | `CARD` | `TRANSFER` | `QR` with `isCash()` method
+- `valueobjects/ChangeAmount.kt` — cash change calculation with color coding
 
 ### 2.3 Domain Rules
-**File:** `src/domain/rules/cartRules.ts`
-- `getUnitPrice(item, type)` — returns sellingPrice (SALE) or purchasePrice (PURCHASE)
+**File:** `rules/CartRules.kt`
+- `selectUnitPrice(item, type)` — returns sellingPrice (SALE) or purchasePrice (PURCHASE)
 - `lineSubtotal(item, type)` — unitPrice × quantity
 - `calcTotals(items, type)` — { subtotal, discount, total } rounded
 - `calcChange(total, received)` — ChangeAmount (received - total)
 - `applyDiscount(subtotal, discount)` — clamp [0, subtotal]
 
 ### 2.4 Stock Rules (Shared)
-**File:** `src/domain/rules/stockRules.ts` — `validateStockAvailable`, `isBelowMin`, `StockError`
+**File:** `rules/StockRules.kt` — `validateStockAvailable`, `isBelowMin`, `StockError`
 
 ---
 
-## Phase 3: Data Layer
+## Phase 3: Data Layer (`commonMain/data/repositories/`)
 
-### 3.1 Repository Renames
-| Old | New | Notes |
+### 3.1 Repository Interfaces & Implementations
+| Interface | Implementation | Notes |
 |---|---|---|
-| `ITransaccionRepository.ts` | `ISaleRepository.ts` | English interface, updated types |
-| `SqliteTransaccionRepository.ts` | `SqliteSaleRepository.ts` | English column mappers |
-| `ITransaccionRepository.ts` (container) | Update injection | `container.ts` registration |
+| `ISaleRepository.kt` | `impl/SqlDelightSaleRepository.kt` | English interface, SQLDelight queries |
 
-### 3.2 Mappers
-**File:** `src/data/mappers/rowMappers.ts`
-- `mapSaleTransactionRow` — Spanish → English column mapping
-- `mapTransactionDetailRow` — Spanish → English column mapping
+### 3.2 SQLDelight Queries
+**File:** `commonMain/sqldelight/queries.sq` (or embedded in repository)
+- All queries use English column names
+- `mapSaleTransactionRow`, `mapTransactionDetailRow` via SQLDelight mappers
 
 ---
 
-## Phase 4: Application Layer
+## Phase 4: Application Layer (`commonMain/application/`)
 
-### 4.1 RegisterSale.ts
-**File:** `src/application/sales/RegisterSale.ts`
-- Input: `items: CartItem[]`, `paymentMethod: PaymentMethod`, `detail: string | null`
-- Atomic `withTransactionSync` flow:
+### 4.1 RegisterSale.kt
+**File:** `application/sales/RegisterSale.kt`
+- Input: `items: List<ICartItem>`, `paymentMethod: PaymentMethod`, `detail: String?`
+- Atomic SQLDelight transaction block:
   1. Validate cart not empty
   2. `calcTotals` → total > 0
   3. `validateStockAvailable` for each item
   4. INSERT sales_transactions (type='SALE')
   5. For each item: INSERT transaction_details + UPDATE products stock
-  6. UPDATE resumen_caja (total_sales += total, current_balance += total)
-  7. Post-commit: collectStockAlerts → Toast
+  6. UPDATE financial_accumulators (total_sales += total, net_balance += total)
+  7. Post-commit: collectStockAlerts → Snackbar
 
-### 4.2 RegisterPurchase.ts
-**File:** `src/application/purchases/RegisterPurchase.ts`
+### 4.2 RegisterPurchase.kt
+**File:** `application/purchases/RegisterPurchase.kt`
 - Mirrors RegisterSale with:
   - type = 'PURCHASE'
   - stock increment (+quantity)
-  - balance decrement (current_balance -= total)
+  - balance decrement (net_balance -= total)
   - total_purchases += total
 
-### 4.3 RevertTransaction.ts
-**File:** `src/application/transactions/RevertTransaction.ts`
-- Handles SALE, PURCHASE, EXPENSE
+### 4.3 RevertTransaction.kt
+**File:** `application/transactions/RevertTransaction.kt` (shared)
+- Handles `SALE`, `PURCHASE`, `EXPENSE`
 - Pre-check: PURCHASE revert validates stock won't go negative
 - Soft delete: UPDATE deleted_at = CURRENT_TIMESTAMP
 - Stock/balance adjustments per type
@@ -142,48 +109,44 @@ CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_detail
 
 ## Phase 5: Presentation Layer
 
-### 5.1 Zustand Stores
-| Store | File | Changes |
+### 5.1 ViewModels (`commonMain/presentation/viewmodels/`)
+| ViewModel | File | Changes |
 |---|---|---|
-| `carritoStore.ts` | `saleCartStore.ts` | Rename, granular selectors, `type: 'SALE'` |
-| `carritoStore.ts` (purchase) | `purchaseCartStore.ts` | New store, `type: 'PURCHASE'`, granular selectors |
+| `SaleCartViewModel` | `SaleCartViewModel.kt` | Granular `StateFlow` selectors, `type = SALE` |
+| `PurchaseCartViewModel` | `PurchaseCartViewModel.kt` | Granular `StateFlow` selectors, `type = PURCHASE` |
+| `PaymentViewModel` | `PaymentViewModel.kt` | Payment flow, change calculation |
 
 **Granular Selectors Pattern:**
-```ts
+```kotlin
 // Instead of subscribing to entire cart
-const items = useSaleCartStore(state => state.items);
-const total = useSaleCartStore(state => state.total);
-const itemCount = useSaleCartStore(state => state.itemCount);
+val items = saleCartViewModel.itemsFlow // StateFlow<List<ICartItem>>
+val total = saleCartViewModel.totalFlow // StateFlow<Money>
+val itemCount = saleCartViewModel.itemCountFlow // StateFlow<Int>
 ```
 
-### 5.2 Hooks
-| Hook | File | Changes |
-|---|---|---|
-| `useCarrito.ts` | `useCart.ts` | English types, granular selectors |
-| `useTransacciones.ts` | `useTransactions.ts` | English types, pagination |
-| `useStockAlert.ts` | `useStockAlert.ts` | Post-sale stock check, Toast emission |
+### 5.2 Compose UI Components (`composeApp/src/commonMain/compose/`)
 
-### 5.3 Components
 | Component | File | Changes |
 |---|---|---|
-| `CartLine.tsx` | `src/presentation/components/cart/CartLine.tsx` | Memoized, English props |
-| `CartSummaryBar.tsx` | `src/presentation/components/cart/CartSummaryBar.tsx` | English labels via i18n |
-| `LineItemModal.tsx` | `src/presentation/components/cart/LineItemModal.tsx` | Decimal pad, discount validation |
-| `PaymentModal.tsx` | `src/presentation/components/cart/PaymentModal.tsx` | Change calculator (green/red), exact button |
-| `ReceiptPreview.tsx` | `src/presentation/components/receipt/ReceiptPreview.tsx` | New component for preview |
+| `CartScreen.kt` | `cart/CartScreen.kt` | `LazyColumn`, English props, i18n |
+| `CartLine.kt` | `cart/CartLine.kt` | Memoized with `key`, English labels |
+| `CartSummaryBar.kt` | `cart/CartSummaryBar.kt` | English labels via `stringResource` |
+| `LineItemDialog.kt` | `cart/LineItemDialog.kt` | Decimal keyboard, discount validation |
+| `PaymentDialog.kt` | `cart/PaymentDialog.kt` | Change calculator (green/red), exact button |
+| `ReceiptPreview.kt` | `receipt/ReceiptPreview.kt` | New component for preview |
 
-### 5.4 AdWare Removal
+### 5.3 AdWare Removal
 **Files to modify:**
-- `app/(tabs)/registro.tsx` (CarritoScreen) — Remove `AdBanner` from ListFooterComponent
-- `PaymentModal.tsx` — No ads
-- `ReceiptPreview.tsx` — No ads
+- `CartScreen.kt` — Remove `AdBanner` from footer
+- `PaymentDialog.kt` — No ads
+- `ReceiptPreview.kt` — No ads
 
 **Rule:** `AD_ENABLED` flag ignored in checkout screens.
 
-### 5.5 i18n
-**File:** `src/presentation/i18n/es/checkout.json`
-- All 45+ keys from spec.md section 15
-- Namespace: `checkout`
+### 5.4 i18n
+**File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
+- All 45+ keys from spec.md section 14
+- Namespace: `checkout_`
 
 ---
 
@@ -194,7 +157,7 @@ const itemCount = useSaleCartStore(state => state.itemCount);
 - PKs preserved (id values unchanged)
 - Timestamps preserved (registered_at, deleted_at)
 - Soft deletes preserved (deleted_at NOT NULL rows)
-- `resumen_caja` accumulator unchanged
+- `financial_accumulators` accumulator unchanged
 
 ### 6.2 Functional Verification
 - Create SALE → verify stock decrement, balance increment
@@ -208,45 +171,45 @@ const itemCount = useSaleCartStore(state => state.itemCount);
 ## Phase 7: Testing
 
 ### 7.1 Unit Tests
-**Directory:** `tests/unit/sales-checkout/`
-- `cartRules.test.ts` — All 5 functions with edge cases
-- `PaymentMethod.test.ts` — Validation, equality, isCash()
-- `ChangeAmount.test.ts` — isSufficient, getColorClass, zero
-- `SimpleCartItemFactory.test.ts` — Creation, discount clamping
+**Directory:** `commonTest/unit/sales-checkout/`
+- `CartRulesTest.kt` — All 5 functions with edge cases
+- `PaymentMethodTest.kt` — Validation, equality, isCash()
+- `ChangeAmountTest.kt` — isSufficient, colorClass, zero
+- `SimpleCartItemFactoryTest.kt` — Creation, discount clamping
 
 ### 7.2 Integration Tests
-**Directory:** `tests/integration/sales-checkout/`
-- `RegisterSale.test.ts` — Success, insufficient stock, empty cart, cash change, atomic rollback
-- `RegisterPurchase.test.ts` — Success, stock/balance changes
-- `RevertTransaction.test.ts` — SALE, PURCHASE, EXPENSE, stock safety check
+**Directory:** `commonTest/integration/sales-checkout/`
+- `RegisterSaleTest.kt` — Success, insufficient stock, empty cart, cash change, atomic rollback
+- `RegisterPurchaseTest.kt` — Success, stock/balance changes
+- `RevertTransactionTest.kt` — SALE, PURCHASE, EXPENSE, stock safety check
 
 ### 7.3 Migration Tests
-**Directory:** `tests/migration/sales-checkout/`
-- `v2_0_0_migration.test.ts` — Seed v1 schema, run migration, assert all mappings
+**Directory:** `commonTest/migration/sales-checkout/`
+- `V2SalesCheckoutMigrationTest.kt` — Seed v1 schema, run migration, assert all mappings
 
 ### 7.4 Atomic Transaction Tests
-**Directory:** `tests/integration/atomic/`
-- `saleAtomicRollback.test.ts` — Simulate DB failure mid-transaction → full rollback
+**Directory:** `commonTest/atomic/`
+- `SaleAtomicRollbackTest.kt` — Simulate DB failure mid-transaction → full rollback
 
-### 7.5 Hook Tests
-**Directory:** `tests/unit/hooks/`
-- `useCart.test.ts` — Granular selectors, re-render optimization
-- `useTransactions.test.ts` — Pagination, filtering
-- `useStockAlert.test.ts` — Toast trigger post-sale
+### 7.5 ViewModel Tests (Turbine)
+**Directory:** `commonTest/viewmodels/sales-checkout/`
+- `SaleCartViewModelTest.kt` — Granular selectors, re-render optimization
+- `PurchaseCartViewModelTest.kt` — Granular selectors, re-render optimization
+- `PaymentViewModelTest.kt` — Payment flow, change calculation
 
-### 7.6 UI Component Tests
-**Directory:** `tests/components/cart/`
-- `PaymentModal.test.tsx` — Change calculator, exact button
-- `LineItemModal.test.tsx` — Quantity validation, discount clamp
-- `CartSummaryBar.test.tsx` — Item count, total, buttons
-- `ReceiptPreview.test.tsx` — Render transaction data
+### 7.6 Compose UI Tests (Robolectric)
+**Directory:** `androidTest/compose/cart/`
+- `PaymentDialogTest.kt` — Change calculator, exact button
+- `LineItemDialogTest.kt` — Quantity validation, discount clamp
+- `CartSummaryBarTest.kt` — Item count, total, buttons
+- `ReceiptPreviewTest.kt` — Render transaction data
 
-### 7.7 E2E Tests
-**Directory:** `tests/e2e/sales-checkout/`
-- `saleFlow.test.ts` — Add items → cash payment with change → receipt → share
-- `purchaseFlow.test.ts` — Add items → card payment → receipt
-- `revertSale.test.ts` — Revert → verify stock/balance
-- `migrationIdempotency.test.ts` — Run migration twice → no errors
+### 7.7 E2E Tests (Maestro)
+**Directory:** `maestro/sales-checkout/`
+- `saleFlow.yaml` — Add items → cash payment with change → receipt → share
+- `purchaseFlow.yaml` — Add items → card payment → receipt
+- `revertSale.yaml` — Revert → verify stock/balance
+- `migrationIdempotency.yaml` — Run migration twice → no errors
 
 ---
 
@@ -266,31 +229,33 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 
 | Risk | Mitigation |
 |---|---|
-| `RENAME COLUMN` fails | SQLite ≥ 3.25 confirmed; test on device |
-| Fractional quantities break UI | Update `keyboardType="decimal-pad"`, `step={0.001}` |
-| Atomic transaction partial failure | Single `withTransactionSync`; test failure injection |
-| AdBanner in checkout | CI grep check: `grep -r "AdBanner" --include="*.tsx" src/presentation/components/cart` |
+| `ALTER TABLE` fails | SQLite ≥ 3.25 confirmed; test on device |
+| Fractional quantities break UI | Update `KeyboardType.Decimal`, step = 0.001 |
+| Atomic transaction partial failure | Single transaction block; test failure injection |
+| AdBanner in checkout | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../cart` |
 | Migration long-running | Small data volume (<1000 rows); <1s execution |
-| i18n keys missing | CI check: `grep -r "checkout\." --include="*.tsx" src/presentation/components/cart` |
+| i18n keys missing | CI check: `grep -r "checkout_" --include="*.kt" composeApp/.../cart` |
 
 ---
 
 ## Definition of Done
 
-- [x] Migration runs atomically, preserves all data
+- [ ] Migration runs atomically, preserves all data
 - [ ] All entities/repos/use cases use English identifiers
 - [ ] Composite Pattern implemented (`ICartItem` + `SimpleCartItem`)
-- [x] RegisterSale/RegisterPurchase/RevertTransaction work atomically
-- [ ] PaymentModal calculates change correctly (green ≥0, red <0)
+- [ ] RegisterSale/RegisterPurchase/RevertTransaction work atomically
+- [ ] PaymentDialog calculates change correctly (green ≥0, red <0)
 - [ ] Zero AdBanner in checkout screens
 - [ ] All 45+ i18n keys implemented
-- [x] Unit tests: 100% pass
-- [x] Integration tests: 100% pass
-- [x] Migration tests: 100% pass
-- [x] Atomic rollback tests: 100% pass
-- [x] TypeScript strict: no errors
-- [ ] Lint: no errors
+- [ ] Unit tests: 100% pass
+- [ ] Integration tests: 100% pass
+- [ ] Migration tests: 100% pass
+- [ ] Atomic rollback tests: 100% pass
+- [ ] ViewModel tests: 100% pass
+- [ ] Compose UI tests: 100% pass
+- [ ] Kotlin strict: no errors
+- [ ] Detekt: no errors
 
 ---
 
-*Plan version: 1.0 — 2026-11-10*
+*Plan version: 2.0 — 2026-11-12 — KMP Migration*

@@ -1,8 +1,8 @@
-# System Settings — Specification (v2.0.0)
+# System Settings — Specification (v2.0.0 KMP)
 
 ## 1. Bounded Context
 
-Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/restore, and the master `AD_ENABLED` flag for AdWare governance. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `AsyncStorage`-only approach. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
+Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/restore, and the master `AD_ENABLED` flag for AdWare governance. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `DataStore`/`SharedPreferences`-only approach. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
 
 ---
 
@@ -12,108 +12,130 @@ All identifiers, fields, and types in code and database are in **English**.
 
 ### 2.1 Currency (Value Object)
 
-**File:** `src/domain/value-objects/Currency.ts`
+**File:** `commonMain/domain/valueobjects/Currency.kt`
 
-```ts
-export type CurrencyCode = 'Bs' | '$' | '€';
+```kotlin
+package com.tpvmovil.domain.valueobjects
 
-export interface Currency {
-  readonly code: CurrencyCode;
-  readonly symbol: string;
-  readonly locale: string;           // e.g., 'es-BO', 'en-US', 'es-ES'
-  readonly formatter: Intl.NumberFormat;
-}
+enum class CurrencyCode { BS, USD, EUR }
 
-export const CURRENCY_REGISTRY: ReadonlyMap<CurrencyCode, Currency> = new Map([
-  ['Bs', { code: 'Bs', symbol: 'Bs', locale: 'es-BO', formatter: new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB', minimumFractionDigits: 2 }) }],
-  ['$',  { code: '$',  symbol: '$',  locale: 'en-US', formatter: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }) }],
-  ['€',  { code: '€',  symbol: '€',  locale: 'es-ES', formatter: new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }) }],
-]);
+data class Currency(
+    val code: CurrencyCode,
+    val symbol: String,
+    val locale: String,           // e.g., 'es-BO', 'en-US', 'es-ES'
+    val formatter: java.text.NumberFormat
+) {
+    companion object {
+        private val REGISTRY = mapOf(
+            CurrencyCode.BS to Currency(
+                CurrencyCode.BS, "Bs", "es-BO",
+                java.text.NumberFormat.getCurrencyInstance(java.util.Locale("es", "BO")).apply {
+                    currency = java.util.Currency.getInstance("BOB")
+                    minimumFractionDigits = 2
+                    maximumFractionDigits = 2
+                }
+            ),
+            CurrencyCode.USD to Currency(
+                CurrencyCode.USD, "$", "en-US",
+                java.text.NumberFormat.getCurrencyInstance(java.util.Locale("en", "US")).apply {
+                    currency = java.util.Currency.getInstance("USD")
+                    minimumFractionDigits = 2
+                    maximumFractionDigits = 2
+                }
+            ),
+            CurrencyCode.EUR to Currency(
+                CurrencyCode.EUR, "€", "es-ES",
+                java.text.NumberFormat.getCurrencyInstance(java.util.Locale("es", "ES")).apply {
+                    currency = java.util.Currency.getInstance("EUR")
+                    minimumFractionDigits = 2
+                    maximumFractionDigits = 2
+                }
+            )
+        )
 
-export function getCurrency(code: CurrencyCode): Currency {
-  const c = CURRENCY_REGISTRY.get(code);
-  if (!c) throw new Error(`Unsupported currency: ${code}`);
-  return c;
+        fun getCurrency(code: CurrencyCode): Currency = REGISTRY[code]
+            ?: throw IllegalArgumentException("Unsupported currency: $code")
+    }
 }
 ```
 
 ### 2.2 Money (Value Object)
 
-**File:** `src/domain/value-objects/Money.ts`
+**File:** `commonMain/domain/valueobjects/Money.kt`
 
-```ts
-import type { Currency } from './Currency';
+```kotlin
+package com.tpvmovil.domain.valueobjects
 
-export interface Money {
-  readonly amount: number;     // base currency units, 2dp (e.g., 123.45)
-  readonly currency: Currency;
-}
+data class Money(
+    val amount: Double,     // base currency units, 2dp (e.g., 123.45)
+    val currency: Currency
+) {
+    companion object {
+        fun create(amount: Double, currency: Currency): Money {
+            require(amount.isFinite()) { "Amount must be finite" }
+            return Money(round2(amount), currency)
+        }
 
-export function createMoney(amount: number, currency: Currency): Money {
-  if (!Number.isFinite(amount)) throw new Error('Amount must be finite');
-  return { amount: round2(amount), currency };
-}
+        fun zero(currency: Currency): Money = Money(0.0, currency)
+    }
 
-export function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
+    fun round2(n: Double): Double = (n * 100).roundToInt() / 100.0
 
-export function add(a: Money, b: Money): Money {
-  if (a.currency.code !== b.currency.code) throw new Error('Currency mismatch');
-  return createMoney(a.amount + b.amount, a.currency);
-}
+    fun plus(other: Money): Money {
+        require(this.currency.code == other.currency.code) { "Currency mismatch" }
+        return Money(round2(this.amount + other.amount), this.currency)
+    }
 
-export function subtract(a: Money, b: Money): Money {
-  if (a.currency.code !== b.currency.code) throw new Error('Currency mismatch');
-  return createMoney(a.amount - b.amount, a.currency);
-}
+    fun minus(other: Money): Money {
+        require(this.currency.code == other.currency.code) { "Currency mismatch" }
+        return Money(round2(this.amount - other.amount), this.currency)
+    }
 
-export function format(money: Money): string {
-  return money.currency.formatter.format(money.amount);
+    fun format(): String = currency.formatter.format(amount)
 }
 ```
 
 ### 2.3 UserSettings (Aggregate Root — Singleton)
 
-**File:** `src/domain/entities/UserSettings.ts`
+**File:** `commonMain/domain/entities/UserSettings.kt`
 
-```ts
-import type { CurrencyCode } from '../value-objects/Currency';
+```kotlin
+package com.tpvmovil.domain.entities
 
-export type SettingsId = number; // always 1
+import com.tpvmovil.domain.valueobjects.CurrencyCode
 
-export interface UserSettings {
-  readonly id: SettingsId;                    // always 1
-  readonly currencyCode: CurrencyCode;        // 'Bs' | '$' | '€'
-  readonly pageSize: number;                  // default 15, min 5, max 100
-  readonly biometricEnabled: boolean;         // false by default
-  readonly adEnabled: boolean;                // master AdWare toggle, default false
-  readonly updatedAt: string;                 // ISO 8601
+@JvmInline
+value class SettingsId(val value: Long) {  // always 1
+    companion object { val SINGLETON = SettingsId(1) }
 }
 
-export type UpdateSettingsInput = Partial<{
-  readonly currencyCode: CurrencyCode;
-  readonly pageSize: number;
-  readonly biometricEnabled: boolean;
-  readonly adEnabled: boolean;
-}>;
+data class UserSettings(
+    val id: SettingsId = SettingsId.SINGLETON,                    // always 1
+    val currencyCode: CurrencyCode = CurrencyCode.BS,            // BS | USD | EUR
+    val pageSize: Int = 15,                                      // default 15, min 5, max 100
+    val biometricEnabled: Boolean = false,                       // false by default
+    val adEnabled: Boolean = false,                              // master AdWare toggle, default false
+    val updatedAt: String = java.time.Instant.now().toString()   // ISO 8601
+)
 
-export const DEFAULT_SETTINGS: Omit<UserSettings, 'id' | 'updatedAt'> = {
-  currencyCode: 'Bs',
-  pageSize: 15,
-  biometricEnabled: false,
-  adEnabled: false,
-};
+data class UpdateSettingsInput(
+    val currencyCode: CurrencyCode? = null,
+    val pageSize: Int? = null,
+    val biometricEnabled: Boolean? = null,
+    val adEnabled: Boolean? = null
+)
 ```
 
 ### 2.4 Session (UI State)
 
-**File:** `src/domain/entities/Session.ts`
+**File:** `commonMain/domain/entities/SessionState.kt`
 
-```ts
-export interface SessionState {
-  readonly unlocked: boolean;
-}
+```kotlin
+package com.tpvmovil.domain.entities
+
+data class SessionState(
+    val unlocked: Boolean = false
+)
 ```
 
 ---
@@ -123,82 +145,84 @@ export interface SessionState {
 | ID | Rule | Description |
 |---|---|---|
 | RULE-SS-01 | PIN change requires current PIN | `PinService.setPin(newPin)` demands current PIN hash match, except first-time setup. |
-| RULE-SS-02 | Biometric toggle requires auth | Enabling biometric invokes `LocalAuthentication.authenticateAsync` first. |
-| RULE-SS-03 | PIN gate for critical actions | Change PIN, delete transaction, restore backup → `usePinGate()` enforces current PIN. |
+| RULE-SS-02 | Biometric toggle requires auth | Enabling biometric invokes `BiometricManager.authenticate()` first. |
+| RULE-SS-03 | PIN gate for critical actions | Change PIN, delete transaction, restore backup → `PinGateViewModel` enforces current PIN. |
 | RULE-SS-04 | Restore backup **requires** PIN | v2.0.0 change: restoring backup now requires PIN confirmation (critical data overwrite). `ConfirmDialog`: `"Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar."` |
 | RULE-SS-05 | Currency is visual only | `Currency`/`Money` affect formatting only. SQLite stores pure numeric amounts in base currency. |
-| RULE-SS-06 | Pagination default | `pageSize` default 15. All historical list hooks apply `LIMIT ? OFFSET ?` with this value. |
-| RULE-SS-07 | AD_ENABLED master toggle | `adEnabled` in `UserSettings` governs whether banner ads render in allowed views (Expenses list). |
+| RULE-SS-06 | Pagination default | `pageSize` default 15. All historical list ViewModels apply `LIMIT ? OFFSET ?` with this value. |
+| RULE-SS-07 | AD_ENABLED master toggle | `adEnabled` in `UserSettings` governs whether banner ads render in allowed views (Expenses list, Catalog, Caja, Movimientos). |
 | RULE-SS-08 | Settings singleton | Only one row exists (`id = 1`, `CHECK (id = 1)`). Upsert on update. |
 
-Global invariants: **INV-08** (PIN-protected critical actions), **INV-10** (strict TypeScript).
+Global invariants: **INV-08** (PIN-protected critical actions), **INV-10** (strict Kotlin).
 
 ---
 
-## 4. Database Contract
+## 4. Database Contract (SQLDelight)
 
 ### 4.1 Target Schema (v2.0.0 — English Columns)
 
+**File:** `commonMain/sqldelight/schema.sq` (settings section)
+
 ```sql
 -- settings (singleton, id = 1)
-CREATE TABLE IF NOT EXISTS settings (
+CREATE TABLE settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    currency_code TEXT NOT NULL DEFAULT 'Bs',   -- 'Bs' | '$' | '€'
+    currency_code TEXT NOT NULL DEFAULT 'BS',   -- 'BS' | 'USD' | 'EUR'
     page_size INTEGER NOT NULL DEFAULT 15,
     biometric_enabled INTEGER NOT NULL DEFAULT 0,  -- 0/1
     ad_enabled INTEGER NOT NULL DEFAULT 0,         -- 0/1
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
 
 INSERT OR IGNORE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
-VALUES (1, 'Bs', 15, 0, 0, CURRENT_TIMESTAMP);
+VALUES (1, 'BS', 15, 0, 0, strftime('%s', 'now') * 1000);
 ```
 
-### 4.2 Column Mapping: v1.0.0 (Spanish/AsyncStorage) → v2.0.0 (English/SQLite)
+### 4.2 Column Mapping: v1.0.0 (Spanish/DataStore) → v2.0.0 (English/SQLite)
 
-v1.0.0 stored settings in `AsyncStorage` with Spanish keys. v2.0.0 migrates to SQLite `settings` table.
+v1.0.0 stored settings in `DataStore`/`SharedPreferences` with Spanish keys. v2.0.0 migrates to SQLite `settings` table.
 
-| v1.0.0 AsyncStorage Key | v2.0.0 Table | v2.0.0 Column | Type | Default |
+| v1.0.0 DataStore Key | v2.0.0 Table | v2.0.0 Column | Type | Default |
 |---|---|---|---|---|
-| `divisa` | `settings` | `currency_code` | TEXT | `'Bs'` |
+| `divisa` | `settings` | `currency_code` | TEXT | `'BS'` |
 | `pageSize` | `settings` | `page_size` | INTEGER | `15` |
 | `biometricEnabled` | `settings` | `biometric_enabled` | INTEGER (0/1) | `0` |
 | *(new)* | `settings` | `ad_enabled` | INTEGER (0/1) | `0` |
-| *(new)* | `settings` | `updated_at` | TIMESTAMP | `CURRENT_TIMESTAMP` |
+| *(new)* | `settings` | `updated_at` | INTEGER (epoch millis) | `CURRENT_TIMESTAMP` |
 
-> **Note:** PIN hash remains in `expo-secure-store` (key: `pin_hash`), not migrated to SQLite.
+> **Note:** PIN hash remains in platform secure storage (Android Keystore / iOS Keychain), not migrated to SQLite.
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_system_settings_migration.sql.ts`
-(`SYSTEM_SETTINGS_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
+**File:** `commonMain/sqldelight/migrations/v2_system_settings.sqm`
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
+-- v2_system_settings.sqm
+-- Atomic migration transaction (single transaction block)
 
 -- Step 1: Create settings table with English columns
 CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    currency_code TEXT NOT NULL DEFAULT 'Bs',
+    currency_code TEXT NOT NULL DEFAULT 'BS',
     page_size INTEGER NOT NULL DEFAULT 15,
     biometric_enabled INTEGER NOT NULL DEFAULT 0,
     ad_enabled INTEGER NOT NULL DEFAULT 0,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
 );
 
 -- Step 2: Seed singleton row (id = 1) with defaults
 INSERT OR IGNORE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
-VALUES (1, 'Bs', 15, 0, 0, CURRENT_TIMESTAMP);
+VALUES (1, 'BS', 15, 0, 0, strftime('%s', 'now') * 1000);
 
--- Step 3: Migrate AsyncStorage values to SQLite (application-layer, not SQL)
--- Handled by GetSettings use case on first run: read AsyncStorage keys,
--- write to settings table, then clear AsyncStorage keys.
+-- Step 3: Migrate DataStore/SharedPreferences values to SQLite (application-layer, not SQL)
+-- Handled by GetSettings use case on first run: read DataStore keys,
+-- write to settings table, then clear DataStore keys.
 
 -- Step 4: Create index (trivial for singleton, but kept for consistency)
 CREATE INDEX IF NOT EXISTS idx_settings_id ON settings(id);
 
 -- Step 5: Update user_version to 2 (coordinated with other modules)
--- user_version = 2 is set centrally by `runMigrations` after every v2.0.0
+-- user_version = 2 is set centrally by DatabaseDriverFactory after every v2.0.0
 -- module step succeeds inside the same transaction.
 ```
 
@@ -208,99 +232,109 @@ CREATE INDEX IF NOT EXISTS idx_settings_id ON settings(id);
 
 ### 5.1 ISettingsRepository
 
-**File:** `src/data/repositories/ISettingsRepository.ts`
+**File:** `commonMain/data/repositories/ISettingsRepository.kt`
 
-```ts
-import type { UserSettings, SettingsId, UpdateSettingsInput } from '@/domain/entities/UserSettings';
+```kotlin
+package com.tpvmovil.data.repositories
 
-export interface ISettingsRepository {
-  get(): UserSettings;                           // singleton read (id = 1)
-  update(input: UpdateSettingsInput): UserSettings;  // upsert singleton
+import com.tpvmovil.domain.entities.*
+
+interface ISettingsRepository {
+    fun get(): UserSettings                           // singleton read (id = 1)
+    fun update(input: UpdateSettingsInput): UserSettings  // upsert singleton
 }
 ```
 
 ---
 
-## 6. Use Cases (Application Layer)
+## 6. Use Cases (Application Layer — `commonMain`)
 
 ### 6.1 GetSettings
 
-**File:** `src/application/settings/GetSettings.ts`
+**File:** `commonMain/application/settings/GetSettings.kt`
 
-```ts
-import type { UserSettings } from '@/domain/entities/UserSettings';
+```kotlin
+package com.tpvmovil.application.settings
 
-export function getSettings(): UserSettings;
+import com.tpvmovil.domain.entities.UserSettings
+
+suspend fun getSettings(): UserSettings
 ```
 
 **Flow:**
 1. `settingsRepository.get()` → returns `UserSettings`.
-2. If table empty (first run after migration), returns `DEFAULT_SETTINGS` and triggers migration from AsyncStorage.
+2. If table empty (first run after migration), returns `DEFAULT_SETTINGS` and triggers migration from DataStore.
 
 ### 6.2 UpdateSettings
 
-**File:** `src/application/settings/UpdateSettings.ts`
+**File:** `commonMain/application/settings/UpdateSettings.kt`
 
-```ts
-import type { UserSettings, UpdateSettingsInput } from '@/domain/entities/UserSettings';
+```kotlin
+package com.tpvmovil.application.settings
 
-export function updateSettings(input: UpdateSettingsInput): UserSettings;
+import com.tpvmovil.domain.entities.*
+
+suspend fun updateSettings(input: UpdateSettingsInput): UserSettings
 ```
 
-**Atomic Flow (`db.withTransactionSync`):**
+**Atomic Flow (SQLDelight transaction block):**
 1. Validate `pageSize` ∈ [5, 100] if provided.
 2. `UPDATE settings SET currency_code = ?, page_size = ?, biometric_enabled = ?, ad_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`.
 3. Return updated `UserSettings`.
 
 ### 6.3 VerifyPin (PIN Gate)
 
-**File:** `src/application/security/VerifyPin.ts`
+**File:** `commonMain/application/security/VerifyPin.kt`
 
-```ts
-export function verifyPin(inputPin: string): boolean;
+```kotlin
+package com.tpvmovil.application.security
+
+suspend fun verifyPin(inputPin: String): Boolean
 ```
 
 **Flow:**
-1. Read PIN hash from `expo-secure-store` (`pin_hash`).
+1. Read PIN hash from platform secure storage (`pin_hash`).
 2. Compute SHA-256 of `inputPin`.
 3. Compare constant-time. Return `true`/`false`.
 
 ### 6.4 SetPin
 
-**File:** `src/application/security/SetPin.ts`
+**File:** `commonMain/application/security/SetPin.kt`
 
-```ts
-export function setPin(currentPin: string | null, newPin: string): void;
+```kotlin
+package com.tpvmovil.application.security
+
+suspend fun setPin(currentPin: String?, newPin: String)
 ```
 
 **Flow:**
-1. If `currentPin !== null`, call `verifyPin(currentPin)` → throw if false.
+1. If `currentPin != null`, call `verifyPin(currentPin)` → throw if false.
 2. Compute SHA-256 of `newPin`.
-3. Store hash in `expo-secure-store` (`pin_hash`).
+3. Store hash in platform secure storage (`pin_hash`).
 
 ### 6.5 ExportDatabase / RestoreDatabase
 
-**Files:** `src/application/backup/ExportDatabase.ts`, `src/application/backup/RestoreDatabase.ts`
+**Files:** `commonMain/application/backup/ExportDatabase.kt`, `RestoreDatabase.kt`
 
-- `ExportDatabase`: Copy SQLite file to `documentDirectory/backups/tpv-YYYYMMDD-HHmm.db` → `Sharing.shareAsync`.
-- `RestoreDatabase`: `DocumentPicker.getDocumentAsync` → close DB → copy over main DB → reopen DB → invalidate all stores → reload app (via `expo-updates` or in-memory store reset). **Requires PIN gate (RULE-SS-04).**
+- `ExportDatabase`: Copy SQLite file to `documentDirectory/backups/tpv-YYYYMMDD-HHmm.db` → `ShareSheet`.
+- `RestoreDatabase`: `FilePicker` → close DB → copy over main DB → reopen DB → invalidate all ViewModels → reload app (via `ProcessPhoenix` or in-memory store reset). **Requires PIN gate (RULE-SS-04).**
 
 ---
 
 ## 7. Domain Rules (Settings Math)
 
-**File:** `src/domain/rules/settingsRules.ts`
+**File:** `commonMain/domain/rules/SettingsRules.kt`
 
 | Function | Signature | Description |
 |---|---|---|
-| `validatePageSize` | `(pageSize: number) => void` | Throws if `pageSize < 5 || pageSize > 100 || !Number.isInteger(pageSize)`. |
-| `validateCurrencyCode` | `(code: string) => asserts code is CurrencyCode` | Throws if not `'Bs' \| '$' \| '€'`. |
+| `validatePageSize` | `(pageSize: Int) -> Unit` | Throws if `pageSize < 5 || pageSize > 100`. |
+| `validateCurrencyCode` | `(code: String) -> CurrencyCode` | Throws if not `'BS' \| 'USD' \| 'EUR'`. |
 
 ---
 
-## 8. UI State Machines (Spanish visible text)
+## 8. UI State Machines (Spanish visible text via `stringResource`)
 
-### 8.1 Lock Screen (`app/lock.tsx`)
+### 8.1 Lock Screen (`LockScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -310,7 +344,7 @@ export function setPin(currentPin: string | null, newPin: string): void;
 | `Authenticating` | PIN incorrect | `Error` | `"PIN incorrecto"` |
 | `Authenticating` | Biometric fail / cancel | `Locked` | `"Ingrese su PIN"` |
 
-### 8.2 Settings Screen (`app/settings/index.tsx`)
+### 8.2 Settings Screen (`SettingsScreen`)
 
 | State | Trigger | Next State | Visible Text (ES) |
 |---|---|---|---|
@@ -324,44 +358,42 @@ export function setPin(currentPin: string | null, newPin: string): void;
 
 ---
 
-## 9. UI Components
+## 9. Compose UI Components
 
 | Component | File | Type | Memoized | Description |
 |---|---|---|---|---|
-| `SectionHeader` | `src/presentation/components/settings/SectionHeader.tsx` | UI | No | Section title with divider |
-| `CurrencySelector` | `src/presentation/components/settings/CurrencySelector.tsx` | UI | No | Radio group: Bs / $ / € |
-| `PageSizeInput` | `src/presentation/components/settings/PageSizeInput.tsx` | UI | No | Numeric input (5–100) |
-| `PinForm` | `src/presentation/components/security/PinForm.tsx` | UI | No | 4–6 digit PIN input, masked |
-| `BiometricToggle` | `src/presentation/components/security/BiometricToggle.tsx` | UI | No | Switch + auth on enable |
-| `BackupActions` | `src/presentation/components/settings/BackupActions.tsx` | UI | No | Export / Restore buttons |
-| `ConfirmDialog` | `src/presentation/components/feedback/ConfirmDialog.tsx` | UI | No | Reusable, interpolated text |
-| `AdEnabledToggle` | `src/presentation/components/settings/AdEnabledToggle.tsx` | UI | No | Master AdWare switch |
+| `SettingsScreen` | `composeApp/.../settings/SettingsScreen.kt` | Screen | N/A | Main settings with sections |
+| `SectionHeader` | `composeApp/.../settings/SectionHeader.kt` | Composable | No | Section title with divider |
+| `CurrencySelector` | `composeApp/.../settings/CurrencySelector.kt` | Composable | No | Radio group: Bs / $ / € |
+| `PageSizeInput` | `composeApp/.../settings/PageSizeInput.kt` | Composable | No | Numeric input (5–100) |
+| `PinForm` | `composeApp/.../security/PinForm.kt` | Composable | No | 4–6 digit PIN input, masked |
+| `BiometricToggle` | `composeApp/.../security/BiometricToggle.kt` | Composable | No | Switch + auth on enable |
+| `BackupActions` | `composeApp/.../settings/BackupActions.kt` | Composable | No | Export / Restore buttons |
+| `ConfirmDialog` | `composeApp/.../feedback/ConfirmDialog.kt` | Composable | No | Reusable, interpolated text |
+| `AdEnabledToggle` | `composeApp/.../settings/AdEnabledToggle.kt` | Composable | No | Master AdWare switch |
+| `LockScreen` | `composeApp/.../security/LockScreen.kt` | Screen | N/A | PIN entry + biometric |
+| `PinGateDialog` | `composeApp/.../security/PinGateDialog.kt` | Composable | No | Modal PIN challenge |
 
 ---
 
-## 10. Hooks
+## 10. ViewModels
 
-| Hook | File | Responsibility |
+| ViewModel | File | Responsibility |
 |---|---|---|
-| `useSettings` | `src/presentation/hooks/useSettings.ts` | Read/write `UserSettings` singleton |
-| `useSettingsCurrency` | `src/presentation/hooks/useSettingsCurrency.ts` | Current `Currency` object |
-| `useSettingsPageSize` | `src/presentation/hooks/useSettingsPageSize.ts` | Current `pageSize` for pagination |
-| `useSettingsSecurity` | `src/presentation/hooks/useSettingsSecurity.ts` | PIN/biometric state + actions |
-| `useSettingsBackup` | `src/presentation/hooks/useSettingsBackup.ts` | Export/Restore with PIN gate |
-| `usePinGate` | `src/presentation/hooks/usePinGate.ts` | Modal PIN challenge for critical actions |
-| `useCurrency` | `src/presentation/hooks/useCurrency.ts` | `Money` formatter via `Currency` |
-| `useReducedMotion` | `src/presentation/hooks/useReducedMotion.ts` | `prefers-reduced-motion` media query |
-| `useAdEnabled` | `src/presentation/hooks/useAdEnabled.ts` | Reads `adEnabled` from settings |
+| `SettingsViewModel` | `commonMain/presentation/viewmodels/SettingsViewModel.kt` | Read/write `UserSettings` singleton |
+| `SecurityViewModel` | `commonMain/presentation/viewmodels/SecurityViewModel.kt` | PIN/biometric state + actions |
+| `BackupViewModel` | `commonMain/presentation/viewmodels/BackupViewModel.kt` | Export/Restore with PIN gate |
+| `PinGateViewModel` | `commonMain/presentation/viewmodels/PinGateViewModel.kt` | Modal PIN challenge for critical actions |
 
 ---
 
-## 11. Zustand Stores
+## 11. Zustand Stores → DataStore / StateFlow
 
-| Store | File | Responsibility |
-|---|---|---|
-| `settingsStore` | `src/presentation/stores/settingsStore.ts` | `currencyCode`, `pageSize`, `biometricEnabled`, `adEnabled` (hydrated from SQLite) |
-| `sessionStore` | `src/presentation/stores/sessionStore.ts` | `unlocked: boolean` |
-| `invalidationStore` | `src/presentation/stores/invalidationStore.ts` | Manual invalidation (TanStack Query style) |
+| Old (RN) | New (KMP) | File | Responsibility |
+|---|---|---|---|
+| `settingsStore` | `SettingsDataStore` | `commonMain/infrastructure/settings/SettingsDataStore.kt` | `currencyCode`, `pageSize`, `biometricEnabled`, `adEnabled` (hydrated from SQLite via `DataStore`) |
+| `sessionStore` | `SessionDataStore` | `commonMain/infrastructure/settings/SessionDataStore.kt` | `unlocked: Boolean` |
+| `invalidationStore` | `InvalidationDataStore` | `commonMain/infrastructure/settings/InvalidationDataStore.kt` | Manual invalidation versions (TanStack Query style) |
 
 ---
 
@@ -369,19 +401,19 @@ export function setPin(currentPin: string | null, newPin: string): void;
 
 **Rule:** The master toggle `adEnabled` (in `UserSettings` → `settings.ad_enabled`) controls whether banner ads render in **allowed views only**.
 
-- **Allowed:** Expenses list (`app/gastos/index.tsx`) — footer banner.
+- **Allowed:** Expenses list, Catalog/Inventory list, Caja (Cash Summary), Movimientos (Transactions) — footer banner.
 - **Disallowed:** All forms, ConfirmDialogs, PIN gate, Lock screen, Settings screen.
-- **Implementation:** `useAdEnabled()` hook reads `settingsStore.adEnabled`. Components check this flag before rendering `AdBanner`.
+- **Implementation:** `AdEnabledProvider` CompositionLocal reads `SettingsDataStore.adEnabled`. Components check this flag before rendering `AdBanner`.
 - **Default:** `false` (opt-in).
 
 ---
 
 ## 13. Applicable NFRs
 
-- **NFR-01:** Offline-first SQLite JSI (`expo-sqlite`, `openDatabaseSync`, `withTransactionSync`).
-- **NFR-06:** Dark mode strict + design tokens at runtime (NativeWind v4).
-- **NFR-08:** UI strings in Spanish; code/DB/identifiers in English.
-- **NFR-09:** Strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
+- **NFR-01:** Offline-first SQLDelight (JSI SQLite driver, transaction blocks).
+- **NFR-06:** Dark mode strict + design tokens at runtime (`MaterialTheme` + custom tokens).
+- **NFR-08:** UI strings in Spanish via `stringResource`; code/DB/identifiers in English.
+- **NFR-09:** Strict Kotlin (`explicit-api`, `-Xlint`).
 - **NFR-10:** Tests: 100% pass unit + integration + migration + PIN gate + cash integrity.
 
 ---
@@ -396,64 +428,75 @@ export function setPin(currentPin: string | null, newPin: string): void;
 
 ---
 
-## 15. i18n Keys (Spanish UI Dictionary)
+## 15. i18n Keys (Spanish UI Dictionary — `composeResources/values-es/strings.xml`)
 
-| Key | Text (ES) | Context |
-|---|---|---|
-| `settings.title` | Configuración | Screen title |
-| `settings.section.general` | General | Section header |
-| `settings.section.security` | Seguridad | Section header |
-| `settings.section.backup` | Copia de seguridad | Section header |
-| `settings.section.ads` | Publicidad | Section header |
-| `settings.currency.label` | Moneda | CurrencySelector label |
-| `settings.currency.option.bs` | Bolivianos (Bs) | Radio option |
-| `settings.currency.option.usd` | Dólares ($) | Radio option |
-| `settings.currency.option.eur` | Euros (€) | Radio option |
-| `settings.pagination.label` | Filas por consulta | PageSizeInput label |
-| `settings.pagination.placeholder` | 15 | Input placeholder |
-| `settings.pagination.helper` | Entre 5 y 100 | Helper text |
-| `settings.security.pin.title` | Cambiar PIN | Section title |
-| `settings.security.pin.current` | PIN actual | Input label |
-| `settings.security.pin.new` | Nuevo PIN | Input label |
-| `settings.security.pin.confirm` | Confirmar PIN | Input label |
-| `settings.security.biometric.label` | Autenticación biométrica | Toggle label |
-| `settings.security.biometric.helper` | Requiere autenticación para activar | Helper text |
-| `settings.backup.export.label` | Exportar copia de seguridad | Button |
-| `settings.backup.export.success` | Copia exportada correctamente | Toast |
-| `settings.backup.export.error` | Error al exportar | Toast |
-| `settings.backup.restore.label` | Restaurar copia de seguridad | Button |
-| `settings.backup.restore.confirm_title` | ¿Restaurar copia de seguridad? | ConfirmDialog title |
-| `settings.backup.restore.confirm_message` | Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar. | ConfirmDialog message |
-| `settings.backup.restore.success` | Copia restaurada. La app se reiniciará. | Toast |
-| `settings.backup.restore.error` | Error al restaurar | Toast |
-| `settings.ads.enabled.label` | Permitir anuncios | Toggle label |
-| `settings.ads.enabled.helper` | Muestra banners solo en la lista de gastos | Helper text |
-| `lock.title` | Ingrese su PIN | Lock screen title |
-| `lock.pin.placeholder` | •••• | PIN input placeholder |
-| `lock.biometric.hint` | O use huella / Face ID | Biometric hint |
-| `lock.error.invalid` | PIN incorrecto | Error toast |
-| `pin_gate.title` | Confirmar PIN | PIN gate modal title |
-| `pin_gate.message` | Ingrese su PIN para continuar | PIN gate message |
-| `pin_gate.cancel` | Cancelar | Button |
-| `pin_gate.confirm` | Continuar | Button |
-| `pin_form.title.new` | Establecer PIN | First-time setup |
-| `pin_form.title.change` | Cambiar PIN | Change PIN |
-| `pin_form.label.current` | PIN actual | Current PIN label |
-| `pin_form.label.new` | Nuevo PIN | New PIN label |
-| `pin_form.label.confirm` | Confirmar nuevo PIN | Confirm label |
-| `pin_form.error.mismatch` | Los PINs no coinciden | Validation error |
-| `pin_form.error.length` | El PIN debe tener 4-6 dígitos | Validation error |
-| `pin_form.success` | PIN actualizado | Toast |
-| `biometric.prompt` | Autentíquese para activar biométrica | Biometric auth prompt |
-| `biometric.unavailable` | Biometría no disponible en este dispositivo | Toast |
-| `toast.settings_saved` | Configuración guardada | Toast |
-| `toast.settings_error` | Error al guardar | Toast |
+```xml
+<!-- Settings Screen -->
+<string name="settings_title">Configuración</string>
+<string name="settings_section_general">General</string>
+<string name="settings_section_security">Seguridad</string>
+<string name="settings_section_backup">Copia de seguridad</string>
+<string name="settings_section_ads">Publicidad</string>
+<string name="settings_currency_label">Moneda</string>
+<string name="settings_currency_option_bs">Bolivianos (Bs)</string>
+<string name="settings_currency_option_usd">Dólares ($)</string>
+<string name="settings_currency_option_eur">Euros (€)</string>
+<string name="settings_pagination_label">Filas por consulta</string>
+<string name="settings_pagination_placeholder">15</string>
+<string name="settings_pagination_helper">Entre 5 y 100</string>
+<string name="settings_security_pin_title">Cambiar PIN</string>
+<string name="settings_security_pin_current">PIN actual</string>
+<string name="settings_security_pin_new">Nuevo PIN</string>
+<string name="settings_security_pin_confirm">Confirmar PIN</string>
+<string name="settings_security_biometric_label">Autenticación biométrica</string>
+<string name="settings_security_biometric_helper">Requiere autenticación para activar</string>
+<string name="settings_backup_export_label">Exportar copia de seguridad</string>
+<string name="settings_backup_export_success">Copia exportada correctamente</string>
+<string name="settings_backup_export_error">Error al exportar</string>
+<string name="settings_backup_restore_label">Restaurar copia de seguridad</string>
+<string name="settings_backup_restore_confirm_title">¿Restaurar copia de seguridad?</string>
+<string name="settings_backup_restore_confirm_message">Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar.</string>
+<string name="settings_backup_restore_success">Copia restaurada. La app se reiniciará.</string>
+<string name="settings_backup_restore_error">Error al restaurar</string>
+<string name="settings_ads_enabled_label">Permitir anuncios</string>
+<string name="settings_ads_enabled_helper">Muestra banners solo en la lista de gastos</string>
+
+<!-- Lock Screen -->
+<string name="lock_title">Ingrese su PIN</string>
+<string name="lock_pin_placeholder">••••</string>
+<string name="lock_biometric_hint">O use huella / Face ID</string>
+<string name="lock_error_invalid">PIN incorrecto</string>
+
+<!-- PIN Gate -->
+<string name="pin_gate_title">Confirmar PIN</string>
+<string name="pin_gate_message">Ingrese su PIN para continuar</string>
+<string name="pin_gate_cancel">Cancelar</string>
+<string name="pin_gate_confirm">Continuar</string>
+
+<!-- PIN Form -->
+<string name="pin_form_title_new">Establecer PIN</string>
+<string name="pin_form_title_change">Cambiar PIN</string>
+<string name="pin_form_label_current">PIN actual</string>
+<string name="pin_form_label_new">Nuevo PIN</string>
+<string name="pin_form_label_confirm">Confirmar nuevo PIN</string>
+<string name="pin_form_error_mismatch">Los PINs no coinciden</string>
+<string name="pin_form_error_length">El PIN debe tener 4-6 dígitos</string>
+<string name="pin_form_success">PIN actualizado</string>
+
+<!-- Biometric -->
+<string name="biometric_prompt">Autentíquese para activar biométrica</string>
+<string name="biometric_unavailable">Biometría no disponible en este dispositivo</string>
+
+<!-- Toasts -->
+<string name="toast_settings_saved">Configuración guardada</string>
+<string name="toast_settings_error">Error al guardar</string>
+```
 
 ---
 
 ## 16. Cross-References
 
-- `expenses-cashflow/spec.md` — Section 12 (AdWare Governance), `useAdEnabled` hook.
+- `expenses-cashflow/spec.md` — Section 12 (AdWare Governance), `AdEnabledProvider` CompositionLocal.
 - `sales-checkout/spec.md` — Section 4 (Database Contract), uses `pageSize` from settings.
 - `financial-accumulators/spec.md` — Section 4 (financial_accumulators), uses `Currency` for formatting.
 - `catalog-inventory/spec.md` — Section 6 (RULE-CI-03), uses `Money` for fractional amounts.
@@ -461,4 +504,4 @@ export function setPin(currentPin: string | null, newPin: string): void;
 
 ---
 
-*Last updated: 2026-11-10 — v2.0.0 Specification*
+*Last updated: 2026-11-12 — v2.0.0 KMP Specification*
