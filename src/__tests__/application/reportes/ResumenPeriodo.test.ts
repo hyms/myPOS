@@ -1,4 +1,4 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import {
   obtenerResumenCaja,
@@ -9,7 +9,7 @@ import { SqliteProductoRepository } from '@/data/repositories/SqliteProductoRepo
 import { SqliteCategoriaRepository } from '@/data/repositories/SqliteCategoriaRepository';
 import { SqliteTransaccionRepository } from '@/data/repositories/SqliteTransaccionRepository';
 import { SqliteResumenCajaRepository } from '@/data/repositories/SqliteResumenCajaRepository';
-import { SCHEMA_SQL, SEED_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 const mockGetRepositories = jest.fn();
 
@@ -27,9 +27,7 @@ interface TestDb {
 }
 
 function createTestDb(): TestDb {
-  const db = openDatabaseSync(':memory:');
-  db.execSync(SCHEMA_SQL);
-  db.execSync(SEED_SQL);
+  const db = createMigratedDatabase();
   return {
     db,
     productos: new SqliteProductoRepository(db),
@@ -63,7 +61,7 @@ describe('ResumenPeriodo', () => {
 
     it('retorna valores actualizados', () => {
       t.db.runSync(
-        'UPDATE resumen_caja SET total_ventas = 1000, saldo_actual = 500 WHERE id = 1',
+        'UPDATE financial_accumulators SET total_sales = 1000, net_balance = 500 WHERE id = 1',
       );
       const r = obtenerResumenCaja();
       expect(r.totalVentas).toBe(1000);
@@ -74,17 +72,17 @@ describe('ResumenPeriodo', () => {
   describe('obtenerResumenAnio', () => {
     it('retorna neto calculado correctamente', () => {
       t.db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('VENTA', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('VENTA', ?, ?)",
         1000,
         'EFECTIVO',
       );
       t.db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('COMPRA', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('COMPRA', ?, ?)",
         300,
         'EFECTIVO',
       );
       t.db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('GASTO', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('GASTO', ?, ?)",
         100,
         'EFECTIVO',
       );

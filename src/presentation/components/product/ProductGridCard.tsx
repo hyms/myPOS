@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 
 import type { Producto } from '@/domain/entities/Producto';
 import { isBelowMin } from '@/domain/rules/stockRules';
+import { Stock } from '@/domain/value-objects/Stock';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressable';
 import { ProductFallbackAvatar } from './ProductFallbackAvatar';
@@ -15,7 +16,10 @@ interface Props {
 
 function ProductGridCardComponent({ producto, onPress }: Props) {
   const { format } = useCurrency();
-  const lowStock = isBelowMin(producto);
+  const lowStock = isBelowMin(
+    new Stock(Math.max(0, producto.stockActual)),
+    new Stock(Math.max(0, producto.stockMinimo)),
+  );
 
   const handlePress = useCallback(() => {
     onPress(producto.id);

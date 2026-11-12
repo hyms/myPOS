@@ -10,48 +10,49 @@ import type {
 
 export interface CategoriaRow {
   id: number;
-  nombre: string;
-  fecha_registro: string;
-  fecha_delete: string | null;
+  name: string;
+  registered_at: string;
+  deleted_at: string | null;
 }
 
 export interface ProductoRow {
   id: number;
-  categoria_id: number;
-  nombre: string;
-  precio_venta: number;
-  precio_compra: number;
-  stock_actual: number;
-  stock_minimo: number;
-  imagen_uri: string | null;
-  fecha_registro: string;
-  fecha_update: string;
-  fecha_delete: string | null;
+  category_id: number;
+  sku: string | null;
+  name: string;
+  selling_price: number;
+  purchase_price: number;
+  current_stock: number;
+  min_stock: number;
+  image_uri: string | null;
+  registered_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface TransaccionRow {
   id: number;
-  tipo: string;
-  monto_total: number;
-  tipo_pago: string;
-  detalle: string | null;
-  fecha_registro: string;
-  fecha_delete: string | null;
+  type: string;
+  total_amount: number;
+  payment_method: string;
+  detail: string | null;
+  registered_at: string;
+  deleted_at: string | null;
 }
 
 export interface DetalleTransaccionRow {
   id: number;
-  transaccion_id: number;
-  producto_id: number;
-  cantidad: number;
-  precio_unitario: number;
+  transaction_id: number;
+  product_id: number;
+  quantity: number;
+  unit_price: number;
 }
 
 export interface ResumenCajaRow {
-  total_ventas: number;
-  total_compras: number;
-  total_gastos: number;
-  saldo_actual: number;
+  total_sales: number;
+  total_purchases: number;
+  total_expenses: number;
+  net_balance: number;
 }
 
 export interface ProductoPopularidadRow extends ProductoRow {
@@ -61,55 +62,55 @@ export interface ProductoPopularidadRow extends ProductoRow {
 export function toCategoria(row: CategoriaRow): Categoria {
   return {
     id: row.id,
-    nombre: row.nombre,
-    fechaRegistro: row.fecha_registro,
-    fechaDelete: row.fecha_delete,
+    nombre: row.name,
+    fechaRegistro: row.registered_at,
+    fechaDelete: row.deleted_at,
   };
 }
 
 export function toProducto(row: ProductoRow): Producto {
   return {
     id: row.id,
-    categoriaId: row.categoria_id,
-    nombre: row.nombre,
-    precioVenta: row.precio_venta,
-    precioCompra: row.precio_compra,
-    stockActual: row.stock_actual,
-    stockMinimo: row.stock_minimo,
-    imagenUri: row.imagen_uri,
-    fechaRegistro: row.fecha_registro,
-    fechaUpdate: row.fecha_update,
-    fechaDelete: row.fecha_delete,
+    categoriaId: row.category_id,
+    nombre: row.name,
+    precioVenta: row.selling_price,
+    precioCompra: row.purchase_price,
+    stockActual: row.current_stock,
+    stockMinimo: row.min_stock,
+    imagenUri: row.image_uri,
+    fechaRegistro: row.registered_at,
+    fechaUpdate: row.updated_at,
+    fechaDelete: row.deleted_at,
   };
 }
 
 export function toTransaccion(row: TransaccionRow): Transaccion {
   return {
     id: row.id,
-    tipo: row.tipo as TipoTransaccion,
-    montoTotal: row.monto_total,
-    tipoPago: row.tipo_pago as TipoPago,
-    detalle: row.detalle,
-    fechaRegistro: row.fecha_registro,
-    fechaDelete: row.fecha_delete,
+    tipo: row.type as TipoTransaccion,
+    montoTotal: row.total_amount,
+    tipoPago: row.payment_method as TipoPago,
+    detalle: row.detail,
+    fechaRegistro: row.registered_at,
+    fechaDelete: row.deleted_at,
   };
 }
 
 export function toDetalleTransaccion(row: DetalleTransaccionRow): DetalleTransaccion {
   return {
     id: row.id,
-    transaccionId: row.transaccion_id,
-    productoId: row.producto_id,
-    cantidad: row.cantidad,
-    precioUnitario: row.precio_unitario,
+    transaccionId: row.transaction_id,
+    productoId: row.product_id,
+    cantidad: row.quantity,
+    precioUnitario: row.unit_price,
   };
 }
 
 export function toResumenCaja(row: ResumenCajaRow): ResumenCaja {
   return {
-    totalVentas: row.total_ventas,
-    totalCompras: row.total_compras,
-    totalGastos: row.total_gastos,
-    saldoActual: row.saldo_actual,
+    totalVentas: row.total_sales,
+    totalCompras: row.total_purchases,
+    totalGastos: row.total_expenses,
+    saldoActual: row.net_balance,
   };
 }

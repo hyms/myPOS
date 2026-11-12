@@ -12,8 +12,12 @@ import type { CarritoStoreHook } from '@/presentation/stores/carritoStore';
 import { useProductos } from '@/presentation/hooks/useProductos';
 import { useCategorias } from '@/presentation/hooks/useCategorias';
 import { useStockAlert } from '@/presentation/hooks/useStockAlert';
-import { calcTotals } from '@/domain/rules/cartRules';
+import { calcTotals, lineSubtotal } from '@/domain/rules/cartRules';
+import { StockError } from '@/domain/rules/stockRules';
+import { round2 } from '@/domain/value-objects/Money';
+import { toCartKind, toCartLine, toCartLines } from '@/shared/utils/legacyCart';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
+import { stockErrorMessage } from '@/presentation/utils/stockErrorMessages';
 import { useDebouncedValue, useInfiniteScroll } from '@/presentation/hooks/useInfiniteScroll';
 import { SearchBar } from '@/presentation/components/filters/SearchBar';
 import { SortMenu } from '@/presentation/components/filters/SortMenu';
@@ -28,7 +32,6 @@ import { AnimatedPressable } from '@/presentation/components/ui/AnimatedPressabl
 import { Icon } from '@/presentation/components/ui/Icon';
 import { ListFooterLoader, Skeleton } from '@/presentation/components/ui/Skeleton';
 import { generarYCompartirComprobante } from '@/infrastructure/pdf/ComprobanteService';
-import { useSettingsStore } from '@/presentation/stores/settingsStore';
 import type { SortOrder } from '@/data/repositories/IProductoRepository';
 import { ToastService } from '@/infrastructure/toast/ToastService';
 import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
@@ -65,9 +68,10 @@ interface CartLineProps {
 }
 
 const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: CartLineProps) {
-  const { format } = useCurrency();
-  const unit = tipo === 'VENTA' ? item.producto.precioVenta : item.producto.precioCompra;
-  const lineTotal = unit * item.cantidad - item.descuento;
+  const { currency, format } = useCurrency();
+  const line = toCartLine(item, toCartKind(tipo), currency);
+  const unit = line.unitPrice.amount;
+  const lineTotal = lineSubtotal(line).subtract(line.discount).amount;
   const a11yLabel = `${item.producto.nombre}, ${item.cantidad} por ${format(unit)}, total ${format(lineTotal)}`;
 
   return (
@@ -89,7 +93,7 @@ const CartLine = React.memo(function CartLine({ item, tipo, onEdit, onRemove }: 
         </Text>
         <Text className="mt-0.5 text-xs tabular-nums text-ink-muted">
           {item.cantidad} × {format(unit)}
-          {item.descuento > 0 ? `  ·  desc ${format(item.descuento)}` : ''}
+          {line.discount.isPositive() ? `  ·  desc ${format(line.discount.amount)}` : ''}
         </Text>
       </View>
       <Text className="text-base font-bold tabular-nums text-accent-bright">
@@ -118,9 +122,11 @@ export function CarritoScreen({ tipo, store }: Props) {
   const agregar = store((s) => s.agregar);
   const eliminar = store((s) => s.eliminar);
   const vaciar = store((s) => s.vaciar);
-  const totals = useMemo(() => calcTotals(items, tipo), [items, tipo]);
-  const { format } = useCurrency();
-  const currency = useSettingsStore((s) => s.currency);
+  const { currency, format } = useCurrency();
+  const totals = useMemo(
+    () => calcTotals(toCartLines(items, toCartKind(tipo), currency), currency),
+    [items, tipo, currency],
+  );
   const stockAlert = useStockAlert();
   const { categorias } = useCategorias();
   const invalidateMany = useInvalidationStore((s) => s.invalidateMany);
@@ -190,6 +196,7 @@ export function CarritoScreen({ tipo, store }: Props) {
             items: currentItems,
             tipoPago,
             detalle: null,
+            currency,
           });
           stockAlert.notify(result.stockAlerts);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -200,7 +207,7 @@ export function CarritoScreen({ tipo, store }: Props) {
             items: currentItems,
             tipoPago,
             recibido,
-            cambio: recibido !== null ? recibido - result.total : null,
+            cambio: recibido !== null ? round2(recibido - result.total) : null,
             currency,
           };
         } else {
@@ -208,6 +215,7 @@ export function CarritoScreen({ tipo, store }: Props) {
             items: currentItems,
             tipoPago,
             detalle: null,
+            currency,
           });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           ToastService.success('Compra registrada', `Total ${format(result.total)}`);
@@ -232,6 +240,10 @@ export function CarritoScreen({ tipo, store }: Props) {
           );
         });
       } catch (e) {
+        if (e instanceof StockError) {
+          ToastService.error('Error', stockErrorMessage(e));
+          return;
+        }
         ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo registrar.');
       }
     },
@@ -297,14 +309,14 @@ export function CarritoScreen({ tipo, store }: Props) {
           <View className="mt-2 flex-row justify-between">
             <Text className="text-sm text-ink-muted">Subtotal</Text>
             <Text className="font-semibold tabular-nums text-ink-strong">
-              {format(totals.subtotal)}
+              {format(totals.subtotal.amount)}
             </Text>
           </View>
-          {totals.descuento > 0 ? (
+          {totals.discount.isPositive() ? (
             <View className="flex-row justify-between">
               <Text className="text-sm text-ink-muted">Descuento</Text>
               <Text className="font-semibold tabular-nums text-danger">
-                -{format(totals.descuento)}
+                -{format(totals.discount.amount)}
               </Text>
             </View>
           ) : null}
@@ -313,7 +325,7 @@ export function CarritoScreen({ tipo, store }: Props) {
               Total
             </Text>
             <Text className="text-lg font-bold tabular-nums text-accent-bright">
-              {format(totals.total)}
+              {format(totals.total.amount)}
             </Text>
           </View>
         </View>
@@ -349,7 +361,7 @@ export function CarritoScreen({ tipo, store }: Props) {
 
       <CartSummaryBar
         count={items.length}
-        total={totals.total}
+        total={totals.total.amount}
         tipo={tipo}
         onCheckout={handleOpenPayment}
         onClear={handleClearCart}

@@ -1,13 +1,17 @@
 import { getDatabase } from '@/data/database/client';
-import { calcTotals } from '@/domain/rules/cartRules';
-import { validateStockDisponible } from '@/domain/rules/stockRules';
+import { calcTotals, lineSubtotal } from '@/domain/rules/cartRules';
+import { assertStockAvailable } from '@/domain/rules/stockRules';
 import type { CarritoItem } from '@/domain/entities/CarritoItem';
 import type { TipoPago } from '@/domain/entities/Transaccion';
+import type { CurrencyCode } from '@/domain/value-objects/Currency';
+import { Stock } from '@/domain/value-objects/Stock';
+import { toCartKind, toCartLine, toCartLines } from '@/shared/utils/legacyCart';
 
 export interface RegistrarVentaInput {
   readonly items: ReadonlyArray<CarritoItem>;
   readonly tipoPago: TipoPago;
   readonly detalle: string | null;
+  readonly currency: CurrencyCode;
 }
 
 export interface RegistrarVentaResult {
@@ -20,57 +24,64 @@ export function registrarVenta(input: RegistrarVentaInput): RegistrarVentaResult
   if (input.items.length === 0) {
     throw new Error('El carrito está vacío.');
   }
-  const totals = calcTotals(input.items, 'VENTA');
-  if (totals.total <= 0) {
+
+  const kind = toCartKind('VENTA');
+  const totals = calcTotals(toCartLines(input.items, kind, input.currency), input.currency);
+
+  if (totals.total.amount <= 0) {
     throw new Error('El total de la venta debe ser mayor a 0.');
   }
 
-  const db = getDatabase();
   for (const item of input.items) {
-    validateStockDisponible(
-      { id: item.producto.id, nombre: item.producto.nombre, stockActual: item.producto.stockActual },
-      item.cantidad,
+    assertStockAvailable(
+      {
+        id: item.producto.id,
+        name: item.producto.nombre,
+        currentStock: new Stock(Math.max(0, item.producto.stockActual)),
+      },
+      new Stock(Math.max(0, item.cantidad)),
     );
   }
 
+  const db = getDatabase();
   let transaccionId = 0;
   db.withTransactionSync(() => {
     const trxResult = db.runSync(
-      "INSERT INTO transacciones (tipo, monto_total, tipo_pago, detalle) VALUES ('VENTA', ?, ?, ?)",
-      totals.total,
+      "INSERT INTO sales_transactions (type, total_amount, payment_method, detail) VALUES ('VENTA', ?, ?, ?)",
+      totals.total.amount,
       input.tipoPago,
       input.detalle,
     );
     transaccionId = trxResult.lastInsertRowId;
 
     for (const item of input.items) {
-      const precioUnitarioReal =
-        item.cantidad > 0
-          ? (item.producto.precioVenta * item.cantidad - item.descuento) / item.cantidad
-          : item.producto.precioVenta;
+      const line = toCartLine(item, kind, input.currency);
+      const quantity = line.quantity.value;
+      const net = lineSubtotal(line).subtract(line.discount);
+      const unitPrice = quantity > 0 ? net.divide(quantity).amount : line.unitPrice.amount;
       db.runSync(
-        'INSERT INTO detalle_transacciones (transaccion_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+        'INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
         transaccionId,
         item.producto.id,
         item.cantidad,
-        precioUnitarioReal,
+        unitPrice,
       );
       db.runSync(
-        'UPDATE productos SET stock_actual = stock_actual - ?, fecha_update = CURRENT_TIMESTAMP WHERE id = ?',
+        'UPDATE products SET current_stock = current_stock - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         item.cantidad,
         item.producto.id,
       );
     }
 
     db.runSync(
-      'UPDATE resumen_caja SET total_ventas = total_ventas + ?, saldo_actual = saldo_actual + ? WHERE id = 1',
-      totals.total,
-      totals.total,
+      'UPDATE financial_accumulators SET total_sales = total_sales + ?, net_balance = net_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
+      totals.total.amount,
+      totals.total.amount,
     );
   });
 
   const stockAlerts = collectStockAlerts(input.items, -1);
-  return { transaccionId, total: totals.total, stockAlerts };
+  return { transaccionId, total: totals.total.amount, stockAlerts };
 }
 
 function collectStockAlerts(
@@ -81,20 +92,19 @@ function collectStockAlerts(
   const ids = items.map((item) => item.producto.id);
   if (ids.length === 0) return [];
   const placeholders = ids.map(() => '?').join(',');
-  const rows = db.getAllSync<{ id: number; nombre: string; stock_actual: number; stock_minimo: number }>(
-    `SELECT id, nombre, stock_actual, stock_minimo FROM productos WHERE id IN (${placeholders})`,
+  const rows = db.getAllSync<{ id: number; name: string; current_stock: number; min_stock: number }>(
+    `SELECT id, name, current_stock, min_stock FROM products WHERE id IN (${placeholders})`,
     ...ids,
   );
   return rows
     .map((row) => {
-      const item = items.find((i) => i.producto.id === row.id);
-      const stockActual = row.stock_actual;
-      if (stockActual < row.stock_minimo) {
+      const stockActual = row.current_stock;
+      if (stockActual < row.min_stock) {
         return {
           id: row.id,
-          nombre: row.nombre,
+          nombre: row.name,
           stockActual,
-          stockMinimo: row.stock_minimo,
+          stockMinimo: row.min_stock,
         };
       }
       return null;

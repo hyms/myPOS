@@ -24,14 +24,14 @@ export function registrarGasto(input: RegistrarGastoInput): RegistrarGastoResult
   let transaccionId = 0;
   db.withTransactionSync(() => {
     const result = db.runSync(
-      "INSERT INTO transacciones (tipo, monto_total, tipo_pago, detalle) VALUES ('GASTO', ?, ?, ?)",
+      "INSERT INTO sales_transactions (type, total_amount, payment_method, detail) VALUES ('GASTO', ?, ?, ?)",
       input.monto,
       input.tipoPago,
       detalle,
     );
     transaccionId = result.lastInsertRowId;
     db.runSync(
-      'UPDATE resumen_caja SET total_gastos = total_gastos + ?, saldo_actual = saldo_actual - ? WHERE id = 1',
+      'UPDATE financial_accumulators SET total_expenses = total_expenses + ?, net_balance = net_balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
       input.monto,
       input.monto,
     );

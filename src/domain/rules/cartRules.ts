@@ -1,47 +1,60 @@
-import type { CarritoItem, CarritoTipo } from '../entities/CarritoItem';
+import type { TransactionType } from '../entities/TransactionType';
+import { ChangeAmount } from '../value-objects/ChangeAmount';
+import type { CurrencyCode } from '../value-objects/Currency';
+import { Money } from '../value-objects/Money';
+import type { Stock } from '../value-objects/Stock';
+
+export type CartKind = Extract<TransactionType, 'SALE' | 'PURCHASE'>;
+
+export interface CartLine {
+  readonly unitPrice: Money;
+  readonly quantity: Stock;
+  readonly discount: Money;
+}
 
 export interface CartTotals {
-  readonly subtotal: number;
-  readonly descuento: number;
-  readonly total: number;
+  readonly subtotal: Money;
+  readonly discount: Money;
+  readonly total: Money;
 }
 
-export function getUnitPrice(item: CarritoItem, tipo: CarritoTipo): number {
-  return tipo === 'VENTA' ? item.producto.precioVenta : item.producto.precioCompra;
+export function selectUnitPrice(
+  salePrice: Money,
+  purchasePrice: Money,
+  kind: CartKind,
+): Money {
+  return kind === 'SALE' ? salePrice : purchasePrice;
 }
 
-export function lineSubtotal(item: CarritoItem, tipo: CarritoTipo): number {
-  const unitPrice = getUnitPrice(item, tipo);
-  return unitPrice * item.cantidad;
+export function lineSubtotal(line: CartLine): Money {
+  return line.unitPrice.multiply(line.quantity.value);
 }
 
-export function calcTotals(items: ReadonlyArray<CarritoItem>, tipo: CarritoTipo): CartTotals {
-  let subtotal = 0;
-  let descuento = 0;
-  for (const item of items) {
-    subtotal += lineSubtotal(item, tipo);
-    descuento += item.descuento;
+export function applyDiscount(subtotal: Money, discount: Money): Money {
+  if (discount.isNegative()) return subtotal;
+  if (discount.amount > subtotal.amount) return Money.zero(subtotal.currency);
+  return subtotal.subtract(discount);
+}
+
+export function calcTotals(
+  lines: ReadonlyArray<CartLine>,
+  currency: CurrencyCode,
+): CartTotals {
+  let subtotal = Money.zero(currency);
+  let discount = Money.zero(currency);
+
+  for (const line of lines) {
+    subtotal = subtotal.add(lineSubtotal(line));
+    discount = discount.add(line.discount);
   }
+
   return {
-    subtotal: round2(subtotal),
-    descuento: round2(descuento),
-    total: round2(subtotal - descuento),
+    subtotal,
+    discount,
+    total: applyDiscount(subtotal, discount),
   };
 }
 
-export function calcChange(total: number, recibido: number): number {
-  return round2(recibido - total);
-}
-
-export function applyDiscount(
-  subtotal: number,
-  descuento: number,
-): number {
-  if (descuento < 0) return subtotal;
-  if (descuento > subtotal) return 0;
-  return round2(subtotal - descuento);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+export function calcChange(total: Money, received: Money): ChangeAmount {
+  return new ChangeAmount(received.subtract(total));
 }

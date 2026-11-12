@@ -13,6 +13,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "moduleResolution": "bundler",
+    "types": ["jest"],
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {

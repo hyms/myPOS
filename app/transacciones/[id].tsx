@@ -8,7 +8,9 @@ import { ConfirmDialog } from '@/presentation/components/feedback/ConfirmDialog'
 import { Skeleton } from '@/presentation/components/ui/Skeleton';
 import { revertirTransaccion } from '@/application/ventas/RevertirTransaccion';
 import { getRepositories } from '@/data/repositories/container';
+import { StockError } from '@/domain/rules/stockRules';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
+import { stockErrorMessage } from '@/presentation/utils/stockErrorMessages';
 import { usePinGate } from '@/presentation/hooks/usePinGate';
 import { useInvalidationStore } from '@/presentation/stores/invalidationStore';
 import { formatFecha } from '@/shared/utils/date';
@@ -83,7 +85,13 @@ export default function TransaccionDetailScreen() {
           ToastService.success('Transacción revertida');
           router.back();
         } catch (e) {
-          ToastService.error('Error', e instanceof Error ? e.message : 'No se pudo revertir.');
+          const message =
+            e instanceof StockError
+              ? `No se pudo revertir: ${stockErrorMessage(e)}`
+              : e instanceof Error
+                ? e.message
+                : 'No se pudo revertir.';
+          ToastService.error('Error', message);
           setReverting(false);
         }
       },

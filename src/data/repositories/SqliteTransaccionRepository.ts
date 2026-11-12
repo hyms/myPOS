@@ -10,12 +10,15 @@ import {
 } from '@/data/mappers/rowMappers';
 import type { ITransaccionRepository } from './ITransaccionRepository';
 
+const TRANSACTION_COLUMNS =
+  'id, type, total_amount, payment_method, detail, registered_at, deleted_at';
+
 export class SqliteTransaccionRepository implements ITransaccionRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
   findById(id: number): Transaccion | null {
     const row = this.db.getFirstSync<TransaccionRow>(
-      'SELECT id, tipo, monto_total, tipo_pago, detalle, fecha_registro, fecha_delete FROM transacciones WHERE id = ?',
+      `SELECT ${TRANSACTION_COLUMNS} FROM sales_transactions WHERE id = ?`,
       id,
     );
     return row ? toTransaccion(row) : null;
@@ -23,7 +26,7 @@ export class SqliteTransaccionRepository implements ITransaccionRepository {
 
   findDetalles(id: number): ReadonlyArray<DetalleTransaccion> {
     const rows = this.db.getAllSync<DetalleTransaccionRow>(
-      'SELECT id, transaccion_id, producto_id, cantidad, precio_unitario FROM detalle_transacciones WHERE transaccion_id = ?',
+      'SELECT id, transaction_id, product_id, quantity, unit_price FROM transaction_details WHERE transaction_id = ?',
       id,
     );
     return rows.map(toDetalleTransaccion);
@@ -31,15 +34,15 @@ export class SqliteTransaccionRepository implements ITransaccionRepository {
 
   listar({ tipo, limit, offset }: { tipo?: TipoTransaccion; limit: number; offset: number }): ReadonlyArray<Transaccion> {
     const sql = tipo
-      ? `SELECT id, tipo, monto_total, tipo_pago, detalle, fecha_registro, fecha_delete
-           FROM transacciones
-          WHERE fecha_delete IS NULL AND tipo = ?
-          ORDER BY fecha_registro DESC
+      ? `SELECT ${TRANSACTION_COLUMNS}
+           FROM sales_transactions
+          WHERE deleted_at IS NULL AND type = ?
+          ORDER BY registered_at DESC
           LIMIT ? OFFSET ?`
-      : `SELECT id, tipo, monto_total, tipo_pago, detalle, fecha_registro, fecha_delete
-           FROM transacciones
-          WHERE fecha_delete IS NULL
-          ORDER BY fecha_registro DESC
+      : `SELECT ${TRANSACTION_COLUMNS}
+           FROM sales_transactions
+          WHERE deleted_at IS NULL
+          ORDER BY registered_at DESC
           LIMIT ? OFFSET ?`;
     const rows = tipo
       ? this.db.getAllSync<TransaccionRow>(sql, tipo, limit, offset)
@@ -49,27 +52,27 @@ export class SqliteTransaccionRepository implements ITransaccionRepository {
 
   listarPorMesAnio({ periodo }: { periodo: 'MONTH' | 'YEAR' }): ReadonlyArray<{ tipo: TipoTransaccion; total: number }> {
     const monthFilter = periodo === 'MONTH'
-      ? `AND strftime('%m', fecha_registro) = strftime('%m', 'now', 'localtime')`
+      ? `AND strftime('%m', registered_at) = strftime('%m', 'now', 'localtime')`
       : '';
     const rows = this.db.getAllSync<{ tipo: string; total: number }>(
-      `SELECT tipo, SUM(monto_total) AS total
-         FROM transacciones
-        WHERE fecha_delete IS NULL
-          AND strftime('%Y', fecha_registro) = strftime('%Y', 'now', 'localtime')
+      `SELECT type AS tipo, SUM(total_amount) AS total
+         FROM sales_transactions
+        WHERE deleted_at IS NULL
+          AND strftime('%Y', registered_at) = strftime('%Y', 'now', 'localtime')
           ${monthFilter}
-        GROUP BY tipo`,
+        GROUP BY type`,
     );
     return rows.map((row) => ({ tipo: row.tipo as TipoTransaccion, total: row.total ?? 0 }));
   }
 
   gastosDelMes(limit: number, offset: number): ReadonlyArray<Transaccion> {
     const rows = this.db.getAllSync<TransaccionRow>(
-      `SELECT id, tipo, monto_total, tipo_pago, detalle, fecha_registro, fecha_delete
-         FROM transacciones
-        WHERE tipo = 'GASTO'
-          AND fecha_delete IS NULL
-          AND strftime('%Y-%m', fecha_registro) = strftime('%Y-%m', 'now', 'localtime')
-        ORDER BY fecha_registro DESC
+      `SELECT ${TRANSACTION_COLUMNS}
+         FROM sales_transactions
+        WHERE type = 'GASTO'
+          AND deleted_at IS NULL
+          AND strftime('%Y-%m', registered_at) = strftime('%Y-%m', 'now', 'localtime')
+        ORDER BY registered_at DESC
         LIMIT ? OFFSET ?`,
       limit,
       offset,

@@ -1,6 +1,7 @@
 import { getRepositories } from '@/data/repositories/container';
 import { getDatabase } from '@/data/database/client';
-import { StockError } from '@/domain/rules/stockRules';
+import { assertStockAvailable } from '@/domain/rules/stockRules';
+import { Stock } from '@/domain/value-objects/Stock';
 
 export interface RevertirTransaccionResult {
   readonly transaccionId: number;
@@ -22,11 +23,14 @@ export function revertirTransaccion(id: number): RevertirTransaccionResult {
     for (const det of detalles) {
       const producto = repos.productos.findById(det.productoId);
       if (!producto) continue;
-      if (producto.stockActual - det.cantidad < 0) {
-        throw new StockError(
-          `No se puede revertir la compra: "${producto.nombre}" quedaría con stock negativo.`,
-          producto.id,
-          producto.nombre,
+      if (det.cantidad > 0) {
+        assertStockAvailable(
+          {
+            id: producto.id,
+            name: producto.nombre,
+            currentStock: new Stock(Math.max(0, producto.stockActual)),
+          },
+          new Stock(det.cantidad),
         );
       }
     }
@@ -37,38 +41,38 @@ export function revertirTransaccion(id: number): RevertirTransaccionResult {
     if (trx.tipo === 'VENTA') {
       for (const det of detalles) {
         db.runSync(
-          'UPDATE productos SET stock_actual = stock_actual + ?, fecha_update = CURRENT_TIMESTAMP WHERE id = ?',
+          'UPDATE products SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
           det.cantidad,
           det.productoId,
         );
       }
       db.runSync(
-        'UPDATE resumen_caja SET total_ventas = total_ventas - ?, saldo_actual = saldo_actual - ? WHERE id = 1',
+        'UPDATE financial_accumulators SET total_sales = total_sales - ?, net_balance = net_balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
         trx.montoTotal,
         trx.montoTotal,
       );
     } else if (trx.tipo === 'COMPRA') {
       for (const det of detalles) {
         db.runSync(
-          'UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ?',
+          'UPDATE products SET current_stock = current_stock - ? WHERE id = ?',
           det.cantidad,
           det.productoId,
         );
       }
       db.runSync(
-        'UPDATE resumen_caja SET total_compras = total_compras - ?, saldo_actual = saldo_actual + ? WHERE id = 1',
+        'UPDATE financial_accumulators SET total_purchases = total_purchases - ?, net_balance = net_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
         trx.montoTotal,
         trx.montoTotal,
       );
     } else {
       db.runSync(
-        'UPDATE resumen_caja SET total_gastos = total_gastos - ?, saldo_actual = saldo_actual + ? WHERE id = 1',
+        'UPDATE financial_accumulators SET total_expenses = total_expenses - ?, net_balance = net_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
         trx.montoTotal,
         trx.montoTotal,
       );
     }
     db.runSync(
-      'UPDATE transacciones SET fecha_delete = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE sales_transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?',
       id,
     );
   });

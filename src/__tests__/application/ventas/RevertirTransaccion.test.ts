@@ -1,11 +1,12 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { revertirTransaccion } from '@/application/ventas/RevertirTransaccion';
 import { SqliteProductoRepository } from '@/data/repositories/SqliteProductoRepository';
 import { SqliteCategoriaRepository } from '@/data/repositories/SqliteCategoriaRepository';
 import { SqliteTransaccionRepository } from '@/data/repositories/SqliteTransaccionRepository';
 import { SqliteResumenCajaRepository } from '@/data/repositories/SqliteResumenCajaRepository';
-import { SCHEMA_SQL, SEED_SQL } from '@/data/database/schema.sql';
+import { StockError } from '@/domain/rules/stockRules';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 const mockGetDatabase = jest.fn();
 const mockGetRepositories = jest.fn();
@@ -29,9 +30,7 @@ interface TestDb {
 }
 
 function createTestDb(): TestDb {
-  const db = openDatabaseSync(':memory:');
-  db.execSync(SCHEMA_SQL);
-  db.execSync(SEED_SQL);
+  const db = createMigratedDatabase();
   return {
     db,
     productos: new SqliteProductoRepository(db),
@@ -56,25 +55,25 @@ function seedData(t: TestDb) {
 
 function createVenta(t: TestDb): number {
   const trx = t.db.runSync(
-    "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('VENTA', ?, ?)",
+    "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('VENTA', ?, ?)",
     200,
     'EFECTIVO',
   );
   const id = trx.lastInsertRowId;
   t.db.runSync(
-    'INSERT INTO detalle_transacciones (transaccion_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+    'INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
     id,
     1,
     2,
     100,
   );
   t.db.runSync(
-    'UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ?',
+    'UPDATE products SET current_stock = current_stock - ? WHERE id = ?',
     2,
     1,
   );
   t.db.runSync(
-    'UPDATE resumen_caja SET total_ventas = total_ventas + ?, saldo_actual = saldo_actual + ? WHERE id = 1',
+    'UPDATE financial_accumulators SET total_sales = total_sales + ?, net_balance = net_balance + ? WHERE id = 1',
     200,
     200,
   );
@@ -83,25 +82,25 @@ function createVenta(t: TestDb): number {
 
 function createCompra(t: TestDb): number {
   const trx = t.db.runSync(
-    "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('COMPRA', ?, ?)",
+    "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('COMPRA', ?, ?)",
     300,
     'EFECTIVO',
   );
   const id = trx.lastInsertRowId;
   t.db.runSync(
-    'INSERT INTO detalle_transacciones (transaccion_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+    'INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
     id,
     1,
     5,
     60,
   );
   t.db.runSync(
-    'UPDATE productos SET stock_actual = stock_actual + ? WHERE id = ?',
+    'UPDATE products SET current_stock = current_stock + ? WHERE id = ?',
     5,
     1,
   );
   t.db.runSync(
-    'UPDATE resumen_caja SET total_compras = total_compras + ?, saldo_actual = saldo_actual - ? WHERE id = 1',
+    'UPDATE financial_accumulators SET total_purchases = total_purchases + ?, net_balance = net_balance - ? WHERE id = 1',
     300,
     300,
   );
@@ -110,14 +109,14 @@ function createCompra(t: TestDb): number {
 
 function createGasto(t: TestDb): number {
   const trx = t.db.runSync(
-    "INSERT INTO transacciones (tipo, monto_total, tipo_pago, detalle) VALUES ('GASTO', ?, ?, ?)",
+    "INSERT INTO sales_transactions (type, total_amount, payment_method, detail) VALUES ('GASTO', ?, ?, ?)",
     50,
     'EFECTIVO',
     'Luz',
   );
   const id = trx.lastInsertRowId;
   t.db.runSync(
-    'UPDATE resumen_caja SET total_gastos = total_gastos + ?, saldo_actual = saldo_actual - ? WHERE id = 1',
+    'UPDATE financial_accumulators SET total_expenses = total_expenses + ?, net_balance = net_balance - ? WHERE id = 1',
     50,
     50,
   );
@@ -156,7 +155,7 @@ describe('revertirTransaccion', () => {
       expect(caja.totalVentas).toBe(0);
       expect(caja.saldoActual).toBe(0);
 
-      // Transacción marcada como borrada (fecha_delete seteada)
+      // Transacción marcada como borrada (deleted_at seteada)
       const trx = t.transacciones.findById(id);
       expect(trx!.fechaDelete).not.toBeNull();
     });
@@ -183,9 +182,9 @@ describe('revertirTransaccion', () => {
       const id = createCompra(t);
       // Producto actualmente tiene stock 20 después de la compra
       // Si vendemos 25 unidades para reducir stock a menos de la cantidad a revertir
-      t.db.runSync('UPDATE productos SET stock_actual = ? WHERE id = 1', 3);
+      t.db.runSync('UPDATE products SET current_stock = ? WHERE id = 1', 3);
 
-      expect(() => revertirTransaccion(id)).toThrow('stock negativo');
+      expect(() => revertirTransaccion(id)).toThrow(StockError);
     });
   });
 

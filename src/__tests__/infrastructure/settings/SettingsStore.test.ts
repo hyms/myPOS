@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { SettingsStore } from '@/infrastructure/settings/SettingsStore';
 
-import { resetAsyncStorage } from '@react-native-async-storage/async-storage';
+import { resetAsyncStorage } from '@/__tests__/__mocks__/async-storage';
 
 describe('SettingsStore', () => {
   beforeEach(() => {

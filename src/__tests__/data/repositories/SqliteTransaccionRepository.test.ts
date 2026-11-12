@@ -1,26 +1,25 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { SqliteTransaccionRepository } from '@/data/repositories/SqliteTransaccionRepository';
-import { SCHEMA_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 describe('SqliteTransaccionRepository', () => {
   let db: SQLiteDatabase;
   let repo: SqliteTransaccionRepository;
 
   beforeEach(() => {
-    db = openDatabaseSync(':memory:');
-    db.execSync(SCHEMA_SQL);
+    db = createMigratedDatabase();
     repo = new SqliteTransaccionRepository(db);
-    // Seed categorias and productos
-    db.runSync("INSERT INTO categorias (nombre) VALUES ('Cat1')");
+    // Seed categories and products
+    db.runSync("INSERT INTO categories (name) VALUES ('Cat1')");
     db.runSync(
-      "INSERT INTO productos (categoria_id, nombre, precio_venta, precio_compra) VALUES (1, 'Prod1', 100, 60)",
+      "INSERT INTO products (category_id, name, selling_price, purchase_price) VALUES (1, 'Prod1', 100, 60)",
     );
   });
 
   function insertVenta(monto = 100, tipoPago = 'EFECTIVO') {
     return db.runSync(
-      "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('VENTA', ?, ?)",
+      "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('VENTA', ?, ?)",
       monto,
       tipoPago,
     ).lastInsertRowId;
@@ -28,7 +27,7 @@ describe('SqliteTransaccionRepository', () => {
 
   function insertDetalle(transaccionId: number, productoId = 1, cantidad = 1, precio = 100) {
     db.runSync(
-      'INSERT INTO detalle_transacciones (transaccion_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+      'INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
       transaccionId,
       productoId,
       cantidad,
@@ -76,7 +75,7 @@ describe('SqliteTransaccionRepository', () => {
     it('filtra por tipo', () => {
       insertVenta(100);
       const compraId = db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('COMPRA', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('COMPRA', ?, ?)",
         50,
         'EFECTIVO',
       ).lastInsertRowId;
@@ -91,7 +90,7 @@ describe('SqliteTransaccionRepository', () => {
       insertVenta(100);
       insertVenta(200);
       db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('COMPRA', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('COMPRA', ?, ?)",
         50,
         'EFECTIVO',
       );
@@ -108,7 +107,7 @@ describe('SqliteTransaccionRepository', () => {
     it('retorna solo gastos del mes actual', () => {
       insertVenta(100);
       db.runSync(
-        "INSERT INTO transacciones (tipo, monto_total, tipo_pago) VALUES ('GASTO', ?, ?)",
+        "INSERT INTO sales_transactions (type, total_amount, payment_method) VALUES ('GASTO', ?, ?)",
         30,
         'EFECTIVO',
       );

@@ -1,7 +1,7 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { registrarGasto } from '@/application/gastos/RegistrarGasto';
-import { SEED_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 const mockGetDatabase = jest.fn();
 
@@ -11,27 +11,7 @@ jest.mock('@/data/database/client', () => ({
 }));
 
 function createFreshDb(): SQLiteDatabase {
-  const db = openDatabaseSync(':memory:');
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS transacciones (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tipo TEXT NOT NULL,
-      monto_total REAL NOT NULL,
-      tipo_pago TEXT NOT NULL,
-      detalle TEXT,
-      fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      fecha_delete TIMESTAMP DEFAULT NULL
-    );
-    CREATE TABLE IF NOT EXISTS resumen_caja (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      total_ventas REAL DEFAULT 0.0,
-      total_compras REAL DEFAULT 0.0,
-      total_gastos REAL DEFAULT 0.0,
-      saldo_actual REAL DEFAULT 0.0
-    );
-  `);
-  db.execSync(SEED_SQL);
-  return db;
+  return createMigratedDatabase();
 }
 
 describe('registrarGasto', () => {
@@ -69,18 +49,18 @@ describe('registrarGasto', () => {
     expect(result.transaccionId).toBeGreaterThan(0);
 
     const row = db.getFirstSync<{
-      total_gastos: number;
-      saldo_actual: number;
-    }>('SELECT total_gastos, saldo_actual FROM resumen_caja WHERE id = 1');
-    expect(row!.total_gastos).toBe(50.5);
-    expect(row!.saldo_actual).toBe(-50.5);
+      total_expenses: number;
+      net_balance: number;
+    }>('SELECT total_expenses, net_balance FROM financial_accumulators WHERE id = 1');
+    expect(row!.total_expenses).toBe(50.5);
+    expect(row!.net_balance).toBe(-50.5);
 
-    const trx = db.getFirstSync<{ tipo: string; detalle: string }>(
-      'SELECT tipo, detalle FROM transacciones WHERE id = ?',
+    const trx = db.getFirstSync<{ type: string; detail: string }>(
+      'SELECT type, detail FROM sales_transactions WHERE id = ?',
       result.transaccionId,
     );
-    expect(trx!.tipo).toBe('GASTO');
-    expect(trx!.detalle).toBe('Luz');
+    expect(trx!.type).toBe('GASTO');
+    expect(trx!.detail).toBe('Luz');
   });
 
   it('acepta monto con decimales', () => {
@@ -91,11 +71,11 @@ describe('registrarGasto', () => {
     });
     expect(result.transaccionId).toBeGreaterThan(0);
 
-    const trx = db.getFirstSync<{ monto_total: number; tipo_pago: string }>(
-      'SELECT monto_total, tipo_pago FROM transacciones WHERE id = ?',
+    const trx = db.getFirstSync<{ total_amount: number; payment_method: string }>(
+      'SELECT total_amount, payment_method FROM sales_transactions WHERE id = ?',
       result.transaccionId,
     );
-    expect(trx!.monto_total).toBe(99.99);
-    expect(trx!.tipo_pago).toBe('TRANSFERENCIA');
+    expect(trx!.total_amount).toBe(99.99);
+    expect(trx!.payment_method).toBe('TRANSFERENCIA');
   });
 });

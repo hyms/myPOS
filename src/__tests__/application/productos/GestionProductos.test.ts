@@ -1,11 +1,11 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { crearProducto, actualizarProducto, eliminarProducto } from '@/application/productos/GestionProductos';
 import { SqliteProductoRepository } from '@/data/repositories/SqliteProductoRepository';
 import { SqliteCategoriaRepository } from '@/data/repositories/SqliteCategoriaRepository';
 import { SqliteTransaccionRepository } from '@/data/repositories/SqliteTransaccionRepository';
 import { SqliteResumenCajaRepository } from '@/data/repositories/SqliteResumenCajaRepository';
-import { SCHEMA_SQL, SEED_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 const mockGetRepositories = jest.fn();
 
@@ -23,9 +23,7 @@ interface TestDb {
 }
 
 function createTestDb(): TestDb {
-  const db = openDatabaseSync(':memory:');
-  db.execSync(SCHEMA_SQL);
-  db.execSync(SEED_SQL);
+  const db = createMigratedDatabase();
   return {
     db,
     productos: new SqliteProductoRepository(db),

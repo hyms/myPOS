@@ -1,6 +1,6 @@
 import { PinService } from '@/infrastructure/security/PinService';
 
-import { resetSecureStore } from 'expo-secure-store';
+import { resetSecureStore } from '@/__tests__/__mocks__/expo-secure-store';
 
 describe('PinService', () => {
   beforeEach(() => {

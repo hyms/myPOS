@@ -4,7 +4,8 @@ import type { CurrencyCode } from '@/domain/value-objects/Currency';
 import { CURRENCY_SYMBOLS } from '@/domain/value-objects/Currency';
 import type { TipoTransaccion } from '@/domain/entities/Transaccion';
 import type { CarritoItem } from '@/domain/entities/CarritoItem';
-import { calcTotals } from '@/domain/rules/cartRules';
+import { calcTotals, lineSubtotal } from '@/domain/rules/cartRules';
+import { toCartKind, toCartLine, toCartLines } from '@/shared/utils/legacyCart';
 
 const TITULOS: Record<TipoTransaccion, string> = {
   VENTA: 'COMPROBANTE DE VENTA',
@@ -68,15 +69,16 @@ export function buildComprobanteHTML(data: ComprobanteData): string {
 </div></body></html>`;
   }
 
-  const totals = calcTotals(data.items, data.tipo);
+  const kind = toCartKind(data.tipo);
+  const totals = calcTotals(toCartLines(data.items, kind, data.currency), data.currency);
   const itemsHTML = data.items
     .map((it) => {
-      const unit = data.tipo === 'VENTA' ? it.producto.precioVenta : it.producto.precioCompra;
+      const line = toCartLine(it, kind, data.currency);
       return `<tr>
         <td>${escapeHTML(it.producto.nombre)}</td>
         <td>${it.cantidad}</td>
-        <td>${fmt(unit)}</td>
-        <td>${fmt(unit * it.cantidad)}</td>
+        <td>${fmt(line.unitPrice.amount)}</td>
+        <td>${fmt(lineSubtotal(line).amount)}</td>
       </tr>`;
     })
     .join('');
@@ -98,9 +100,9 @@ export function buildComprobanteHTML(data: ComprobanteData): string {
     <tbody>${itemsHTML}</tbody>
   </table>
   <hr/>
-  <p><strong>Subtotal:</strong> ${fmt(totals.subtotal)}</p>
-  <p><strong>Descuento:</strong> ${fmt(totals.descuento)}</p>
-  <p class="total">TOTAL: ${fmt(totals.total)}</p>
+  <p><strong>Subtotal:</strong> ${fmt(totals.subtotal.amount)}</p>
+  <p><strong>Descuento:</strong> ${fmt(totals.discount.amount)}</p>
+  <p class="total">TOTAL: ${fmt(totals.total.amount)}</p>
   <p><strong>Tipo de pago:</strong> ${data.tipoPago}</p>
   ${recibidoPago}
   <p class="footer">${LEYENDAS[data.tipo]}</p>

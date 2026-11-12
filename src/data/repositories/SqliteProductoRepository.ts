@@ -12,6 +12,9 @@ import type {
 import { toProducto, type ProductoPopularidadRow, type ProductoRow } from '@/data/mappers/rowMappers';
 import type { IProductoRepository, ProductoQuery } from './IProductoRepository';
 
+const PRODUCT_COLUMNS =
+  'id, category_id, sku, name, selling_price, purchase_price, current_stock, min_stock, image_uri, registered_at, updated_at, deleted_at';
+
 export class SqliteProductoRepository implements IProductoRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
@@ -19,23 +22,23 @@ export class SqliteProductoRepository implements IProductoRepository {
     const searchLike = `%${(query.search ?? '').trim()}%`;
     const hasCategoria = query.categoriaId !== undefined && query.categoriaId !== null;
     const orderClause = query.sort === 'POPULARIDAD_DESC'
-      ? 'popularidad DESC, p.nombre ASC'
-      : 'p.nombre ASC';
+      ? 'popularidad DESC, p.name ASC'
+      : 'p.name ASC';
 
     const rows = this.db.getAllSync<ProductoPopularidadRow>(
-      `SELECT p.id, p.categoria_id, p.nombre, p.precio_venta, p.precio_compra,
-              p.stock_actual, p.stock_minimo, p.imagen_uri, p.fecha_registro,
-              p.fecha_update, p.fecha_delete,
-              COALESCE(SUM(d.cantidad), 0) AS popularidad
-         FROM productos p
-         LEFT JOIN detalle_transacciones d ON d.producto_id = p.id
-         LEFT JOIN transacciones t
-           ON t.id = d.transaccion_id
-          AND t.tipo = 'VENTA'
-          AND t.fecha_delete IS NULL
-        WHERE p.fecha_delete IS NULL
-          AND (? IS NULL OR p.categoria_id = ?)
-          AND p.nombre LIKE ?
+      `SELECT p.id, p.category_id, p.sku, p.name, p.selling_price, p.purchase_price,
+              p.current_stock, p.min_stock, p.image_uri, p.registered_at,
+              p.updated_at, p.deleted_at,
+              COALESCE(SUM(d.quantity), 0) AS popularidad
+         FROM products p
+         LEFT JOIN transaction_details d ON d.product_id = p.id
+         LEFT JOIN sales_transactions t
+           ON t.id = d.transaction_id
+          AND t.type = 'VENTA'
+          AND t.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL
+          AND (? IS NULL OR p.category_id = ?)
+          AND p.name LIKE ?
         GROUP BY p.id
         ORDER BY ${orderClause}
         LIMIT ? OFFSET ?`,
@@ -50,7 +53,7 @@ export class SqliteProductoRepository implements IProductoRepository {
 
   findById(id: ProductoId): Producto | null {
     const row = this.db.getFirstSync<ProductoRow>(
-      'SELECT id, categoria_id, nombre, precio_venta, precio_compra, stock_actual, stock_minimo, imagen_uri, fecha_registro, fecha_update, fecha_delete FROM productos WHERE id = ? AND fecha_delete IS NULL',
+      `SELECT ${PRODUCT_COLUMNS} FROM products WHERE id = ? AND deleted_at IS NULL`,
       id,
     );
     return row ? toProducto(row) : null;
@@ -60,9 +63,9 @@ export class SqliteProductoRepository implements IProductoRepository {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(',');
     const rows = this.db.getAllSync<ProductoRow>(
-      `SELECT id, categoria_id, nombre, precio_venta, precio_compra, stock_actual, stock_minimo, imagen_uri, fecha_registro, fecha_update, fecha_delete
-         FROM productos
-        WHERE id IN (${placeholders}) AND fecha_delete IS NULL`,
+      `SELECT ${PRODUCT_COLUMNS}
+         FROM products
+        WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
       ...ids,
     );
     return rows.map(toProducto);
@@ -71,8 +74,8 @@ export class SqliteProductoRepository implements IProductoRepository {
   crear(input: CreateProductoInput): Producto {
     this.validate(input.categoriaId, input);
     const result = this.db.runSync(
-      `INSERT INTO productos
-        (categoria_id, nombre, precio_venta, precio_compra, stock_actual, stock_minimo, imagen_uri)
+      `INSERT INTO products
+        (category_id, name, selling_price, purchase_price, current_stock, min_stock, image_uri)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       input.categoriaId,
       input.nombre.trim(),
@@ -92,11 +95,11 @@ export class SqliteProductoRepository implements IProductoRepository {
   actualizar(id: ProductoId, input: UpdateProductoInput): Producto {
     this.validate(input.categoriaId, input);
     this.db.runSync(
-      `UPDATE productos
-          SET categoria_id = ?, nombre = ?, precio_venta = ?, precio_compra = ?,
-              stock_actual = ?, stock_minimo = ?, imagen_uri = ?,
-              fecha_update = CURRENT_TIMESTAMP
-        WHERE id = ? AND fecha_delete IS NULL`,
+      `UPDATE products
+          SET category_id = ?, name = ?, selling_price = ?, purchase_price = ?,
+              current_stock = ?, min_stock = ?, image_uri = ?,
+              updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND deleted_at IS NULL`,
       input.categoriaId,
       input.nombre.trim(),
       input.precioVenta,
@@ -115,7 +118,7 @@ export class SqliteProductoRepository implements IProductoRepository {
 
   eliminar(id: ProductoId): void {
     this.db.runSync(
-      'UPDATE productos SET fecha_delete = CURRENT_TIMESTAMP, fecha_update = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE products SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       id,
     );
   }

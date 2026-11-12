@@ -1,17 +1,15 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { SqliteProductoRepository } from '@/data/repositories/SqliteProductoRepository';
-import { SCHEMA_SQL, SEED_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 describe('SqliteProductoRepository', () => {
   let db: SQLiteDatabase;
   let repo: SqliteProductoRepository;
 
   beforeEach(() => {
-    db = openDatabaseSync(':memory:');
-    db.execSync(SCHEMA_SQL);
-    db.execSync(SEED_SQL);
-    db.runSync("INSERT INTO categorias (nombre) VALUES ('Bebidas')");
+    db = createMigratedDatabase();
+    db.runSync("INSERT INTO categories (name) VALUES ('Bebidas')");
     repo = new SqliteProductoRepository(db);
   });
 
@@ -98,7 +96,7 @@ describe('SqliteProductoRepository', () => {
     });
 
     it('filtra por categoría', () => {
-      db.runSync("INSERT INTO categorias (nombre) VALUES ('Lácteos')");
+      db.runSync("INSERT INTO categories (name) VALUES ('Lácteos')");
       repo.crear(makeInput({ nombre: 'Coca', categoriaId: 1 }));
       repo.crear(makeInput({ nombre: 'Leche', categoriaId: 2 }));
 
@@ -131,18 +129,18 @@ describe('SqliteProductoRepository', () => {
   });
 
   describe('eliminar', () => {
-    it('marca fecha_delete (soft delete)', () => {
+    it('marca deleted_at (soft delete)', () => {
       const p = repo.crear(makeInput());
       repo.eliminar(p.id);
       expect(repo.findById(p.id)).toBeNull();
 
       // Verify it's still in DB
-      const row = db.getFirstSync<{ id: number; fecha_delete: string | null }>(
-        'SELECT id, fecha_delete FROM productos WHERE id = ?',
+      const row = db.getFirstSync<{ id: number; deleted_at: string | null }>(
+        'SELECT id, deleted_at FROM products WHERE id = ?',
         p.id,
       );
       expect(row).not.toBeNull();
-      expect(row!.fecha_delete).not.toBeNull();
+      expect(row!.deleted_at).not.toBeNull();
     });
   });
 

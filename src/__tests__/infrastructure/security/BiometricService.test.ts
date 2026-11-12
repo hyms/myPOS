@@ -1,6 +1,10 @@
 import { BiometricService } from '@/infrastructure/security/BiometricService';
 
-import { mockHardware, mockEnrolled, mockAuthSuccess } from 'expo-local-authentication';
+import {
+  mockAuthSuccess,
+  mockEnrolled,
+  mockHardware,
+} from '@/__tests__/__mocks__/expo-local-authentication';
 
 describe('BiometricService', () => {
   beforeEach(() => {

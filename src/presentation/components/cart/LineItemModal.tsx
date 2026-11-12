@@ -7,7 +7,8 @@ import { useCurrency } from '@/presentation/hooks/useCurrency';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ModalSheet } from '@/presentation/components/ui/ModalSheet';
-import { getUnitPrice } from '@/domain/rules/cartRules';
+import { round2 } from '@/domain/value-objects/Money';
+import { toCartKind, toCartLine } from '@/shared/utils/legacyCart';
 
 interface Props {
   readonly visible: boolean;
@@ -19,7 +20,7 @@ interface Props {
 
 function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) {
   const actualizar = store((s) => s.actualizar);
-  const { format } = useCurrency();
+  const { currency, format } = useCurrency();
   const [cantidad, setCantidad] = useState('1');
   const [descuento, setDescuento] = useState('0');
 
@@ -39,11 +40,12 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
   }, [actualizar, cantidad, descuento, item, onClose]);
 
   if (!item) return null;
-  const unit = getUnitPrice(item, tipo);
+  const kind = toCartKind(tipo);
+  const unit = toCartLine(item, kind, currency).unitPrice.amount;
   const cantNum = Math.max(0, Math.floor(Number(cantidad) || 0));
   const descNum = Math.max(0, Number(descuento) || 0);
-  const subtotal = unit * cantNum - descNum;
-  const cantExcedeStock = tipo === 'VENTA' && cantNum > item.producto.stockActual;
+  const subtotal = Math.max(0, round2(unit * cantNum - descNum));
+  const cantExcedeStock = kind === 'SALE' && cantNum > item.producto.stockActual;
   const descExcedeSubtotal = descNum > unit * cantNum;
   const invalid = cantExcedeStock || descExcedeSubtotal || cantNum < 1;
 
@@ -76,14 +78,14 @@ function LineItemModalComponent({ visible, item, store, tipo, onClose }: Props) 
             : {})}
         />
         <View
-          accessibilityLabel={`Subtotal de la línea: ${format(Math.max(0, subtotal))}`}
+          accessibilityLabel={`Subtotal de la línea: ${format(subtotal)}`}
           className="rounded-xl border border-border-subtle bg-surface-lo p-3"
         >
           <Text className="text-xs font-semibold uppercase tracking-wide text-ink-strong">
             Subtotal línea
           </Text>
           <Text className="text-2xl font-bold tabular-nums text-accent-bright">
-            {format(Math.max(0, subtotal))}
+            {format(subtotal)}
           </Text>
         </View>
         <View className="flex-row gap-2">

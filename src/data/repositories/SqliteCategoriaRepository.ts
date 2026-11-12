@@ -13,14 +13,14 @@ export class SqliteCategoriaRepository implements ICategoriaRepository {
 
   listar(): ReadonlyArray<Categoria> {
     const rows = this.db.getAllSync<CategoriaRow>(
-      'SELECT id, nombre, fecha_registro, fecha_delete FROM categorias WHERE fecha_delete IS NULL ORDER BY nombre ASC',
+      'SELECT id, name, registered_at, deleted_at FROM categories WHERE deleted_at IS NULL ORDER BY name ASC',
     );
     return rows.map(toCategoria);
   }
 
   findById(id: CategoriaId): Categoria | null {
     const row = this.db.getFirstSync<CategoriaRow>(
-      'SELECT id, nombre, fecha_registro, fecha_delete FROM categorias WHERE id = ? AND fecha_delete IS NULL',
+      'SELECT id, name, registered_at, deleted_at FROM categories WHERE id = ? AND deleted_at IS NULL',
       id,
     );
     return row ? toCategoria(row) : null;
@@ -31,11 +31,11 @@ export class SqliteCategoriaRepository implements ICategoriaRepository {
       throw new Error('El nombre de la categoría es obligatorio.');
     }
     const result = this.db.runSync(
-      'INSERT INTO categorias (nombre) VALUES (?)',
+      'INSERT INTO categories (name) VALUES (?)',
       input.nombre.trim(),
     );
     const created = this.db.getFirstSync<CategoriaRow>(
-      'SELECT id, nombre, fecha_registro, fecha_delete FROM categorias WHERE id = ?',
+      'SELECT id, name, registered_at, deleted_at FROM categories WHERE id = ?',
       result.lastInsertRowId,
     );
     if (!created) {

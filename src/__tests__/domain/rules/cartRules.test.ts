@@ -1,112 +1,158 @@
-import type { CarritoItem } from '@/domain/entities/CarritoItem';
-import { getUnitPrice, lineSubtotal, calcTotals, calcChange, applyDiscount } from '@/domain/rules/cartRules';
+import type { CartLine } from '@/domain/rules/cartRules';
+import {
+  applyDiscount,
+  calcChange,
+  calcTotals,
+  lineSubtotal,
+  selectUnitPrice,
+} from '@/domain/rules/cartRules';
+import { Money } from '@/domain/value-objects/Money';
+import { Stock } from '@/domain/value-objects/Stock';
 
-function makeItem(overrides?: Partial<CarritoItem>): CarritoItem {
+function makeLine(overrides?: Partial<CartLine>): CartLine {
   return {
-    producto: {
-      id: 1,
-      nombre: 'Producto Test',
-      precioVenta: 100,
-      precioCompra: 60,
-      stockActual: 10,
-      imagenUri: null,
-    },
-    cantidad: 2,
-    descuento: 0,
+    unitPrice: new Money(100, 'Bs'),
+    quantity: new Stock(2),
+    discount: Money.zero('Bs'),
     ...overrides,
   };
 }
 
-describe('getUnitPrice', () => {
-  it('usa precioVenta para VENTA', () => {
-    expect(getUnitPrice(makeItem(), 'VENTA')).toBe(100);
+describe('selectUnitPrice', () => {
+  it('returns the sale price for a sale cart', () => {
+    const unitPrice = selectUnitPrice(new Money(100, 'Bs'), new Money(60, 'Bs'), 'SALE');
+    expect(unitPrice.amount).toBe(100);
   });
 
-  it('usa precioCompra para COMPRA', () => {
-    expect(getUnitPrice(makeItem(), 'COMPRA')).toBe(60);
+  it('returns the purchase price for a purchase cart', () => {
+    const unitPrice = selectUnitPrice(new Money(100, 'Bs'), new Money(60, 'Bs'), 'PURCHASE');
+    expect(unitPrice.amount).toBe(60);
   });
 });
 
 describe('lineSubtotal', () => {
-  it('calcula subtotal por línea en VENTA', () => {
-    expect(lineSubtotal(makeItem({ cantidad: 3 }), 'VENTA')).toBe(300);
+  it('multiplies the unit price by the quantity', () => {
+    const subtotal = lineSubtotal(makeLine({ quantity: new Stock(3) }));
+    expect(subtotal.amount).toBe(300);
+    expect(subtotal.currency).toBe('Bs');
   });
 
-  it('calcula subtotal por línea en COMPRA', () => {
-    expect(lineSubtotal(makeItem({ cantidad: 3 }), 'COMPRA')).toBe(180);
+  it('rounds the line result to two decimal places', () => {
+    const subtotal = lineSubtotal(
+      makeLine({ unitPrice: new Money(10.333, 'Bs'), quantity: new Stock(3) }),
+    );
+    expect(subtotal.amount).toBe(30.99);
+  });
+
+  it('returns zero for a zero quantity', () => {
+    const subtotal = lineSubtotal(makeLine({ quantity: Stock.zero() }));
+    expect(subtotal.amount).toBe(0);
   });
 });
 
 describe('calcTotals', () => {
-  it('calcula totales vacíos', () => {
-    const t = calcTotals([], 'VENTA');
-    expect(t.subtotal).toBe(0);
-    expect(t.descuento).toBe(0);
-    expect(t.total).toBe(0);
+  it('returns zero totals for an empty cart', () => {
+    const totals = calcTotals([], '$');
+    expect(totals.subtotal.amount).toBe(0);
+    expect(totals.discount.amount).toBe(0);
+    expect(totals.total.amount).toBe(0);
+    expect(totals.total.currency).toBe('$');
   });
 
-  it('suma correctamente los items', () => {
-    const items = [
-      makeItem({ producto: { id: 1, nombre: 'A', precioVenta: 100, precioCompra: 60, stockActual: 10, imagenUri: null }, cantidad: 2 }),
-      makeItem({ producto: { id: 2, nombre: 'B', precioVenta: 50, precioCompra: 30, stockActual: 5, imagenUri: null }, cantidad: 3 }),
-    ];
-    const t = calcTotals(items, 'VENTA');
-    expect(t.subtotal).toBe(350); // 200 + 150
-    expect(t.total).toBe(350);
+  it('sums every line subtotal', () => {
+    const totals = calcTotals(
+      [
+        makeLine({ unitPrice: new Money(100, 'Bs'), quantity: new Stock(2) }),
+        makeLine({ unitPrice: new Money(50, 'Bs'), quantity: new Stock(3) }),
+      ],
+      'Bs',
+    );
+    expect(totals.subtotal.amount).toBe(350);
+    expect(totals.discount.amount).toBe(0);
+    expect(totals.total.amount).toBe(350);
   });
 
-  it('aplica descuentos globales', () => {
-    const items = [
-      makeItem({ cantidad: 2, descuento: 10 }),
-    ];
-    const t = calcTotals(items, 'VENTA');
-    expect(t.subtotal).toBe(200);
-    expect(t.descuento).toBe(10);
-    expect(t.total).toBe(190);
+  it('subtracts per-line discounts from the subtotal', () => {
+    const totals = calcTotals(
+      [makeLine({ quantity: new Stock(2), discount: new Money(10, 'Bs') })],
+      'Bs',
+    );
+    expect(totals.subtotal.amount).toBe(200);
+    expect(totals.discount.amount).toBe(10);
+    expect(totals.total.amount).toBe(190);
   });
 
-  it('redondea a 2 decimales', () => {
-    const items = [
-      makeItem({ producto: { id: 1, nombre: 'A', precioVenta: 10.333, precioCompra: 5, stockActual: 10, imagenUri: null }, cantidad: 3 }),
-    ];
-    const t = calcTotals(items, 'VENTA');
-    expect(t.subtotal).toBe(31.0);
-    expect(t.total).toBe(31.0);
-  });
-});
-
-describe('calcChange', () => {
-  it('calcula cambio positivo', () => {
-    expect(calcChange(100, 150)).toBe(50);
+  it('never returns a negative total', () => {
+    const totals = calcTotals(
+      [makeLine({ quantity: new Stock(1), discount: new Money(500, 'Bs') })],
+      'Bs',
+    );
+    expect(totals.total.amount).toBe(0);
   });
 
-  it('retorna 0 si pago exacto', () => {
-    expect(calcChange(100, 100)).toBe(0);
-  });
-
-  it('retorna negativo si falta dinero', () => {
-    expect(calcChange(100, 80)).toBe(-20);
-  });
-
-  it('redondea a 2 decimales', () => {
-    expect(calcChange(10.333, 20.666)).toBe(10.33);
+  it('accumulates decimal amounts without floating point drift', () => {
+    const totals = calcTotals(
+      [
+        makeLine({ unitPrice: new Money(0.1, 'Bs'), quantity: new Stock(1) }),
+        makeLine({ unitPrice: new Money(0.2, 'Bs'), quantity: new Stock(1) }),
+      ],
+      'Bs',
+    );
+    expect(totals.subtotal.amount).toBe(0.3);
   });
 });
 
 describe('applyDiscount', () => {
-  it('aplica descuento válido', () => {
-    expect(applyDiscount(100, 20)).toBe(80);
+  it('subtracts a valid discount', () => {
+    const result = applyDiscount(new Money(100, 'Bs'), new Money(20, 'Bs'));
+    expect(result.amount).toBe(80);
   });
 
-  it('no permite descuento negativo (retorna subtotal)', () => {
-    expect(applyDiscount(100, -10)).toBe(100);
+  it('ignores a negative discount', () => {
+    const result = applyDiscount(new Money(100, 'Bs'), new Money(-10, 'Bs'));
+    expect(result.amount).toBe(100);
   });
 
-  it('no permite total negativo (retorna 0)', () => {
-    expect(applyDiscount(100, 200)).toBe(0);
+  it('returns zero when the discount exceeds the subtotal', () => {
+    const result = applyDiscount(new Money(100, 'Bs'), new Money(200, 'Bs'));
+    expect(result.amount).toBe(0);
   });
 
-  it('descuento exacto igual al subtotal', () => {
-    expect(applyDiscount(100, 100)).toBe(0);
+  it('returns zero when the discount equals the subtotal', () => {
+    const result = applyDiscount(new Money(100, 'Bs'), new Money(100, 'Bs'));
+    expect(result.amount).toBe(0);
+  });
+
+  it('throws on currency mismatch', () => {
+    expect(() => applyDiscount(new Money(100, 'Bs'), new Money(20, '$'))).toThrow(
+      'Money.subtract: currency mismatch',
+    );
+  });
+});
+
+describe('calcChange', () => {
+  it('returns positive change when the received amount is higher', () => {
+    const change = calcChange(new Money(100, 'Bs'), new Money(150, 'Bs'));
+    expect(change.amount.amount).toBe(50);
+    expect(change.isSufficient()).toBe(true);
+    expect(change.getColorClass()).toBe('text-success');
+  });
+
+  it('returns zero change for an exact payment', () => {
+    const change = calcChange(new Money(100, 'Bs'), new Money(100, 'Bs'));
+    expect(change.amount.amount).toBe(0);
+    expect(change.isSufficient()).toBe(true);
+  });
+
+  it('returns a negative amount when the received amount is lower', () => {
+    const change = calcChange(new Money(100, 'Bs'), new Money(80, 'Bs'));
+    expect(change.amount.amount).toBe(-20);
+    expect(change.isSufficient()).toBe(false);
+    expect(change.getColorClass()).toBe('text-danger');
+  });
+
+  it('rounds the change to two decimal places', () => {
+    const change = calcChange(new Money(10.33, 'Bs'), new Money(20.67, 'Bs'));
+    expect(change.amount.amount).toBe(10.34);
   });
 });

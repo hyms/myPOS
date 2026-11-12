@@ -1,7 +1,7 @@
-import { openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from 'expo-sqlite';
 
 import { registrarCompra } from '@/application/compras/RegistrarCompra';
-import { SCHEMA_SQL, SEED_SQL } from '@/data/database/schema.sql';
+import { createMigratedDatabase } from '@/__tests__/support/database';
 
 const mockGetDatabase = jest.fn();
 
@@ -11,12 +11,10 @@ jest.mock('@/data/database/client', () => ({
 }));
 
 function createFreshDb(): SQLiteDatabase {
-  const db = openDatabaseSync(':memory:');
-  db.execSync(SCHEMA_SQL);
-  db.execSync(SEED_SQL);
-  db.runSync("INSERT INTO categorias (nombre) VALUES ('Bebidas')");
+  const db = createMigratedDatabase();
+  db.runSync("INSERT INTO categories (name) VALUES ('Bebidas')");
   db.runSync(
-    'INSERT INTO productos (categoria_id, nombre, precio_venta, precio_compra, stock_actual, stock_minimo, imagen_uri) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO products (category_id, name, selling_price, purchase_price, current_stock, min_stock, image_uri) VALUES (?, ?, ?, ?, ?, ?, ?)',
     1,
     'Coca Cola',
     100,
@@ -54,7 +52,7 @@ describe('registrarCompra', () => {
 
   it('lanza error si carrito vacío', () => {
     expect(() =>
-      registrarCompra({ items: [], tipoPago: 'EFECTIVO', detalle: null }),
+      registrarCompra({ items: [], tipoPago: 'EFECTIVO', detalle: null, currency: 'Bs' }),
     ).toThrow('vacío');
   });
 
@@ -64,6 +62,7 @@ describe('registrarCompra', () => {
         items: [makeItem({ cantidad: 0 })],
         tipoPago: 'EFECTIVO',
         detalle: null,
+        currency: 'Bs',
       }),
     ).toThrow('mayor a 0');
   });
@@ -73,6 +72,7 @@ describe('registrarCompra', () => {
       items: [makeItem()],
       tipoPago: 'EFECTIVO',
       detalle: 'Compra de prueba',
+      currency: 'Bs',
     });
     expect(result.transaccionId).toBeGreaterThan(0);
     expect(result.total).toBe(300); // 5 * 60
@@ -83,24 +83,26 @@ describe('registrarCompra', () => {
       items: [makeItem({ cantidad: 3 })],
       tipoPago: 'TARJETA',
       detalle: null,
+      currency: 'Bs',
     });
-    const row = db.getFirstSync<{ stock_actual: number }>(
-      'SELECT stock_actual FROM productos WHERE id = 1',
+    const row = db.getFirstSync<{ current_stock: number }>(
+      'SELECT current_stock FROM products WHERE id = 1',
     );
-    expect(row!.stock_actual).toBe(13); // 10 + 3
+    expect(row!.current_stock).toBe(13); // 10 + 3
   });
 
-  it('actualiza resumen_caja (compras+, saldo-)', () => {
+  it('actualiza financial_accumulators (compras+, saldo-)', () => {
     registrarCompra({
       items: [makeItem()],
       tipoPago: 'EFECTIVO',
       detalle: null,
+      currency: 'Bs',
     });
     const row = db.getFirstSync<{
-      total_compras: number;
-      saldo_actual: number;
-    }>('SELECT total_compras, saldo_actual FROM resumen_caja WHERE id = 1');
-    expect(row!.total_compras).toBe(300);
-    expect(row!.saldo_actual).toBe(-300);
+      total_purchases: number;
+      net_balance: number;
+    }>('SELECT total_purchases, net_balance FROM financial_accumulators WHERE id = 1');
+    expect(row!.total_purchases).toBe(300);
+    expect(row!.net_balance).toBe(-300);
   });
 });

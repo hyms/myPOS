@@ -1,51 +1,69 @@
-import { validateStockDisponible, isBelowMin, StockError } from '@/domain/rules/stockRules';
+import { assertStockAvailable, isBelowMin, StockError } from '@/domain/rules/stockRules';
+import { Stock } from '@/domain/value-objects/Stock';
 
-describe('validateStockDisponible', () => {
-  const producto = { id: 1, nombre: 'Coca Cola', stockActual: 10 };
+function makeProduct(currentStock = 10) {
+  return { id: 1, name: 'Coca Cola', currentStock: new Stock(currentStock) };
+}
 
-  it('lanza error si cantidad <= 0', () => {
-    expect(() => validateStockDisponible(producto, 0)).toThrow(StockError);
-    expect(() => validateStockDisponible(producto, -1)).toThrow(StockError);
+describe('assertStockAvailable', () => {
+  it('throws for a non-positive requested quantity', () => {
+    expect(() => assertStockAvailable(makeProduct(), Stock.zero())).toThrow(StockError);
   });
 
-  it('lanza error si stock insuficiente', () => {
-    expect(() => validateStockDisponible(producto, 11)).toThrow(StockError);
-    expect(() => validateStockDisponible(producto, 100)).toThrow(StockError);
+  it('throws when the requested quantity exceeds the available stock', () => {
+    expect(() => assertStockAvailable(makeProduct(), new Stock(11))).toThrow(StockError);
+    expect(() => assertStockAvailable(makeProduct(), new Stock(100))).toThrow(StockError);
   });
 
-  it('no lanza si hay stock suficiente', () => {
-    expect(() => validateStockDisponible(producto, 10)).not.toThrow();
-    expect(() => validateStockDisponible(producto, 1)).not.toThrow();
+  it('does not throw when the stock is sufficient', () => {
+    expect(() => assertStockAvailable(makeProduct(), new Stock(10))).not.toThrow();
+    expect(() => assertStockAvailable(makeProduct(), new Stock(1))).not.toThrow();
   });
 
-  it('incluye nombre y stock en el mensaje de error', () => {
+  it('accepts the exact stock boundary', () => {
+    expect(() => assertStockAvailable(makeProduct(10), new Stock(10))).not.toThrow();
+  });
+
+  it('exposes structured fields for presentation localization', () => {
     try {
-      validateStockDisponible(producto, 11);
-    } catch (e) {
-      const err = e as StockError;
-      expect(err.message).toContain('Coca Cola');
-      expect(err.message).toContain('10');
-      expect(err.productoId).toBe(1);
-      expect(err.productoNombre).toBe('Coca Cola');
+      assertStockAvailable(makeProduct(), new Stock(11));
+      throw new Error('Expected assertStockAvailable to throw');
+    } catch (error) {
+      const stockError = error as StockError;
+      expect(stockError).toBeInstanceOf(StockError);
+      expect(stockError.reason).toBe('INSUFFICIENT_STOCK');
+      expect(stockError.productId).toBe(1);
+      expect(stockError.productName).toBe('Coca Cola');
+      expect(stockError.available.value).toBe(10);
+      expect(stockError.requested.value).toBe(11);
+      expect(stockError.message).toContain('Coca Cola');
+      expect(stockError.message).toContain('10');
     }
   });
 
-  it('funciona con borde exacto (stockActual === cantidad)', () => {
-    expect(() => validateStockDisponible(producto, 10)).not.toThrow();
+  it('reports the non-positive quantity reason', () => {
+    try {
+      assertStockAvailable(makeProduct(), Stock.zero());
+      throw new Error('Expected assertStockAvailable to throw');
+    } catch (error) {
+      const stockError = error as StockError;
+      expect(stockError.reason).toBe('NON_POSITIVE_QUANTITY');
+      expect(stockError.requested.value).toBe(0);
+    }
   });
 });
 
 describe('isBelowMin', () => {
-  it('retorna true si stockActual < stockMinimo', () => {
-    expect(isBelowMin({ stockActual: 2, stockMinimo: 5 })).toBe(true);
+  it('returns true when the current stock is below the minimum', () => {
+    expect(isBelowMin(new Stock(2), new Stock(5))).toBe(true);
   });
 
-  it('retorna false si stockActual >= stockMinimo', () => {
-    expect(isBelowMin({ stockActual: 5, stockMinimo: 5 })).toBe(false);
-    expect(isBelowMin({ stockActual: 10, stockMinimo: 5 })).toBe(false);
+  it('returns false when the current stock is at or above the minimum', () => {
+    expect(isBelowMin(new Stock(5), new Stock(5))).toBe(false);
+    expect(isBelowMin(new Stock(10), new Stock(5))).toBe(false);
   });
 
-  it('retorna false si stockActual es 0 y stockMinimo es 0', () => {
-    expect(isBelowMin({ stockActual: 0, stockMinimo: 0 })).toBe(false);
+  it('returns false when both values are zero', () => {
+    expect(isBelowMin(Stock.zero(), Stock.zero())).toBe(false);
   });
 });

@@ -4,7 +4,10 @@ import { Pressable, Text, View } from 'react-native';
 import type { CarritoItem, CarritoTipo } from '@/domain/entities/CarritoItem';
 import type { TipoPago } from '@/domain/entities/Transaccion';
 import { calcChange, calcTotals } from '@/domain/rules/cartRules';
+import { ChangeAmount } from '@/domain/value-objects/ChangeAmount';
+import { Money } from '@/domain/value-objects/Money';
 import { useCurrency } from '@/presentation/hooks/useCurrency';
+import { toCartKind, toCartLines } from '@/shared/utils/legacyCart';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { ModalSheet } from '@/presentation/components/ui/ModalSheet';
@@ -29,8 +32,11 @@ const TIPOS_PAGO: ReadonlyArray<{ value: TipoPago; label: string; icon: IconName
 ];
 
 function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Props) {
-  const { format } = useCurrency();
-  const totals = useMemo(() => calcTotals(items, tipo), [items, tipo]);
+  const { currency, format } = useCurrency();
+  const totals = useMemo(
+    () => calcTotals(toCartLines(items, toCartKind(tipo), currency), currency),
+    [items, tipo, currency],
+  );
   const [tipoPago, setTipoPago] = useState<TipoPago>('EFECTIVO');
   const [recibido, setRecibido] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,10 +51,13 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
 
   const recibidoNum = useMemo(() => Math.max(0, Number(recibido) || 0), [recibido]);
   const cambio = useMemo(
-    () => (tipoPago === 'EFECTIVO' ? calcChange(totals.total, recibidoNum) : 0),
-    [tipoPago, totals.total, recibidoNum],
+    () =>
+      tipoPago === 'EFECTIVO'
+        ? calcChange(totals.total, new Money(recibidoNum, currency))
+        : ChangeAmount.zero(currency),
+    [currency, tipoPago, totals.total, recibidoNum],
   );
-  const suficiente = tipoPago !== 'EFECTIVO' || recibidoNum >= totals.total;
+  const suficiente = tipoPago !== 'EFECTIVO' || recibidoNum >= totals.total.amount;
 
   const handleConfirm = useCallback(async () => {
     if (!suficiente) return;
@@ -74,7 +83,7 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
           <Text className="text-xs font-semibold uppercase tracking-wide text-ink-strong">
             Total a {tipo === 'VENTA' ? 'cobrar' : 'pagar'}
           </Text>
-          <Text className="text-4xl font-extrabold text-ink-strong" selectable>{format(totals.total)}</Text>
+          <Text className="text-4xl font-extrabold text-ink-strong" selectable>{format(totals.total.amount)}</Text>
         </View>
 
         <View>
@@ -132,7 +141,7 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               keyboardType="decimal-pad"
               rightAdornment={
                 <Pressable
-                  onPress={() => setRecibido(String(totals.total))}
+                  onPress={() => setRecibido(String(totals.total.amount))}
                   accessibilityRole="button"
                   accessibilityLabel="Establecer monto exacto"
                   hitSlop={12}
@@ -147,7 +156,7 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
             <View
               className={cn(
                 'rounded-xl border p-4',
-                cambio >= 0
+                cambio.isSufficient()
                   ? 'border-border-subtle bg-success-soft'
                   : 'border-border-subtle bg-danger-soft',
               )}
@@ -155,7 +164,7 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               <Text
                 className={cn(
                   'text-xs font-semibold uppercase tracking-wide',
-                  cambio >= 0 ? 'text-success' : 'text-danger',
+                  cambio.getColorClass(),
                 )}
               >
                 Cambio
@@ -163,11 +172,11 @@ function PaymentModalComponent({ visible, items, tipo, onClose, onConfirm }: Pro
               <Text
                 className={cn(
                   'text-3xl font-extrabold',
-                  cambio >= 0 ? 'text-success' : 'text-danger',
+                  cambio.getColorClass(),
                 )}
                 selectable
               >
-                {format(Math.abs(cambio))}
+                {format(Math.abs(cambio.amount.amount))}
               </Text>
             </View>
           </>

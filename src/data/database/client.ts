@@ -14,8 +14,10 @@ export function getDatabase(): SQLiteDatabase {
     });
     dbInstance.execSync('PRAGMA journal_mode = WAL;');
     dbInstance.execSync('PRAGMA synchronous = NORMAL;');
+    dbInstance.execSync('PRAGMA busy_timeout = 5000;');
     dbInstance.execSync('PRAGMA foreign_keys = ON;');
     runMigrations(dbInstance);
+    dbInstance.execSync('PRAGMA foreign_keys = ON;');
   }
   return dbInstance;
 }

@@ -9,7 +9,7 @@ export class SqliteResumenCajaRepository implements IResumenCajaRepository {
 
   obtener(): ResumenCaja {
     const row = this.db.getFirstSync<ResumenCajaRow>(
-      'SELECT total_ventas, total_compras, total_gastos, saldo_actual FROM resumen_caja WHERE id = 1',
+      'SELECT total_sales, total_purchases, total_expenses, net_balance FROM financial_accumulators WHERE id = 1',
     );
     if (!row) {
       return { totalVentas: 0, totalCompras: 0, totalGastos: 0, saldoActual: 0 };
