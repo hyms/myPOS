@@ -1,5 +1,7 @@
 # Expenses & Cash Flow — Implementation Plan (v2.0.0)
 
+> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. Domain entities and presentation work remain pending.
+
 ## Overview
 
 This plan covers the implementation of the Expenses & Cash Flow module v2.0.0, including:
@@ -15,18 +17,16 @@ This plan covers the implementation of the Expenses & Cash Flow module v2.0.0, i
 
 ### 1.1 Migration Runner Update
 **File:** `src/data/database/migrations.ts`
-- Add migration version 2 with `v2_0_0_expenses_migration.sql`
-- Ensure `withTransactionSync` wrapper for atomicity
-- Coordinate `user_version = 2` with `sales-checkout` and `financial-accumulators` modules
-- Migration order in `migrations.ts`: catalog-inventory → sales-checkout → financial-accumulators → expenses-cashflow
+- Register the expenses step in the version-2 group (all v2 modules share one `withTransactionSync`)
+- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
+- Migration order: catalog-inventory → sales-checkout → financial-accumulators → expenses-cashflow → system-settings
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_expenses_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_expenses_cashflow_migration.sql.ts` (`EXPENSES_CASHFLOW_MIGRATION_SQL`)
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
--- NOTE: sales_transactions migration is handled by sales-checkout module.
--- This migration only handles expense_categories and financial_accumulators coordination.
+-- Runs inside the shared v2.0.0 transaction (single db.withTransactionSync)
+-- NOTE: sales_transactions and financial_accumulators are migrated by their own modules.
 
 -- Step 1: Create expense_categories table (new in v2.0.0)
 CREATE TABLE IF NOT EXISTS expense_categories (
@@ -37,32 +37,24 @@ CREATE TABLE IF NOT EXISTS expense_categories (
 );
 
 -- Step 2: Create index for expense_categories
-CREATE INDEX IF NOT EXISTS idx_expense_categories_name ON expense_categories(name) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_expense_categories_name
+  ON expense_categories(name) WHERE deleted_at IS NULL;
 
--- Step 3: Rename resumen_caja to financial_accumulators (coordinated with financial-accumulators module)
--- ALTER TABLE resumen_caja RENAME TO financial_accumulators;
--- ALTER TABLE financial_accumulators RENAME COLUMN total_ventas TO total_sales;
--- ALTER TABLE financial_accumulators RENAME COLUMN total_compras TO total_purchases;
--- ALTER TABLE financial_accumulators RENAME COLUMN total_gastos TO total_expenses;
--- ALTER TABLE financial_accumulators RENAME COLUMN saldo_actual TO net_balance;
--- ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
--- UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
-
--- Step 4: Create index for expense queries on sales_transactions
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_expense_date ON sales_transactions(registered_at) WHERE type = 'EXPENSE' AND deleted_at IS NULL;
-
--- Step 5: Update user_version to 2 (coordinated with sales-checkout and financial-accumulators)
-PRAGMA user_version = 2;
+-- Step 3: user_version = 2 is set centrally by `runMigrations`
 ```
 
+> **Note:** Expenses are still stored in `sales_transactions` with the legacy
+> stored value `'GASTO'`. No dedicated `type = 'EXPENSE'` index is created;
+> expense queries are covered by the composite indexes from `sales-checkout`.
+
 ### 1.3 Migration Checklist
-- [ ] Create migration v2 in `migrations.ts` (version 2, coordinated)
-- [ ] Write `v2_0_0_expenses_migration.sql` with atomic transaction
-- [ ] Create `expense_categories` table with indexes
-- [ ] Coordinate `financial_accumulators` rename with `financial-accumulators` module (single rename)
-- [ ] Create `idx_sales_transactions_expense_date` index
-- [ ] Update `user_version` to 2 (single source of truth)
-- [ ] Verify row counts match pre-migration for expenses
+- [x] Register the expenses step in `migrations.ts` v2 group
+- [x] Write `v2_0_0_expenses_cashflow_migration.sql.ts` with atomic transaction
+- [x] Create `expense_categories` table with index
+- [x] `financial_accumulators` rename owned by `financial-accumulators` module (no duplication)
+- [x] Expense queries covered by composite `sales_transactions` indexes
+- [x] `user_version` = 2 (centralized)
+- [x] Verify row counts match pre-migration for expenses
 - [ ] Test restore from backup scenario
 
 ---
@@ -271,19 +263,19 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 
 ## Definition of Done
 
-- [ ] Migration runs atomically, preserves all data, coordinates with other modules
+- [x] Migration runs atomically, preserves all data, coordinates with other modules
 - [ ] All entities/repos/use cases use English identifiers
-- [ ] `RegisterExpense` works atomically with cash flow impact
-- [ ] `ReverseTransaction` handles EXPENSE correctly (balance only, no stock)
+- [x] `RegisterExpense` works atomically with cash flow impact
+- [x] `ReverseTransaction` handles EXPENSE correctly (balance only, no stock)
 - [ ] ConfirmDialog shows interpolated Spanish text correctly
 - [ ] Category selector with quick-create modal preserves form draft
 - [ ] AdBanner appears in list footer only when `AD_ENABLED`
 - [ ] All 45+ i18n keys implemented
-- [ ] Unit tests: 100% pass
-- [ ] Integration tests: 100% pass
-- [ ] Migration tests: 100% pass
-- [ ] Atomic rollback tests: 100% pass
-- [ ] TypeScript strict: no errors
+- [x] Unit tests: 100% pass
+- [x] Integration tests: 100% pass
+- [x] Migration tests: 100% pass
+- [x] Atomic rollback tests: 100% pass
+- [x] TypeScript strict: no errors
 - [ ] Lint: no errors
 
 ---

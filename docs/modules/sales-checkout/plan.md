@@ -1,5 +1,7 @@
 # Sales & Checkout Module — Implementation Plan (v2.0.0)
 
+> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. Domain entities still use their existing names; presentation/entity renaming remains pending.
+
 ## Overview
 
 This plan covers the implementation of the Sales & Checkout module v2.0.0, including:
@@ -15,12 +17,11 @@ This plan covers the implementation of the Sales & Checkout module v2.0.0, inclu
 
 ### 1.1 Migration Runner Update
 **File:** `src/data/database/migrations.ts`
-- Add migration version 2 with `v2_0_0_sales_migration.sql`
-- Ensure `withTransactionSync` wrapper for atomicity
-- Update `user_version` to 2
+- Register the sales step in the version-2 group (all v2 modules share one `withTransactionSync`)
+- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_sales_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_sales_checkout_migration.sql.ts` (`SALES_CHECKOUT_MIGRATION_SQL`)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -44,24 +45,24 @@ ALTER TABLE transaction_details RENAME COLUMN cantidad TO quantity;
 ALTER TABLE transaction_details RENAME COLUMN precio_unitario TO unit_price;
 
 -- Step 4: Recreate indexes with English names
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_date ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_at ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_sales_transactions_type ON sales_transactions(type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_type ON sales_transactions(registered_at, type, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_transaction_details_transaction ON transaction_details(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_details(product_id);
 
--- Step 5: Update user_version to 2
-PRAGMA user_version = 2;
+-- Step 5: user_version = 2 is set centrally by `runMigrations`
 ```
 
 ### 1.3 Migration Checklist
-- [ ] Create migration v2 in `migrations.ts` (version 2)
-- [ ] Write `v2_0_0_sales_migration.sql` with atomic transaction
-- [ ] Rename tables: `transacciones` → `sales_transactions`, `detalle_transacciones` → `transaction_details`
-- [ ] Rename columns in `sales_transactions`: `tipo`→`type`, `monto_total`→`total_amount`, `tipo_pago`→`payment_method`, `detalle`→`detail`, `fecha_registro`→`registered_at`, `fecha_delete`→`deleted_at`
-- [ ] Rename columns in `transaction_details`: `transaccion_id`→`transaction_id`, `producto_id`→`product_id`, `cantidad`→`quantity`, `precio_unitario`→`unit_price`
-- [ ] Recreate indexes with English names
-- [ ] Update `user_version` to 2
-- [ ] Verify row counts match pre-migration
+- [x] Create migration v2 in `migrations.ts` (version 2)
+- [x] Write `v2_0_0_sales_checkout_migration.sql.ts` with atomic transaction
+- [x] Rename tables: `transacciones` → `sales_transactions`, `detalle_transacciones` → `transaction_details`
+- [x] Rename columns in `sales_transactions`: `tipo`→`type`, `monto_total`→`total_amount`, `tipo_pago`→`payment_method`, `detalle`→`detail`, `fecha_registro`→`registered_at`, `fecha_delete`→`deleted_at`
+- [x] Rename columns in `transaction_details`: `transaccion_id`→`transaction_id`, `producto_id`→`product_id`, `cantidad`→`quantity`, `precio_unitario`→`unit_price`
+- [x] Recreate indexes with English names
+- [x] `user_version` = 2 (centralized)
+- [x] Verify row counts match pre-migration
 - [ ] Test restore from backup scenario
 
 ---
@@ -276,18 +277,18 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 
 ## Definition of Done
 
-- [ ] Migration runs atomically, preserves all data
+- [x] Migration runs atomically, preserves all data
 - [ ] All entities/repos/use cases use English identifiers
 - [ ] Composite Pattern implemented (`ICartItem` + `SimpleCartItem`)
-- [ ] RegisterSale/RegisterPurchase/RevertTransaction work atomically
+- [x] RegisterSale/RegisterPurchase/RevertTransaction work atomically
 - [ ] PaymentModal calculates change correctly (green ≥0, red <0)
 - [ ] Zero AdBanner in checkout screens
 - [ ] All 45+ i18n keys implemented
-- [ ] Unit tests: 100% pass
-- [ ] Integration tests: 100% pass
-- [ ] Migration tests: 100% pass
-- [ ] Atomic rollback tests: 100% pass
-- [ ] TypeScript strict: no errors
+- [x] Unit tests: 100% pass
+- [x] Integration tests: 100% pass
+- [x] Migration tests: 100% pass
+- [x] Atomic rollback tests: 100% pass
+- [x] TypeScript strict: no errors
 - [ ] Lint: no errors
 
 ---

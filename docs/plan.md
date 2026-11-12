@@ -6,6 +6,8 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 **Migration Strategy:** Single `migrations.ts` runner with ordered, atomic migrations sharing `PRAGMA user_version = 2`.
 
+> **Status (2026-11-11):** Phases 0 and the database/migration half of Phases 1–5 are complete: shared kernel, atomic v2 runner, English schema, repositories, use-case SQL, and migration tests. Domain-entity renaming, presentation layers, and the AsyncStorage → SQLite settings migration remain pending.
+
 **Total Effort:** ~6 phases across 5 modules, coordinated via shared dependencies.
 
 ---
@@ -35,20 +37,20 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 | Task | File | Module | Status |
 |------|------|--------|--------|
-| Create `Currency.ts` | `src/domain/value-objects/Currency.ts` | system-settings | 🆕 |
-| Create `Money.ts` | `src/domain/value-objects/Money.ts` | system-settings | 🆕 |
-| Create `Stock.ts` | `src/domain/value-objects/Stock.ts` | catalog-inventory | 🆕 |
-| Create `SKU.ts` | `src/domain/value-objects/SKU.ts` | catalog-inventory | 🆕 |
-| Create `PaymentMethod.ts` | `src/domain/entities/PaymentMethod.ts` | sales-checkout | 🆕 |
-| Create `ChangeAmount.ts` | `src/domain/value-objects/ChangeAmount.ts` | sales-checkout | 🆕 |
-| Create `TransactionType.ts` | `src/domain/entities/TransactionType.ts` | shared | 🆕 |
-| Create `stockRules.ts` | `src/domain/rules/stockRules.ts` | catalog-inventory | 🆕 |
-| Create `cartRules.ts` | `src/domain/rules/cartRules.ts` | sales-checkout | 🆕 |
-| Create `expenseRules.ts` | `src/domain/rules/expenseRules.ts` | expenses-cashflow | 🆕 |
+| Create `Currency.ts` | `src/domain/value-objects/Currency.ts` | system-settings | ✅ |
+| Create `Money.ts` | `src/domain/value-objects/Money.ts` | system-settings | ✅ |
+| Create `Stock.ts` | `src/domain/value-objects/Stock.ts` | catalog-inventory | ✅ |
+| Create `SKU.ts` | `src/domain/value-objects/SKU.ts` | catalog-inventory | ✅ |
+| Create `PaymentMethod.ts` | `src/domain/entities/PaymentMethod.ts` | sales-checkout | ✅ |
+| Create `ChangeAmount.ts` | `src/domain/value-objects/ChangeAmount.ts` | sales-checkout | ✅ |
+| Create `TransactionType.ts` | `src/domain/entities/TransactionType.ts` | shared | ✅ |
+| Create `stockRules.ts` | `src/domain/rules/stockRules.ts` | catalog-inventory | ✅ |
+| Create `cartRules.ts` | `src/domain/rules/cartRules.ts` | sales-checkout | ✅ |
+| Create `expenseRules.ts` | `src/domain/rules/expenseRules.ts` | expenses-cashflow | ✅ |
 | Create `settingsRules.ts` | `src/domain/rules/settingsRules.ts` | system-settings | 🆕 |
-| Update `migrations.ts` runner | `src/data/database/migrations.ts` | all | 🔄 |
-| Update `schema.sql.ts` target | `src/data/database/schema.sql.ts` | all | 🔄 |
-| Update `rowMappers.ts` | `src/data/mappers/rowMappers.ts` | all | 🔄 |
+| Update `migrations.ts` runner | `src/data/database/migrations.ts` | all | ✅ |
+| Update `schema.sql.ts` target | `src/data/database/schema.sql.ts` | all | 🔄 (kept as v1 baseline) |
+| Update `rowMappers.ts` | `src/data/mappers/rowMappers.ts` | all | ✅ |
 
 **Gate:** All shared VOs compile, unit tests pass (100% coverage), migration runner executes ordered transactions.
 
@@ -60,9 +62,9 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | Task | File | Status |
 |------|------|--------|
 | Update `Product.ts` / `Category.ts` entities (English) | `src/domain/entities/` | 🔄 |
-| Migration v2: `v2_0_0_catalog_migration.sql` | `src/data/database/migrations/` | 🆕 |
-| Register migration v2 in `migrations.ts` | `src/data/database/migrations.ts` | 🔄 |
-| Update repositories: `IProductRepository`, `SqliteProductRepository`, `ICategoryRepository`, `SqliteCategoryRepository` | `src/data/repositories/` | 🔄 |
+| Migration v2: `v2_0_0_catalog_inventory_migration.sql.ts` | `src/data/database/migrations/` | ✅ |
+| Register migration v2 in `migrations.ts` | `src/data/database/migrations.ts` | ✅ |
+| Update repositories: `IProductRepository`, `SqliteProductRepository`, `ICategoryRepository`, `SqliteCategoryRepository` | `src/data/repositories/` | 🔄 (English SQL done, names pending) |
 | Use case: `ProductManagement.ts` | `src/application/products/` | 🔄 |
 | Verify ImageOptimizer/ImageStorage (400×400, JPEG 70%) | `src/infrastructure/image/` | ✅ |
 | Hooks: `useProducts`, `useCategories`, `useStockAlert` | `src/presentation/hooks/` | 🔄 |
@@ -92,9 +94,9 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | Entities: `SaleTransaction.ts`, `TransactionDetail.ts`, `CartItem.ts` (Composite) | `src/domain/entities/` | 🔄/🆕 |
 | VOs: `PaymentMethod`, `ChangeAmount` (shared) | `src/domain/value-objects/` | 🆕 |
 | Domain rules: `cartRules.ts` (5 functions) | `src/domain/rules/` | 🆕 |
-| Migration v2: `v2_0_0_sales_migration.sql` | `src/data/database/migrations/` | 🆕 |
-| Repositories: `ISaleRepository`, `SqliteSaleRepository` | `src/data/repositories/` | 🔄 |
-| Use cases: `RegisterSale`, `RegisterPurchase`, `RevertTransaction` | `src/application/` | 🆕 |
+| Migration v2: `v2_0_0_sales_checkout_migration.sql.ts` | `src/data/database/migrations/` | ✅ |
+| Repositories: `ISaleRepository`, `SqliteSaleRepository` | `src/data/repositories/` | 🔄 (English SQL done, names pending) |
+| Use cases: `RegisterSale`, `RegisterPurchase`, `RevertTransaction` | `src/application/` | ✅ |
 | Stores: `saleCartStore`, `purchaseCartStore` (granular selectors) | `src/presentation/stores/` | 🔄/🆕 |
 | Hooks: `useCart`, `useTransactions`, `useStockAlert` | `src/presentation/hooks/` | 🔄 |
 | Components: `CartLine`, `CartSummaryBar`, `LineItemModal`, `PaymentModal`, `ReceiptPreview` | `src/presentation/components/cart/` | 🔄/🆕 |
@@ -121,7 +123,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | Task | File | Status |
 |------|------|--------|
 | Entities: `FinancialSummary.ts`, `PeriodSummary.ts`, `Transaction.ts` | `src/domain/entities/` | 🔄/🆕 |
-| Migration v2: `v2_0_0_financial_accumulators_migration.sql` | `src/data/database/migrations/` | 🆕 |
+| Migration v2: `v2_0_0_financial_accumulators_migration.sql.ts` (+ columns recovery variant) | `src/data/database/migrations/` | ✅ |
 | Repository: `IAccumulatorRepository`, `SqliteAccumulatorRepository` | `src/data/repositories/` | 🆕 |
 | Use cases: `GetCashSummary`, `GetPeriodSummary`, `UpdateAccumulator`, `ReverseTransaction` (shared) | `src/application/accumulators/` | 🆕 |
 | Hooks: `useCashSummary`, `usePeriodSummary`, `useMovements`, `usePinGate` | `src/presentation/hooks/` | 🔄/🆕 |
@@ -148,7 +150,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 |------|------|--------|
 | Entities: `Expense.ts`, `ExpenseCategory.ts` | `src/domain/entities/` | 🆕 |
 | Domain rules: `expenseRules.ts` (3 functions) | `src/domain/rules/` | 🆕 |
-| Migration v2: `v2_0_0_expenses_migration.sql` (creates `expense_categories`, coordinates accumulator) | `src/data/database/migrations/` | 🆕 |
+| Migration v2: `v2_0_0_expenses_cashflow_migration.sql.ts` (creates `expense_categories`) | `src/data/database/migrations/` | ✅ |
 | Repository: `IExpenseRepository`, `SqliteExpenseRepository` | `src/data/repositories/` | 🆕 |
 | Use cases: `RegisterExpense`, `ReverseTransaction` (EXPENSE) | `src/application/expenses/` | 🆕 |
 | Stores: `expenseDraftStore` (preserves draft during category creation) | `src/presentation/stores/` | 🆕 |
@@ -177,7 +179,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | VOs: `Currency.ts`, `Money.ts` (from Phase 0, verify) | `src/domain/value-objects/` | 🔄 |
 | Entities: `UserSettings.ts`, `Session.ts` | `src/domain/entities/` | 🆕 |
 | Domain rules: `settingsRules.ts` (2 validators) | `src/domain/rules/` | 🆕 |
-| Migration v2: `v2_0_0_settings_migration.sql` (creates `settings` table) | `src/data/database/migrations/` | 🆕 |
+| Migration v2: `v2_0_0_system_settings_migration.sql.ts` (creates `settings` table) | `src/data/database/migrations/` | ✅ |
 | AsyncStorage → SQLite migration logic | `src/application/settings/MigrateSettings.ts` | 🆕 |
 | Repository: `ISettingsRepository`, `SqliteSettingsRepository` | `src/data/repositories/` | 🆕 |
 | Use cases: `GetSettings`, `UpdateSettings`, `VerifyPin`, `SetPin`, `ExportDatabase`, `RestoreDatabase` | `src/application/settings/`, `src/application/security/`, `src/application/backup/` | 🆕 |
@@ -381,11 +383,11 @@ tests/
 - [ ] All write use cases use `db.withTransactionSync()` for atomicity
 
 ### Database & Migration
-- [ ] All 5 migrations run in order, atomic, share `user_version = 2`
-- [ ] Migration v1→v2 zero data loss verified on seeded production data
-- [ ] Migration idempotent: run twice → no errors, no duplication
+- [x] All 5 migrations run in order, atomic, share `user_version = 2`
+- [x] Migration v1→v2 zero data loss verified on seeded production data
+- [x] Migration idempotent: run twice → no errors, no duplication
 - [ ] Migration rollback via backup restore verified
-- [ ] All tables use English `snake_case` columns, soft delete (`deleted_at`), partial indexes
+- [x] All tables use English `snake_case` columns, soft delete (`deleted_at`), partial indexes
 
 ### Domain Layer
 - [ ] Shared VOs (`Currency`, `Money`, `Stock`, `SKU`, `PaymentMethod`, `ChangeAmount`) used everywhere

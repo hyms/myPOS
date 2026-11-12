@@ -170,7 +170,8 @@ v1.0.0 stored settings in `AsyncStorage` with Spanish keys. v2.0.0 migrates to S
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_settings_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_system_settings_migration.sql.ts`
+(`SYSTEM_SETTINGS_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -197,7 +198,8 @@ VALUES (1, 'Bs', 15, 0, 0, CURRENT_TIMESTAMP);
 CREATE INDEX IF NOT EXISTS idx_settings_id ON settings(id);
 
 -- Step 5: Update user_version to 2 (coordinated with other modules)
-PRAGMA user_version = 2;
+-- user_version = 2 is set centrally by `runMigrations` after every v2.0.0
+-- module step succeeds inside the same transaction.
 ```
 
 ---

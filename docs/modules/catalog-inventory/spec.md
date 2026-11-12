@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS products (
 -- Partial indexes (deleted_at IS NULL)
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE deleted_at IS NULL AND sku IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE deleted_at IS NULL AND sku IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_products_deleted_at ON products(deleted_at) WHERE deleted_at IS NULL;
 ```
 
@@ -231,7 +231,8 @@ CREATE INDEX IF NOT EXISTS idx_products_deleted_at ON products(deleted_at) WHERE
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_catalog_inventory_migration.sql.ts`
+(`CATALOG_INVENTORY_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -256,9 +257,17 @@ ALTER TABLE products RENAME COLUMN fecha_registro TO registered_at;
 ALTER TABLE products RENAME COLUMN fecha_update TO updated_at;
 ALTER TABLE products RENAME COLUMN fecha_delete TO deleted_at;
 
--- Step 4: Backfill NULL category_id to default category (id=1 "General")
--- Default category seeded in migration v1
-UPDATE products SET category_id = 1 WHERE category_id IS NULL;
+-- Step 4: Backfill NULL category_id
+-- Assign the oldest existing category; create "General" only when products
+-- have a NULL category and no category exists at all.
+INSERT INTO categories (name)
+SELECT 'General'
+ WHERE EXISTS (SELECT 1 FROM products WHERE category_id IS NULL)
+   AND NOT EXISTS (SELECT 1 FROM categories);
+
+UPDATE products
+   SET category_id = (SELECT MIN(id) FROM categories)
+ WHERE category_id IS NULL;
 
 -- Step 5: Enforce NOT NULL on category_id (SQLite requires table rebuild for NOT NULL)
 -- We use a temp table approach for safety
@@ -288,11 +297,11 @@ ALTER TABLE products_new RENAME TO products;
 -- Step 6: Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE deleted_at IS NULL AND sku IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE deleted_at IS NULL AND sku IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_products_deleted_at ON products(deleted_at) WHERE deleted_at IS NULL;
 
--- Step 7: Update user_version to 2
-PRAGMA user_version = 2;
+-- Step 7: user_version = 2 is set centrally by `runMigrations` after every
+-- v2.0.0 module step succeeds inside the same transaction.
 ```
 
 ---

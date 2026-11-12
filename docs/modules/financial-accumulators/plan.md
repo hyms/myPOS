@@ -1,5 +1,7 @@
 # Financial Accumulators Module — Implementation Plan (v2.0.0)
 
+> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. Domain entities still use their existing names; presentation/entity renaming remains pending.
+
 ## Overview
 
 This plan covers the implementation of the Financial Accumulators module v2.0.0, including:
@@ -15,15 +17,14 @@ This plan covers the implementation of the Financial Accumulators module v2.0.0,
 
 ### 1.1 Migration Runner Update
 **File:** `src/data/database/migrations.ts`
-- Add migration version 2 with `v2_0_0_financial_accumulators_migration.sql`
-- Ensure `withTransactionSync` wrapper for atomicity
-- Update `user_version` to 2 (shared with sales-checkout)
+- Register the accumulators step in the version-2 group (all v2 modules share one `withTransactionSync`)
+- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql.ts` (`FINANCIAL_ACCUMULATORS_MIGRATION_SQL`, plus `FINANCIAL_ACCUMULATORS_COLUMNS_MIGRATION_SQL` recovery variant)
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
+-- Runs inside the shared v2.0.0 transaction (single db.withTransactionSync)
 
 -- Step 1: Rename table
 ALTER TABLE resumen_caja RENAME TO financial_accumulators;
@@ -34,24 +35,33 @@ ALTER TABLE financial_accumulators RENAME COLUMN total_compras TO total_purchase
 ALTER TABLE financial_accumulators RENAME COLUMN total_gastos TO total_expenses;
 ALTER TABLE financial_accumulators RENAME COLUMN saldo_actual TO net_balance;
 
--- Step 3: Add updated_at column with default
-ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- Step 3: Add updated_at (SQLite forbids non-constant defaults in ALTER TABLE ADD COLUMN)
+ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT NULL;
 
--- Step 4: Update existing row's updated_at
+-- Step 4: Backfill the existing singleton row
 UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
 
--- Step 5: Update user_version to 2
-PRAGMA user_version = 2;
+-- Step 5: Index for freshness checks
+CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
+  ON financial_accumulators(updated_at);
+
+-- Step 6: user_version = 2 is set centrally by `runMigrations`
 ```
 
+> **Recovery:** databases from an earlier half-applied v2.0.0 attempt (table already
+> renamed, columns still Spanish) are handled by
+> `FINANCIAL_ACCUMULATORS_COLUMNS_MIGRATION_SQL`, which applies the column renames,
+> `updated_at` backfill, and index without re-renaming the table.
+
 ### 1.3 Migration Checklist
-- [ ] Create migration v2 in `migrations.ts` (version 2, after sales-checkout v2)
-- [ ] Write `v2_0_0_financial_accumulators_migration.sql` with atomic transaction
-- [ ] Rename table: `resumen_caja` → `financial_accumulators`
-- [ ] Rename columns: `total_ventas`→`total_sales`, `total_compras`→`total_purchases`, `total_gastos`→`total_expenses`, `saldo_actual`→`net_balance`
-- [ ] Add `updated_at` column with default `CURRENT_TIMESTAMP`
-- [ ] Update `user_version` to 2
-- [ ] Verify row counts match pre-migration (single row id=1)
+- [x] Register the accumulators step in `migrations.ts` v2 group
+- [x] Write `v2_0_0_financial_accumulators_migration.sql.ts` with atomic transaction
+- [x] Rename table: `resumen_caja` → `financial_accumulators`
+- [x] Rename columns: `total_ventas`→`total_sales`, `total_compras`→`total_purchases`, `total_gastos`→`total_expenses`, `saldo_actual`→`net_balance`
+- [x] Add `updated_at` with `DEFAULT NULL` + backfill (SQLite ALTER TABLE limitation)
+- [x] Provide half-migrated recovery variant
+- [x] `user_version` = 2 (centralized)
+- [x] Verify row counts match pre-migration (single row id=1)
 - [ ] Test restore from backup scenario
 
 ---
@@ -276,18 +286,18 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 
 ## Definition of Done
 
-- [ ] Migration renames table/columns atomically, preserves all data
+- [x] Migration renames table/columns atomically, preserves all data
 - [ ] All entities/repos/use cases use English identifiers with `Money` VOs
-- [ ] `GetCashSummary`/`GetPeriodSummary`/`UpdateAccumulator`/`ReverseTransaction` work correctly
-- [ ] Atomic accumulator updates on all transaction types (SALE/PURCHASE/EXPENSE)
-- [ ] Atomic reversal with stock safety for PURCHASE
+- [x] `GetCashSummary`/`GetPeriodSummary`/`UpdateAccumulator`/`ReverseTransaction` work correctly
+- [x] Atomic accumulator updates on all transaction types (SALE/PURCHASE/EXPENSE)
+- [x] Atomic reversal with stock safety for PURCHASE
 - [ ] AdBanner renders in Caja/Movimientos footers when `AD_ENABLED=true`, absent elsewhere
 - [ ] All 40+ i18n keys implemented
-- [ ] Unit tests: 100% pass
-- [ ] Integration tests: 100% pass
-- [ ] Migration tests: 100% pass
-- [ ] Atomic rollback tests: 100% pass
-- [ ] TypeScript strict: no errors
+- [x] Unit tests: 100% pass
+- [x] Integration tests: 100% pass
+- [x] Migration tests: 100% pass
+- [x] Atomic rollback tests: 100% pass
+- [x] TypeScript strict: no errors
 - [ ] Lint: no errors
 
 ---

@@ -116,7 +116,8 @@ CREATE INDEX IF NOT EXISTS idx_sales_transactions_period
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_financial_accumulators_migration.sql.ts`
+(`FINANCIAL_ACCUMULATORS_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -130,14 +131,19 @@ ALTER TABLE financial_accumulators RENAME COLUMN total_compras TO total_purchase
 ALTER TABLE financial_accumulators RENAME COLUMN total_gastos TO total_expenses;
 ALTER TABLE financial_accumulators RENAME COLUMN saldo_actual TO net_balance;
 
--- Step 3: Add updated_at column with default
-ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- Step 3: Add updated_at column
+-- SQLite forbids non-constant defaults in ALTER TABLE ADD COLUMN, so the
+-- default is NULL and existing rows are backfilled immediately after.
+ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT NULL;
 
 -- Step 4: Update existing row's updated_at
 UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
 
--- Step 5: Update user_version to 2 (coordinated with sales-checkout)
-PRAGMA user_version = 2;
+CREATE INDEX IF NOT EXISTS idx_financial_accumulators_updated_at
+  ON financial_accumulators(updated_at);
+
+-- Step 5: user_version = 2 is set centrally by `runMigrations` after every
+-- v2.0.0 module step succeeds inside the same transaction.
 ```
 
 > **Important:** This migration must run AFTER or in the same transaction as the `sales-checkout` migration (shared `user_version = 2`). Coordinate via `migrations.ts` ordering.

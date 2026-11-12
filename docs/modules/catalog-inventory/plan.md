@@ -1,5 +1,7 @@
 # Catalog & Inventory — Implementation Plan (v2.0.0)
 
+> **Status (2026-11-11):** Phase 2 (atomic migration + repository foundation) is complete and tested. `schema.sql.ts` intentionally remains the v1 legacy baseline; the v2.0.0 schema is produced by `runMigrations`. Domain-entity renaming and presentation work remain pending.
+
 ## 1. Component Breakdown
 
 | Component | File | Type | Memoized | Status v2.0.0 |
@@ -100,27 +102,27 @@ CREATE INDEX IF NOT EXISTS idx_products_deleted_at ON products(deleted_at) WHERE
 **Approach:** Atomic transaction using `db.withTransactionSync()` in migration v2. Requires SQLite ≥ 3.25 for `ALTER TABLE ... RENAME COLUMN`. If unsupported, fallback to table copy.
 
 **Files to create/modify:**
-- `src/data/database/migrations.ts` — Add migration v2 (version 2)
-- `src/data/database/migrations/v2_0_0_migration.sql` — Migration DDL (see spec.md section 4.3)
-- `src/data/database/schema.sql.ts` — Updated to v2.0.0 target schema
-- `src/data/mappers/rowMappers.ts` — Map English column names to domain entities
+- `src/data/database/migrations.ts` — Version-grouped atomic runner (v2 steps share one transaction)
+- `src/data/database/migrations/v2_0_0_catalog_inventory_migration.sql.ts` — `CATALOG_INVENTORY_MIGRATION_SQL` (see spec.md section 4.3)
+- `src/data/database/schema.sql.ts` — Kept as the v1 legacy baseline; fresh installs run v1 → v2
+- `src/data/mappers/rowMappers.ts` — Map English column names to the existing domain entities
 
 ### 4.4 Migration Task Checklist (CRITICAL — Execute in Order)
 
-- [ ] **Task 1:** Create `src/data/database/migrations/v2_0_0_migration.sql` with atomic DDL
-- [ ] **Task 2:** Update `migrations.ts` to register migration v2 (target version = 2)
-- [ ] **Task 3:** Update `schema.sql.ts` to v2.0.0 target schema (English columns)
-- [ ] **Task 4:** Update `rowMappers.ts` to map English column names
-- [ ] **Task 5:** Seed default category "General" (id=1) in migration v1 or v2
-- [ ] **Task 6:** Backfill `category_id = 1` for NULL values in products
-- [ ] **Task 7:** Add `sku` column (nullable, unique)
-- [ ] **Task 8:** Enforce `category_id NOT NULL` via table rebuild (SQLite limitation)
-- [ ] **Task 9:** Recreate all partial indexes with English column names
-- [ ] **Task 10:** Update `PRAGMA user_version = 2`
-- [ ] **Task 11:** Verify row counts match pre-migration (products, categories)
-- [ ] **Task 12:** Verify PKs, timestamps, soft-deletes preserved
-- [ ] **Task 13:** Test rollback: restore backup → verify v1.0.0 schema intact
-- [ ] **Task 14:** Test idempotency: run migration twice → no errors, no data duplication
+- [x] **Task 1:** Create `v2_0_0_catalog_inventory_migration.sql.ts` with the atomic DDL constant
+- [x] **Task 2:** Register the catalog step in `migrations.ts` v2 (target version = 2)
+- [x] **Task 3:** Keep `schema.sql.ts` as the v1 baseline; v2 schema is applied by migrations
+- [x] **Task 4:** Update `rowMappers.ts` to map English column names
+- [x] **Task 5:** Create "General" category when products have a NULL category and none exists
+- [x] **Task 6:** Backfill NULL `category_id` to the oldest existing category
+- [x] **Task 7:** Add `sku` column (nullable) with a partial unique index over active rows
+- [x] **Task 8:** Enforce `category_id NOT NULL` via table rebuild (SQLite limitation)
+- [x] **Task 9:** Recreate all partial indexes with English column names
+- [x] **Task 10:** `PRAGMA user_version = 2` set centrally by `runMigrations`
+- [x] **Task 11:** Verify row counts match pre-migration (products, categories)
+- [x] **Task 12:** Verify PKs, timestamps, soft-deletes preserved
+- [x] **Task 13:** Atomic rollback test: force a mid-v2 failure → catalog changes roll back
+- [x] **Task 14:** Test idempotency: run migration twice → no errors, no data duplication
 
 ---
 
@@ -308,7 +310,7 @@ await db.execSync(`
 ## 16. Definition of Done (Acceptance Criteria)
 
 - [ ] All tests pass: unit + integration + migration + hooks + UI + E2E
-- [ ] TypeScript strict build passes (`tsc --noEmit`)
+- [x] TypeScript strict build passes (`tsc --noEmit`)
 - [ ] Lint passes (`eslint .`)
 - [ ] FlashList render <50ms/frame on physical device
 - [ ] Optimized image <40KB verified on 10 test images
@@ -318,9 +320,10 @@ await db.execSync(`
 - [ ] Category required blocks save if not selected
 - [ ] AdBanner renders only when `AD_ENABLED=true`
 - [ ] i18n: zero hardcoded Spanish strings in catalog components
-- [ ] Migration v1→v2 tested with seeded v1.0.0 data (zero data loss)
+- [x] Migration v1→v2 tested with seeded v1.0.0 data (zero data loss)
+- [x] Atomic rollback verified (forced mid-v2 failure rolls back catalog changes)
 - [ ] Migration rollback via backup restore verified
-- [ ] Migration idempotency verified (run twice = no errors)
+- [x] Migration idempotency verified (run twice = no errors)
 
 ---
 

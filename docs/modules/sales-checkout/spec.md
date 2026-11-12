@@ -256,7 +256,8 @@ CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_detail
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_sales_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_sales_checkout_migration.sql.ts`
+(`SALES_CHECKOUT_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -280,13 +281,14 @@ ALTER TABLE transaction_details RENAME COLUMN cantidad TO quantity;
 ALTER TABLE transaction_details RENAME COLUMN precio_unitario TO unit_price;
 
 -- Step 4: Recreate indexes with English names
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_date ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_at ON sales_transactions(registered_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_sales_transactions_type ON sales_transactions(type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sales_transactions_registered_type ON sales_transactions(registered_at, type, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_transaction_details_transaction ON transaction_details(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_details_product ON transaction_details(product_id);
 
--- Step 5: Update user_version to 2
-PRAGMA user_version = 2;
+-- Step 5: user_version = 2 is set centrally by `runMigrations` after every
+-- v2.0.0 module step succeeds inside the same transaction.
 ```
 
 ---
@@ -363,7 +365,7 @@ export function registerSale(input: RegisterSaleInput): RegisterSaleResult;
 
 **Atomic Flow (`db.withTransactionSync`):**
 1. Validate cart not empty.
-2. `calcTotals(items, 'SALE')`; `total > 0`.
+2. `calcTotals(lines, currency)`; `total.amount > 0`.
 3. `validateStockAvailable` for each item (throws `StockError` if insufficient).
 4. `INSERT INTO sales_transactions (type='SALE', total_amount, payment_method, detail)` → `lastInsertRowId`.
 5. For each item:
@@ -386,11 +388,13 @@ export function registerSale(input: RegisterSaleInput): RegisterSaleResult;
 
 | Function | Signature | Description |
 |---|---|---|
-| `getUnitPrice` | `(item: ICartItem, type: CartType) => Money` | `sellingPrice` if SALE, `purchasePrice` if PURCHASE. |
-| `lineSubtotal` | `(item: ICartItem, type: CartType) => Money` | `unitPrice * quantity`. |
-| `calcTotals` | `(items: ICartItem[], type: CartType) => CartTotals` | `{ subtotal, discount, total }` rounded. |
-| `calcChange` | `(total: Money, received: Money) => ChangeAmount` | `received - total` rounded. |
+| `selectUnitPrice` | `(salePrice: Money, purchasePrice: Money, kind: CartKind) => Money` | `salePrice` if SALE, `purchasePrice` if PURCHASE. |
+| `lineSubtotal` | `(line: CartLine) => Money` | `unitPrice * quantity`, rounded to 2dp. |
+| `calcTotals` | `(lines: CartLine[], currency: CurrencyCode) => CartTotals` | `{ subtotal, discount, total }` as `Money`. |
+| `calcChange` | `(total: Money, received: Money) => ChangeAmount` | `received - total`, rounded to 2dp. |
 | `applyDiscount` | `(subtotal: Money, discount: Money) => Money` | Clamp [0, subtotal]. |
+
+`CartLine` is `{ unitPrice: Money; quantity: Stock; discount: Money }`. The legacy `CarritoItem` entity is adapted at the boundary through `src/shared/utils/legacyCart.ts`.
 
 ---
 

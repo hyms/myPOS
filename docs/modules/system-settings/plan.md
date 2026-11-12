@@ -1,5 +1,7 @@
 # System Settings — Implementation Plan (v2.0.0)
 
+> **Status (2026-11-11):** Phase 2 (atomic migration + repository/use-case SQL foundation) is complete and tested. The `settings` table exists but settings still hydrate from AsyncStorage; AsyncStorage → SQLite migration and presentation work remain pending.
+
 ## Overview
 
 This plan covers the implementation of the System Settings module v2.0.0, including:
@@ -15,16 +17,15 @@ This plan covers the implementation of the System Settings module v2.0.0, includ
 
 ### 1.1 Migration Runner Update
 **File:** `src/data/database/migrations.ts`
-- Add migration version 2 with `v2_0_0_settings_migration.sql`
-- Ensure `withTransactionSync` wrapper for atomicity
-- Coordinate `user_version = 2` with `sales-checkout`, `financial-accumulators`, `expenses-cashflow` modules
-- Migration order in `migrations.ts`: catalog-inventory → sales-checkout → financial-accumulators → expenses-cashflow → system-settings
+- Register the settings step in the version-2 group (all v2 modules share one `withTransactionSync`)
+- `user_version = 2` is set centrally by `runMigrations` after every v2 step succeeds
+- Migration order: catalog-inventory → sales-checkout → financial-accumulators → expenses-cashflow → system-settings
 
 ### 1.2 Migration SQL
-**File:** `src/data/database/migrations/v2_0_0_settings_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_system_settings_migration.sql.ts` (`SYSTEM_SETTINGS_MIGRATION_SQL`)
 
 ```sql
--- Atomic migration transaction (single db.withTransactionSync)
+-- Runs inside the shared v2.0.0 transaction (single db.withTransactionSync)
 
 -- Step 1: Create settings table with English columns
 CREATE TABLE IF NOT EXISTS settings (
@@ -37,36 +38,36 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- Step 2: Seed singleton row (id = 1) with defaults
-INSERT OR IGNORE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
-VALUES (1, 'Bs', 15, 0, 0, CURRENT_TIMESTAMP);
+INSERT OR IGNORE INTO settings
+    (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
+VALUES
+    (1, 'Bs', 15, 0, 0, CURRENT_TIMESTAMP);
 
--- Step 3: Migrate AsyncStorage values to SQLite (application-layer, not SQL)
--- Handled by GetSettings use case on first run: read AsyncStorage keys,
--- write to settings table, then clear AsyncStorage keys.
-
--- Step 4: Create index (trivial for singleton, but kept for consistency)
+-- Step 3: Create index (trivial for singleton, but kept for consistency)
 CREATE INDEX IF NOT EXISTS idx_settings_id ON settings(id);
 
--- Step 5: Update user_version to 2 (coordinated with other modules)
-PRAGMA user_version = 2;
+-- Step 4: user_version = 2 is set centrally by `runMigrations`
 ```
 
+> **Note:** AsyncStorage → SQLite migration is application-layer work
+> (`GetSettings`), not SQL, and is still pending.
+
 ### 1.3 AsyncStorage Migration Logic
-**File:** `src/application/settings/MigrateSettings.ts`
+**File:** `src/application/settings/MigrateSettings.ts` (pending)
 - Read `divisa`, `pageSize`, `biometricEnabled` from `AsyncStorage`
 - Upsert into `settings` table
 - Clear migrated keys from `AsyncStorage`
 - Called by `GetSettings` on first run (detect empty table)
 
 ### 1.4 Migration Checklist
-- [ ] Create migration v2 in `migrations.ts` (version 2, coordinated)
-- [ ] Write `v2_0_0_settings_migration.sql` with atomic transaction
-- [ ] Create `settings` table with English columns + CHECK constraint
-- [ ] Seed singleton row (id = 1) with defaults
+- [x] Register the settings step in `migrations.ts` v2 group
+- [x] Write `v2_0_0_system_settings_migration.sql.ts` with atomic transaction
+- [x] Create `settings` table with English columns + CHECK constraint
+- [x] Seed singleton row (id = 1) with defaults
 - [ ] Implement AsyncStorage → SQLite migration in `GetSettings`
-- [ ] Create `idx_settings_id` index
-- [ ] Update `user_version` to 2 (single source of truth)
-- [ ] Verify row count = 1, columns match English schema
+- [x] Create `idx_settings_id` index
+- [x] `user_version` = 2 (centralized)
+- [x] Verify row count = 1, columns match English schema
 - [ ] Test restore from backup scenario (settings preserved)
 
 ---
@@ -304,9 +305,9 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 
 ## Definition of Done
 
-- [ ] Migration runs atomically, preserves all data, coordinates with other modules
+- [x] Migration runs atomically, preserves all data, coordinates with other modules
 - [ ] All entities/repos/use cases use English identifiers
-- [ ] `UserSettings` singleton in SQLite with English columns
+- [x] `UserSettings` singleton in SQLite with English columns
 - [ ] `Currency`/`Money` value objects used globally across modules
 - [ ] `GetSettings` migrates AsyncStorage on first run
 - [ ] `UpdateSettings` works atomically with validation
@@ -315,11 +316,11 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] Restore backup requires PIN confirmation
 - [ ] `adEnabled` toggle controls Expenses list banner only
 - [ ] All 60+ i18n keys implemented
-- [ ] Unit tests: 100% pass
-- [ ] Integration tests: 100% pass
-- [ ] Migration tests: 100% pass
+- [x] Unit tests: 100% pass
+- [x] Integration tests: 100% pass
+- [x] Migration tests: 100% pass
 - [ ] PIN gate tests: 100% pass
-- [ ] TypeScript strict: no errors
+- [x] TypeScript strict: no errors
 - [ ] Lint: no errors
 
 ---

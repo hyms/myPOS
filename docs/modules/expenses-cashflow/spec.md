@@ -148,7 +148,8 @@ The `transacciones` → `sales_transactions` table migration is handled by the `
 
 ### 4.3 Migration DDL (v1.0.0 → v2.0.0)
 
-**File:** `src/data/database/migrations/v2_0_0_expenses_migration.sql`
+**File:** `src/data/database/migrations/v2_0_0_expenses_cashflow_migration.sql.ts`
+(`EXPENSES_CASHFLOW_MIGRATION_SQL`, executed by `runMigrations` inside the shared v2 transaction)
 
 ```sql
 -- Atomic migration transaction (single db.withTransactionSync)
@@ -175,11 +176,13 @@ CREATE INDEX IF NOT EXISTS idx_expense_categories_name ON expense_categories(nam
 -- ALTER TABLE financial_accumulators ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 -- UPDATE financial_accumulators SET updated_at = CURRENT_TIMESTAMP WHERE id = 1;
 
--- Step 4: Create index for expense queries on sales_transactions
-CREATE INDEX IF NOT EXISTS idx_sales_transactions_expense_date ON sales_transactions(registered_at) WHERE type = 'EXPENSE' AND deleted_at IS NULL;
+-- Step 4: Expense queries on sales_transactions are covered by the
+-- idx_sales_transactions_type and idx_sales_transactions_registered_type
+-- indexes created by the sales-checkout migration (stored type is 'GASTO').
 
--- Step 5: Update user_version to 2 (coordinated with sales-checkout and financial-accumulators)
-PRAGMA user_version = 2;
+-- Step 5: user_version = 2 (coordinated with sales-checkout and financial-accumulators)
+-- user_version = 2 is set centrally by `runMigrations` after every v2.0.0
+-- module step succeeds inside the same transaction.
 ```
 
 > **Important:** The `resumen_caja` → `financial_accumulators` rename and column renames are coordinated with the `financial-accumulators` module migration. Both modules must agree on migration ordering in `migrations.ts`.
@@ -283,9 +286,8 @@ export function reverseTransaction(id: number): ReverseTransactionResult;
 
 | Function | Signature | Description |
 |---|---|---|
-| `validateExpenseAmount` | `(amount: number) => void` | Throws if `amount <= 0` or not finite. |
+| `validateExpenseAmount` | `(amount: Money) => void` | Throws if the amount is not positive. |
 | `validateExpenseDescription` | `(description: string) => void` | Throws if empty after trim. |
-| `roundAmount` | `(amount: number) => number` | `Math.round(amount * 100) / 100` (2dp). |
 
 ---
 
