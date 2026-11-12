@@ -1,67 +1,152 @@
-# TPV Móvil Express — Global Specification v2.0
+# TPV Móvil Express — Technical Architecture & Stack Reference v2.0
 
-## 1. Business Goals & Value Proposition
+## 1. System Architecture Overview
 
-**Product:** TPV Móvil Express — single-user, single-branch mobile Point of Sale (mPOS).
+TPV Móvil Express v2.0 is built as an offline-first, high-performance mobile application engineered under **Domain-Driven Design (DDD)**, **Specification-Driven Development (SDD)**, and **Test-Driven Development (TDD)** principles.
 
-**Core value proposition:** Enable small merchants to record sales, purchases, and expenses entirely offline on a mobile device, with atomic cash/stock integrity and instant receipt printing/sharing.
+```
+                    ┌─────────────────────────────────────────┐
+                    │       Presentation Layer (React Native) │
+                    │ Expo 56 + NativeWind v4 + NativeWindUI  │
+                    │            + FlashList                  │
+                    └────────────────────┬────────────────────┘
+                                         │
+                    ┌────────────────────▼────────────────────┐
+                    │      Application & Domain Layer         │
+                    │   Use Cases + Aggregate Entities (TS)   │
+                    └────────────────────┬────────────────────┘
+                                         │
+                    ┌────────────────────▼────────────────────┐
+                    │    Infrastructure Layer (Persistence)   │
+                    │  expo-sqlite (JSI) + expo-image (Cache) │
+                    └─────────────────────────────────────────┘
+```
 
-**Target user persona:** Single-owner microbusiness (retail, food, services) operating one branch, no back-office, no cloud dependency, Spanish UI.
-
-**Non-goals:** Multi-user, multi-branch, online sync, e-commerce, mixed-payment transactions.
-
----
-
-## 2. Bounded Contexts (Domain Map)
-
-| Bounded Context | Responsibility | Core Aggregates |
-|---|---|---|
-| `catalog-inventory` | Product lifecycle, categories, stock levels, stock alerts | Producto, Categoria |
-| `sales-checkout` | Shopping cart, sales registration, payment methods, change calculation | CarritoItem, Venta |
-| `expenses-cashflow` | Expense registration, confirmation dialog | Gasto |
-| `financial-accumulators` | Cash summary accumulator, transaction history, period reports | ResumenCaja, Transaccion, DetalleTransaccion |
-| `system-settings` | PIN/biometric security, currency (i18n), pagination, backup/restore | Settings, Session |
-
-**Shared Kernel:** Value objects `Money`, `Currency`; strict TypeScript entities; `fecha_delete` soft-delete convention; SQLite `resumen_caja(id=1)` accumulator table.
-
----
-
-## 3. Global Non-Functional Requirements
-
-| ID | Requirement | Target |
-|---|---|---|
-| NFR-01 | Offline-first SQLite via `expo-sqlite` JSI (`openDatabaseSync`, `withTransactionSync`) | Local-first, zero network dependency |
-| NFR-02 | Sub-50ms list render for catalog grid (`@shopify/flash-list`, `numColumns={3}`) | <50ms per frame |
-| NFR-03 | 0ms cash calculations — read from `resumen_caja` accumulator table only | No runtime aggregations for caja |
-| NFR-04 | Paginated FlashList `LIMIT ? OFFSET ?` with settings-driven `pageSize` | Default 15 rows |
-| NFR-05 | Local image optimization — 400x400 JPEG 70% target <40KB, persisted in `documentDirectory/productos/` | <40KB per product image |
-| NFR-06 | Strict dark mode default with runtime design token support for future themes | NativeWind v4 + tokens |
-| NFR-07 | Atomic rollback — `withTransactionSync` guarantees zero cash/stock drift on any write failure | All-or-nothing |
-| NFR-08 | Spanish UI strings via i18n; all code/entity/DB identifiers in English | i18n for visible strings |
-| NFR-09 | Strict TypeScript (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) | Zero `any` |
-| NFR-10 | Tests: 100% pass on unit + integration + cash/stock integrity suites | Jest |
+- **Domain Isolation:** Pure TypeScript logic with zero React Native or UI dependencies inside `src/domain/`.
+- **Language Policy:**
+  - All code, identifiers, database schema, variables, and architectural documentation must be in **English**.
+  - All user interface strings, messages, labels, and receipts are localized in **Spanish (i18n)**.
 
 ---
 
-## 4. System Invariants
+## 2. Technology Stack & Core Tooling
 
-- **INV-01 (Stock non-negative):** `stock_actual - cantidad >= 0` enforced before any `VENTA` write; rejected otherwise.
-- **INV-02 (Revert stock safety):** Reverting `COMPRA` that would drive `stock_actual < 0` throws `StockError` before transaction opens.
-- **INV-03 (Atomic rollback math):** Deleted `VENTA` restores `stock_actual += cantidad` and decrements `total_ventas`/`saldo_actual`; deleted `COMPRA` decrements `stock_actual` and increments `total_compras`/`saldo_actual`; deleted `GASTO` increments `total_gastos`/`saldo_actual`. All inside `db.withTransactionSync`.
-- **INV-04 (Single payment per transaction):** Exactly one `tipo_pago` per `transaccion`. No mixed payments.
-- **INV-05 (Soft delete only):** `fecha_delete` marks deletion; all active queries filter `WHERE fecha_delete IS NULL`.
-- **INV-06 (ResumenCaja singleton):** `resumen_caja` has exactly one row (`id=1`, `CHECK (id=1)`); never deleted.
-- **INV-07 (Categoría obligatoria):** `categoria_id` NOT NULL on create/update; validated in form and repository.
-- **INV-08 (PIN gate):** PIN change and transaction deletion require current PIN. Backup restore does NOT require PIN.
-- **INV-09 (Image persistence):** Only final optimized URI stored in `documentDirectory/productos/<uuid>.jpg`; relative URI saved in SQLite.
-- **INV-10 (Divisa visual-only):** Currency affects display formatting (`Intl.NumberFormat`); SQLite stores raw numeric amounts in base currency.
+| Category | Technology / Library | Version / Detail |
+| :--- | :--- | :--- |
+| **Framework** | Expo / React Native | Expo SDK 56 (New Architecture enabled) |
+| **Database** | `expo-sqlite` | JSI bindings (`openDatabaseSync`, `withTransactionSync`) |
+| **UI Components** | **NativeWindUI** | Production-ready native accessible components built for NativeWind |
+| **Styling & Theme** | NativeWind | v4 (Tailwind CSS engine with runtime design tokens & Dark Mode) |
+| **List Engine** | `@shopify/flash-list` | Virtualized performance lists for grid & row layouts |
+| **Media Pipeline** | `expo-image` + `expo-file-system` | Hardware-accelerated image caching & disk pipeline |
+| **Local Sharing** | `expo-sharing` | Native intents for direct WhatsApp/Chat catalog export |
+| **Language & Types** | TypeScript | v5+ (Strict mode enabled, `noUncheckedIndexedAccess`) |
+| **Testing Suite** | Jest + React Native Testing Library | Unit tests (TDD), use case contracts, DB integrity |
 
 ---
 
-## 5. Module Triad Convention
+## 3. Engineering Principles & Software Design Patterns
 
-Every domain module lives at `/docs/modules/<module-name>/` with exactly three files:
+### A. Software Engineering Principles
 
-- `spec.md` — Business logic, domain rules, DB contracts, UI state machines (Spanish UI strings noted).
-- `plan.md` — Implementation steps, component breakdown, migration tasks.
-- `test.md` — Unit (TDD), integration, cash/stock integrity test suites.
+- **SRP (Single Responsibility Principle):** Each module, class, and custom hook has a single, well-defined responsibility. UI components delegate business math exclusively to Use Cases.
+- **OCP (Open/Closed Principle):** Systems (such as report generation or catalog formatters) are open for extension through interfaces but closed for direct code modification.
+- **DIP (Dependency Inversion Principle):** High-level Application Use Cases depend on abstractions (domain ports/interfaces), never on low-level infrastructure details (SQLite driver, Expo SDK directly).
+- **DRY (Don't Repeat Yourself):** Reusable NativeWindUI design primitives and centralized currency/date formatters eliminate code duplication.
+- **KISS (Keep It Simple, Stupid):** 100% offline-first architecture without cloud complexity, server synchronization, or unnecessary GraphQL wrappers.
+- **YAGNI (You Ain't Gonna Need It):** Strict scope boundaries: zero multi-branch, multi-user roles, or cloud payment gateways in this version.
+- **Low Coupling & High Cohesion:** The Presentation layer only invokes Use Cases and remains completely agnostic of the underlying database engine.
+
+### B. Core Design Patterns
+
+- **Singleton Pattern:** Applied to `SQLiteDatabaseManager` (JSI connection instance), `AdMobService` (preventing listener leaks), and the single-row `resumen_caja` accumulator table (`id = 1`).
+- **Strategy Pattern:** Implemented via `ISharingStrategy` for catalog export (`WhatsAppTextSharingStrategy` for text batches vs `SingleProductImageSharingStrategy` for rendered image cards) and dynamic ad placement policies.
+- **Composite Pattern:** Utilized in the domain cart to treat individual products (`CartItem`) and bundled products under a unified interface (`ICartItem`).
+- **Observer Pattern:** React state bindings and domain event listeners update the Cash Register (`resumen_caja`) screen instantly whenever a transaction mutates state without triggering full tree re-renders.
+- **Repository Pattern:** Encapsulates persistence logic behind abstract domain contracts (`IProductRepository`, `ITransactionRepository`), enabling instantaneous in-memory mocking for zero-latency TDD execution.
+- **Factory Pattern:** Encapsulates entity instantiation (`TransactionFactory.createSale(...)`) to guarantee that created aggregates satisfy domain invariants prior to persistence.
+
+---
+
+## 4. Global Non-Functional Requirements (NFRs)
+
+- **NFR-01 (Offline-First Execution):** Zero cloud runtime dependency. All reads, writes, and image transformations execute locally via native JSI SQLite bindings.
+- **NFR-02 (Sub-50ms List Rendering & Performance):**
+  - Powered by `@shopify/flash-list` (`getItemType`, explicit `estimatedItemSize`, recycling keys).
+  - Strict use of `React.memo`, `useMemo`, and `useCallback` to prevent unnecessary component re-renders.
+  - Inputs (search, quantities) use localized states or uncontrolled refs to avoid global UI thread blocking.
+  - Images rendered exclusively via `expo-image` to offload decoding and memory caching to native GPU threads.
+- **NFR-03 (0ms Cash Aggregation):** Financial balance reads (`resumen_caja`) query a single-row singleton accumulator table (`id = 1`) to eliminate runtime `SUM()` calculation bottlenecks.
+- **NFR-04 (Image Storage & Memory Optimization):**
+  - Input images processed via local pipeline: resized to maximum **400x400px**, JPEG 70% quality, targeting **<40KB** per image file.
+  - Saved in app storage (`documentDirectory/productos/<uuid>.jpg`). Database stores relative paths only.
+- **NFR-05 (Strict Dark Mode Default):** Primary UI defaults to "Strict Dark Mode" (obsidian/dark charcoal tones with high-contrast accent colors). System theme integration and component styling accelerated via NativeWindUI and NativeWind tokens.
+- **NFR-06 (Transactional Atomicity):** Multi-table mutations (e.g., creating a sale while updating stock and adjusting cash summary) MUST execute within `db.withTransactionSync` blocks. Failure triggers immediate rollback.
+
+---
+
+## 5. Monetization & Adware Governance
+
+- **Global Control Toggle:** Controlled via a central boolean configuration variable (`AD_ENABLED` in settings/config). When disabled, ad components unmount completely to free resources.
+- **Allowed Screens (Banners):** Permitted **only** in non-critical auxiliary views:
+  - Inventory management (`inventory`)
+  - Application settings (`settings`)
+  - Financial reports (`reports`)
+- **Restricted Screens (Zero Ads):** **Strictly forbidden** in high-focus transactional screens to protect merchant efficiency and avoid user distraction:
+  - Shopping Cart & Checkout (`cart`)
+  - Purchases & Supplier entries (`purchases`)
+- **Catalog Sharing Ad Behavior:** In the catalog sharing screen, ads launch as a full-screen interstitial overlay that automatically transitions into a small banner after 3 to 5 seconds.
+- **Performance Protection:** Banners must use fixed-height containers to prevent layout shifts, and listeners must be properly cleaned up on unmount to prevent memory leaks.
+
+---
+
+## 6. Directory & Codebase Structure
+
+```
+/
+├── docs/
+│   ├── global.spec.md           # Business specification & domain vision
+│   ├── readme.md                # Technical stack & architecture (This file)
+│   ├── plan.md                  # Master roadmap & migration tasks
+│   └── modules/                 # Module Triad Specs
+│       ├── catalog-inventory/   # (spec.md, plan.md, test.md)
+│       ├── sales-checkout/      # (spec.md, plan.md, test.md)
+│       ├── expenses-cashflow/   # (spec.md, plan.md, test.md)
+│       ├── accumulators/        # (spec.md, plan.md, test.md)
+│       └── settings/            # (spec.md, plan.md, test.md)
+│
+├── src/
+│   ├── domain/                  # Entities, Value Objects, Repository Interfaces, Factories
+│   ├── application/             # Use Cases & DTOs
+│   ├── infrastructure/          # SQLite Repositories, FileSystem, Native Drivers, Strategies
+│   └── presentation/           # React Native UI (NativeWindUI, Components, Screens, i18n)
+└── __tests__/                   # Unit & Integration Test Suites
+```
+
+---
+
+## 7. Development & Build Standards
+
+### TypeScript Strictness
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  }
+}
+```
+
+### Local APK Build Pipeline
+1. Execute native prebuild generation:
+   ```bash
+   npx expo prebuild --clean
+   ```
+2. Build Android release binary locally:
+   ```bash
+   cd android && ./gradlew assembleRelease
+   ```
+   *Output APK location:* `android/app/build/outputs/apk/release/app-release.apk`

@@ -1,94 +1,128 @@
-# TPV Móvil Express — Migration Plan v1.0 → v2.0
+# TPV Móvil Express — Master Implementation & Migration Plan v2.0
 
-## 1. Objective
+## 1. Executive Summary & Migration Objectives
 
-Transition the codebase to a DDD-aligned, modular documentation architecture where every domain module has an isolated triad (`plan.md`, `spec.md`, `test.md`) under `/docs/modules/<module-name>/`. Code remains in `src/`; documentation migrates to `/docs/`.
+This document establishes the strategic execution roadmap for transitioning **TPV Móvil Express** from its initial v1.0 release into an enterprise-grade, highly maintainable v2.0 application built upon solid engineering principles (SOLID, DRY, KISS, YAGNI, Low Coupling) and proven design patterns (Singleton, Strategy, Composite, Observer, Repository, Factory).
 
-## 2. Target DDD Folder Structure (src/)
+### Core Objectives:
 
-```
-src/
-├── domain/                    # Pure domain, zero external deps
-│   ├── entities/              # Producto, Categoria, Transaccion, DetalleTransaccion, ResumenCaja, CarritoItem
-│   ├── value-objects/         # Money, Currency
-│   └── rules/                 # stockRules, cartRules, domain exceptions (StockError)
-├── application/               # Use cases (orchestrate repositories)
-│   ├── ventas/
-│   ├── compras/
-│   ├── gastos/
-│   ├── productos/
-│   ├── transacciones/         # RevertirTransaccion
-│   ├── reportes/              # ResumenPeriodo
-│   └── backup/
-├── infrastructure/            # Concrete services (SQLite, SecureStore, expo-print, etc.)
-│   ├── database/
-│   ├── repositories/          # Sqlite*Repository + container.ts
-│   ├── image/
-│   ├── pdf/
-│   ├── security/
-│   ├── settings/
-│   └── toast/
-└── presentation/              # UI (Expo Router, NativeWind, Zustand)
-    ├── app/                   # Expo Router file-based routes
-    ├── components/
-    ├── hooks/
-    ├── stores/
-    └── theme/
-```
+1. **Domain Isolation & Pattern Alignment (DDD):** Refactor business logic out of UI components into standalone TypeScript entities, value objects, domain factories, and repository interfaces within `src/domain/` and `src/application/`.
+2. **Specification-Driven Development (SDD):** Establish and enforce isolated document triads (`spec.md`, `plan.md`, `test.md`) across all core application modules under `/docs/modules/`.
+3. **Strict Language Governance:** Ensure 100% of codebase identifiers, database schemas, and documentation are written in English, while UI strings are fully localized in Spanish via an i18n layer.
+4. **Performance & Monetization Safeguards:** Enforce strict Dark Mode, sub-50ms render loops with `@shopify/flash-list`, NativeWindUI adoption, and non-intrusive AdMob banner/interstitial governance using Strategy & Singleton patterns.
 
-## 3. Documentation Folder Structure (/docs/)
+---
+
+## 2. Master Migration Phasing Roadmap
 
 ```
-/docs/
-├── global.spec.md             # High-level spec (bounded contexts, NFRs, invariants)
-├── plan.md                    # This migration roadmap
-└── modules/
-    ├── catalog-inventory/
-    │   ├── spec.md
-    │   ├── plan.md
-    │   └── test.md
-    ├── sales-checkout/
-    │   ├── spec.md
-    │   ├── plan.md
-    │   └── test.md
-    ├── expenses-cashflow/
-    │   ├── spec.md
-    │   ├── plan.md
-    │   └── test.md
-    ├── financial-accumulators/
-    │   ├── spec.md
-    │   ├── plan.md
-    │   └── test.md
-    └── system-settings/
-        ├── spec.md
-        ├── plan.md
-        └── test.md
+┌────────────────────────────────────────────────────────────────────────┐
+│ Phase 1: Global Foundation & Architecture Governance (Completed)       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ Phase 2: Core Domain, Design Patterns & Data Layer Refactoring         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ Phase 3: Module Triads Rollout (SDD / TDD per Context)                 │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ Phase 4: UI Refactoring & NativeWindUI Integration                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ Phase 5: Verification, Benchmarking & Release Packaging (v2.0 Build)   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 4. Milestones
+---
 
-| Milestone | Deliverable | Gate |
-|---|---|---|
-| M1 | `/docs/global.spec.md` + module triad templates | Reviewed |
-| M2 | `catalog-inventory` triad (`spec/plan/test`) | Tests pass |
-| M3 | `sales-checkout` triad | Cash/stock integrity tests pass |
-| M4 | `expenses-cashflow` triad | ConfirmDialog + gasto tests pass |
-| M5 | `financial-accumulators` triad | `resumen_caja` atomic read tests pass |
-| M6 | `system-settings` triad | PIN/biometric/divisa/backup tests pass |
-| M7 | AGENTS.md alignment: remove obsolete paths, add module triad references | All docs consistent |
-| M8 | v2.0 baseline frozen | All module tests green |
+## 3. Detailed Phase Breakdown
 
-## 5. Migration Tasks (Code)
+### Phase 1: Global Foundation & Documentation Governance (Completed)
 
-- [ ] Verify `src/domain/entities/*` are pure (no Expo/React imports).
-- [ ] Confirm `src/application/*` use cases depend only on repository interfaces.
-- [ ] Confirm `src/infrastructure/repositories/container.ts` is the single injection point.
-- [ ] Map every existing use case to its bounded context module triad.
-- [ ] Add missing `test.md` cash/stock integrity suites for revert paths (`VENTA`/`COMPRA`/`GASTO`).
+- [x] Create `/docs/global.spec.md` (Business rules, domain vision, invariants).
+- [x] Create `/docs/readme.md` (Technical stack, NFRs, Design Patterns, SOLID Principles, NativeWindUI, AdMob governance).
+- [x] Create `/docs/plan.md` (This master execution roadmap).
 
-## 6. Success Criteria
+### Phase 2: Domain Layer, Design Patterns & Data Layer Refactoring (DDD Layering)
 
-- All 142 existing Jest tests continue to pass.
-- Every module has exactly `spec.md`, `plan.md`, `test.md` under `/docs/modules/<module>/`.
-- AGENTS.md references `/docs/modules/*` triads instead of inline architectural decisions.
-- UI strings remain Spanish; all code/DB identifiers remain English.
+- [ ] Establish core Domain Entities & Factories (`src/domain/entities/`, `src/domain/factories/`):
+  - `Product.ts`, `Category.ts`, `Transaction.ts`, `CartItem.ts`, `CashSummary.ts`.
+  - Implement **Factory Pattern** (`TransactionFactory`) to enforce valid domain creation.
+- [ ] Implement Value Objects (`src/domain/value-objects/`):
+  - `Money.ts`, `Stock.ts`, `SecurityPIN.ts`, `Currency.ts`.
+- [ ] Define Repository Interfaces (**Repository Pattern**) (`src/domain/ports/`):
+  - `IProductRepository.ts`, `ITransactionRepository.ts`, `ICashRegisterRepository.ts`.
+- [ ] Implement Infrastructure Adapters & Patterns (`src/infrastructure/`):
+  - **Singleton Pattern:** `SQLiteDatabaseManager` and `AdMobService`.
+  - **Strategy Pattern:** `ISharingStrategy` (`WhatsAppTextSharingStrategy`, `SingleProductImageSharingStrategy`).
+  - Refactor SQLite Persistence Layer with soft delete (`fecha_delete`) and atomic wrappers (`db.withTransactionSync`).
+
+### Phase 3: SDD Module Triad Rollout & TDD Execution
+
+Deploy isolated documentation and unit tests for each context prior to UI coupling:
+
+1. **`catalog-inventory` Module:**
+   - [ ] Write `docs/modules/catalog-inventory/spec.md`
+   - [ ] Write `docs/modules/catalog-inventory/plan.md`
+   - [ ] Write `docs/modules/catalog-inventory/test.md` (Jest suite for non-negative stock invariants).
+
+2. **`sales-checkout` Module:**
+   - [ ] Write `docs/modules/sales-checkout/spec.md`
+   - [ ] Write `docs/modules/sales-checkout/plan.md`
+   - [ ] Write `docs/modules/sales-checkout/test.md` (Cart calculations, change math, single-payment validation).
+
+3. **`expenses-cashflow` Module:**
+   - [ ] Write `docs/modules/expenses-cashflow/spec.md`
+   - [ ] Write `docs/modules/expenses-cashflow/plan.md`
+   - [ ] Write `docs/modules/expenses-cashflow/test.md` (Expense registration and deletion rollback).
+
+4. **`accumulators` (Financial Summary) Module:**
+   - [ ] Write `docs/modules/accumulators/spec.md`
+   - [ ] Write `docs/modules/accumulators/plan.md`
+   - [ ] Write `docs/modules/accumulators/test.md` (Singleton `resumen_caja` invariants).
+
+5. **`settings` & `chat-commerce` Modules:**
+   - [ ] Write `docs/modules/settings/` triad.
+   - [ ] Write `docs/modules/chat-commerce/` triad (Individual/Batch sharing strategy + image generator).
+
+### Phase 4: Presentation Layer Modernization & Performance Optimization
+
+- [ ] Integrate **NativeWindUI** accessible component collection.
+- [ ] Enforce Spanish i18n string dictionary (`src/infrastructure/i18n/es.ts`).
+- [ ] Apply **Observer Pattern** for reactive Cash Register state updates.
+- [ ] Optimize Product Grid using `@shopify/flash-list` with `estimatedItemSize` and `getItemType`.
+- [ ] Implement local image processing pipeline (`expo-image` <40KB target).
+- [ ] Implement AdMob banner wrappers (`AD_ENABLED` state binding) and pre-loading interstitial flow.
+
+### Phase 5: Testing, Validation & Local Build Pipeline
+
+- [ ] Execute 100% pass on Jest unit test suite (Stock integrity, atomic rollback math, repository mocks).
+- [ ] Validate sub-50ms render metrics during heavy continuous catalog scrolling.
+- [ ] Run prebuild generation:
+  ```bash
+  npx expo prebuild --clean
+  ```
+- [ ] Compile local Android release APK:
+  ```bash
+  cd android && ./gradlew assembleRelease
+  ```
+
+---
+
+## 4. Risk Management & Acceptance Criteria
+
+| Risk Factor | Impact | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Data Migration from v1.0 Schema** | High | Write lightweight SQLite migration script (`v1_to_v2_migration.sql`) renaming legacy Spanish columns to English identifiers upon database initialization. |
+| **UI Jitter on Heavy Catalogs** | Medium | Mandate `expo-image` GPU caching and explicit `estimatedItemSize` props on all virtualized FlashLists. |
+| **Ad Load Failure / UI Shift** | Low | Wrap AdBanner in fixed-height container; unmount gracefully if `AD_ENABLED` is `false`. |
+
+---
+
+## 5. Next Immediate Action
+
+Proceed to Phase 3 by initializing the first module triad under `/docs/modules/catalog-inventory/` (`spec.md`, `plan.md`, and `test.md`).
