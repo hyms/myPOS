@@ -1,36 +1,35 @@
 package com.tpvmovilexpress.domain.rules
 
-import com.tpvmovilexpress.domain.entities.CartType
 import com.tpvmovilexpress.domain.valueobjects.Currency
 import com.tpvmovilexpress.domain.valueobjects.Money
 
 /**
  * Domain rules for cart calculations.
  */
-object CartRules {
+public object CartRules {
 
     /**
      * Represents a single line in a cart for calculation purposes.
      */
-    data class CartLine(
-        val unitPrice: Money,
-        val quantity: Double,
-        val discount: Money
+    public data class CartLine(
+        public val unitPrice: Money,
+        public val quantity: Double,
+        public val discount: Money
     )
 
     /**
      * Result of cart totals calculation.
      */
-    data class CartTotals(
-        val subtotal: Money,
-        val discount: Money,
-        val total: Money
+    public data class CartTotals(
+        public val subtotal: Money,
+        public val discount: Money,
+        public val total: Money
     )
 
     /**
      * Selects the appropriate unit price based on cart type.
      */
-    fun selectUnitPrice(salePrice: Money, purchasePrice: Money, cartType: CartType): Money =
+    public fun selectUnitPrice(salePrice: Money, purchasePrice: Money, cartType: CartType): Money =
         when (cartType) {
             CartType.SALE -> salePrice
             CartType.PURCHASE -> purchasePrice
@@ -39,7 +38,7 @@ object CartRules {
     /**
      * Calculates line subtotal (unitPrice * quantity) rounded to 2 decimal places.
      */
-    fun lineSubtotal(line: CartLine): Money {
+    public fun lineSubtotal(line: CartLine): Money {
         val factor = line.quantity
         require(factor.isFinite() && factor >= 0) { "Quantity must be non-negative and finite" }
         return line.unitPrice.times(factor).round2()
@@ -48,7 +47,7 @@ object CartRules {
     /**
      * Calculates cart totals from lines.
      */
-    fun calcTotals(lines: List<CartLine>, currency: Currency): CartTotals {
+    public fun calcTotals(lines: List<CartLine>, currency: Currency): CartTotals {
         require(lines.isNotEmpty()) { "Cart cannot be empty" }
 
         val currencyCode = lines.first().unitPrice.currency.code
@@ -74,7 +73,7 @@ object CartRules {
     /**
      * Applies discount, clamping to [0, subtotal].
      */
-    fun applyDiscount(subtotal: Money, discount: Money): Money {
+    public fun applyDiscount(subtotal: Money, discount: Money): Money {
         val clamped = discount.amountCents.coerceIn(0L, subtotal.amountCents)
         return Money.fromCents(clamped, subtotal.currency)
     }
@@ -82,7 +81,7 @@ object CartRules {
     /**
      * Calculates change amount for cash payments.
      */
-    fun calcChange(total: Money, received: Money): Money {
+    public fun calcChange(total: Money, received: Money): Money {
         require(total.currency.code == received.currency.code) { "Currency mismatch" }
         return (received - total).round2()
     }
@@ -91,7 +90,7 @@ object CartRules {
 /**
  * Represents the type of cart (sale or purchase).
  */
-sealed class CartType {
-    object SALE : CartType()
-    object PURCHASE : CartType()
+public sealed class CartType {
+    public object SALE : CartType()
+    public object PURCHASE : CartType()
 }

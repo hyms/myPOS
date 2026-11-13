@@ -9,7 +9,7 @@ This document defines the architectural governance, coding standards, and cross-
 | Path | Purpose |
 |---|---|
 | `rn-app/` | Legacy React Native + Expo application (TypeScript, Expo Router, NativeWind, SQLite JSI) |
-| `kmp-app/` | New Kotlin Multiplatform + Compose Multiplatform application (SQLDelight) |
+| `kmp-app/` | New Kotlin Multiplatform + Compose Multiplatform application (SQLDelight, Koin) |
 | `docs/` | Master architectural specs and plans shared by both apps |
 | `scripts/` | Root build, migration, and automation scripts |
 | `AGENTS.md`, `README.md` | Workspace-level governance and documentation |
@@ -23,24 +23,20 @@ This document defines the architectural governance, coding standards, and cross-
 ---
 
 ## 1. Versioning & Release Governance
-
-| Standard | Value |
-|---|---|
-| **Semantic Versioning** | 2.0.0 (MAJOR.MINOR.PATCH) |
-| **Module Version** | Every module at `v2.0.0` |
-| **Breaking Changes** | Require MAJOR bump; coordinated via `migrations.ts` `user_version` |
-| **Branch Strategy** | `main` = production-ready; feature branches per module |
+- **Semantic Versioning**: 2.0.0 (MAJOR.MINOR.PATCH)
+- **Module Version**: Every module at `v2.0.0`
+- **Breaking Changes**: Require MAJOR bump; coordinated via `kmp-app/src/data/database/migrations.ts` `user_version`
+- **Branch Strategy**: `main` = production-ready; feature branches per module
 
 ---
 
 ## 2. Language Governance (STRICT)
-
 | Layer | Language | Enforcement |
 |---|---|---|
-| **Code identifiers** (variables, functions, classes, types, interfaces) | **English only** | ESLint + TypeScript compile |
-| **Database** (tables, columns, indexes, constraints) | **English only** | Migration DDL |
-| **API / DTOs / Repository interfaces** | **English only** | TypeScript types |
-| **UI strings** (user-visible text) | **Spanish only** via i18n keys | `i18n/es/*.json` namespaces |
+| **Code identifiers** (variables, functions, classes, types, interfaces) | **English only** | Koin + Kotlin compile |
+| **Database** (tables, columns, indexes, constraints) | **English only** | SQLDelight DDL |
+| **API / DTOs / Repository interfaces** | **English only** | Kotlin types |
+| **UI strings** (user-visible text) | **Spanish only** via i18n keys | `composeResources/values-es/strings.xml` |
 
 > **Zero tolerance:** No Spanish in code/DB. No English in UI strings. Violations fail CI.
 
@@ -50,18 +46,18 @@ This document defines the architectural governance, coding standards, and cross-
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  PRESENTATION (React Native / Expo Router)                 │
-│  Screens, Components, Hooks, Zustand Stores, i18n          │
+│  PRESENTATION (Compose Multiplatform)                      │
+│  Screens, Compose Components, ViewModels, StateFlow, i18n  │
 ├─────────────────────────────────────────────────────────────┤
 │  APPLICATION (Use Cases / Orchestration)                   │
 │  RegisterSale, RegisterExpense, GetCashSummary, etc.       │
 ├─────────────────────────────────────────────────────────────┤
-│  DOMAIN (Pure TypeScript — Zero External Dependencies)     │
+│  DOMAIN (Pure Kotlin — Zero External Dependencies)         │
 │  Entities, Value Objects (Money, Currency, Stock, SKU),    │
 │  Domain Rules, Repository Interfaces (Ports)               │
 ├─────────────────────────────────────────────────────────────┤
 │  INFRASTRUCTURE (Concrete Implementations)                 │
-│  SQLite Repositories, SecureStore, FileSystem, AdMob,      │
+│  SQLDelight Repositories, SecureStore, FileSystem, AdMob,  │
 │  ImageOptimizer, Print, Sharing, Biometric, SettingsStore  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -77,31 +73,29 @@ This document defines the architectural governance, coding standards, and cross-
 
 | Category | Technology | Version / Config |
 |---|---|---|
-| **Framework** | Expo SDK 56 (Managed Workflow) | TypeScript strict |
-| **Router** | Expo Router v5 (file-based) | |
-| **UI Styling** | NativeWind v4 + Tailwind CSS | Design tokens in `rn-app/src/presentation/theme/` |
-| **Lists** | `@shopify/flash-list` v2 | `numColumns={3}` (catalog), `{1}` (expenses) |
-| **Database** | `expo-sqlite` (JSI sync API) | `openDatabaseSync`, `withTransactionSync` |
-| **State** | Zustand | Granular selectors, manual invalidation |
-| **Auth** | `expo-secure-store` (PIN hash), `expo-local-authentication` (biometric) | |
-| **Images** | `expo-image-manipulator` + `expo-file-system` + `expo-image` | 400×400, JPEG 70%, <40KB |
-| **Print/Share** | `expo-print` + `expo-sharing` | HTML receipts |
-| **Backup** | `expo-document-picker` + `expo-file-system` | |
-| **Dates** | `dayjs` | |
-| **Toasts** | `react-native-toast-message` | |
-| **Package Manager** | `pnpm` | |
+| **Framework** | Kotlin Multiplatform 1.9+ | Managed, Kotlin strict |
+| **Router** | Compose Multiplatform | File-based navigation |
+| **UI Styling** | Compose Material3 + Material You | Design tokens in `kmp-app/composeApp/src/commonMain/resources/` |
+| **Lists** | `LazyVerticalGrid` | `columns={3}` (catalog), `{1}` (expenses) |
+| **Database** | SQLDelight + SQLite JSI | `openDatabaseSync`, `withTransactionSync` |
+| **State** | Koin | Granular ViewModels, manual invalidation |
+| **Auth** | `SecureStore` (PIN hash), `Biometric` API | |
+| **Images** | `ImageManipulator` (400×400, JPEG 70%) + `FileSystem` + `Compose Image` | 400×400, JPEG 70%, <40KB |
+| **Print/Share** | `Print` + `Share` APIs | HTML receipts |
+| **Backup** | `DocumentPicker` + `FileSystem` | |
+| **Dates** | `kotlinx-datetime` | |
+| **Toasts** | `compose-toast` | |
+| **Package Manager** | `gradle` | |
 
 ---
 
 ## 5. Database & Persistence Rules
-
-### 5.1 SQLite JSI (Offline-First)
-- Single database file: `tpv.db`
+- Single database file: `tpv.db` (managed by SQLDelight)
 - **All writes** wrapped in `db.withTransactionSync(() => { ... })` — atomic, auto-rollback
 - **Reads** direct via `db.getAllSync` / `db.getFirstSync` — zero-latency
 - `PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`
 
-### 5.2 Schema Conventions
+### Schema Conventions
 | Convention | Rule |
 |---|---|
 | Table names | `snake_case`, plural (`products`, `sales_transactions`) |
@@ -112,9 +106,9 @@ This document defines the architectural governance, coding standards, and cross-
 | Timestamps | `registered_at`, `updated_at`, `deleted_at` (ISO 8601 in code) |
 | Indexes | Partial (`WHERE deleted_at IS NULL`) on FK and query columns |
 
-### 5.3 Migration Protocol
+### Migration Protocol
 - Versioned via `PRAGMA user_version`
-- **Single source of truth:** `rn-app/src/data/database/migrations.ts` runner
+- **Single source of truth:** `kmp-app/src/data/database/migrations.ts` runner
 - **Ordering (v2.0.0):** `catalog-inventory` → `sales-checkout` → `financial-accumulators` → `expenses-cashflow` → `system-settings`
 - All share `user_version = 2`
 - Atomic: each migration runs in `withTransactionSync`
@@ -125,12 +119,12 @@ This document defines the architectural governance, coding standards, and cross-
 
 | VO | File | Purpose |
 |---|---|---|
-| `Currency` | `rn-app/src/domain/value-objects/Currency.ts` | `Bs` \| `$` \| `€` with `Intl.NumberFormat` per locale |
-| `Money` | `rn-app/src/domain/value-objects/Money.ts` | `amount` (2dp) + `Currency`; `add`, `subtract`, `format`, `round2` |
-| `Stock` | `rn-app/src/domain/value-objects/Stock.ts` | Non-negative decimal (3dp); `add`, `subtract`, `isBelow` |
-| `SKU` | `rn-app/src/domain/value-objects/SKU.ts` | Alphanumeric + hyphen/underscore, max 32, uppercase |
-| `PaymentMethod` | `rn-app/src/domain/entities/PaymentMethod.ts` | `CASH` \| `CARD` \| `TRANSFER` \| `QR` |
-| `ChangeAmount` | `rn-app/src/domain/value-objects/ChangeAmount.ts` | `received - total`; `isSufficient()`, color class |
+| `Currency` | `kmp-app/src/commonMain/kotlin/domain/value-objects/Currency.kt` | `Bs` \| `$` \| `€` with `Intl.NumberFormat` per locale |
+| `Money` | `kmp-app/src/commonMain/kotlin/domain/value-objects/Money.kt` | `amount` (2dp) + `Currency`; `add`, `subtract`, `format`, `round2` |
+| `Stock` | `kmp-app/src/commonMain/kotlin/domain/value-objects/Stock.kt` | Non-negative decimal (3dp); `add`, `subtract`, `isBelow` |
+| `SKU` | `kmp-app/src/commonMain/kotlin/domain/value-objects/SKU.kt` | Alphanumeric + hyphen/underscore, max 32, uppercase |
+| `PaymentMethod` | `kmp-app/src/commonMain/kotlin/domain/entities/PaymentMethod.kt` | `CASH` \| `CARD` \| `TRANSFER` \| `QR` |
+| `ChangeAmount` | `kmp-app/src/commonMain/kotlin/domain/value-objects/ChangeAmount.kt` | `received - total`; `isSufficient()`, color class |
 
 > **All modules consume these VOs.** No primitive `number` for money/stock in domain/application layers.
 
@@ -158,8 +152,8 @@ This document defines the architectural governance, coding standards, and cross-
 
 | View | Allowed? | Implementation |
 |---|---|---|
-| Catalog / Inventory list | ✅ Yes | `ListFooterComponent` in FlashList |
-| Expenses list | ✅ Yes | `ListFooterComponent` in FlashList |
+| Catalog / Inventory list | ✅ Yes | `ListFooterComponent` in `LazyVerticalGrid` |
+| Expenses list | ✅ Yes | `ListFooterComponent` in `LazyVerticalGrid` |
 | Caja (Cash Summary) | ✅ Yes | `ListFooterComponent` |
 | Movimientos (Transactions) | ✅ Yes | `ListFooterComponent` |
 | **Checkout / Payment / Receipt** | ❌ No | `AD_ENABLED` ignored |
@@ -167,7 +161,7 @@ This document defines the architectural governance, coding standards, and cross-
 | **ConfirmDialog / PIN Gate / Lock** | ❌ No | `AD_ENABLED` ignored |
 | **Settings screen** | ❌ No | `AD_ENABLED` ignored |
 
-**Master toggle:** `settings.ad_enabled` (SQLite) → `settingsStore.adEnabled` (Zustand) → `useAdEnabled()` hook
+**Master toggle:** `settings.ad_enabled` (SQLite) → `CompositionLocal` → `useAdEnabled()` composable
 
 ---
 
@@ -181,48 +175,60 @@ This document defines the architectural governance, coding standards, and cross-
 | **INV-04** | Single payment method per transaction | `PaymentMethod` VO, no split payments |
 | **INV-05** | Category required for products | `category_id NOT NULL`, validated in repo + form |
 | **INV-06** | Singleton tables have exactly 1 row (`id=1`) | `CHECK (id = 1)` + `INSERT OR IGNORE` |
-| **INV-07** | Stock alerts fire post-commit only | `useStockAlert` hook after successful transaction |
-| **INV-08** | Critical actions require PIN | `usePinGate` hook: change PIN, delete transaction, restore backup |
+| **INV-07** | Stock alerts fire post-commit only | `useStockAlert` composable after successful transaction |
+| **INV-08** | Critical actions require PIN | `usePinGate` composable: change PIN, delete transaction, restore backup |
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `ImageOptimizer` + `ImageStorage` |
-| **INV-10** | Strict TypeScript everywhere | `rn-app/tsconfig.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` |
+| **INV-10** | Strict Kotlin everywhere | `kmp-app/build.gradle.kts`: `kotlin("jvm") version "1.9.0"`, `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs |
 
 ---
 
 ## 10. Coding Standards
 
-### 10.1 TypeScript
-```ts
+### 10.1 Kotlin
+```kotlin
 // ✅ Required: explicit types on public APIs
-export function registerSale(input: RegisterSaleInput): RegisterSaleResult;
+fun registerSale(input: RegisterSaleInput): RegisterSaleResult
 
-// ✅ Required: readonly on entities/DTOs
-export interface Product {
-  readonly id: ProductId;
-  readonly name: string;
-  // ...
-}
+// ✅ Required: immutable data classes
+data class Product(
+    val id: ProductId,
+    val name: String,
+    // ...
+)
 
 // ✅ Required: branded types for IDs
-export type ProductId = number & { readonly __brand: 'ProductId' };
+@JvmInline
+value class ProductId(val id: Int) { val __brand: 'ProductId' }
+
+// ✅ Required: strict null-safety
+@JvmInline
+fun <T> T?.let { /* ... */ }
+
+// ✅ Required: explicitApi() for public APIs
+explicitApi<RegisterSaleResult>(RegisterSaleResult)
 ```
 
-### 10.2 React / NativeWind
-- Components memoized by default (`React.memo`, `useCallback`, `useMemo`)
-- FlashList: `keyExtractor`, `renderItem` stable, no `estimatedItemSize`
-- Styles: NativeWind classes + design tokens (`theme/tokens.ts`)
+### 10.2 Compose Multiplatform
+- Components memoized by default (`@Composable` with `remember`)
+- `LazyVerticalGrid` / `LazyColumn` with `key` and `itemContent`
+- Theming: Material3 with Material You (colors, typography, shapes)
+- State: `StateFlow` with `collectAsState()` or `remember { mutableStateOf() }`
 
-### 10.3 SQL
+### 10.3 SQLDelight
 - **Always parameterized** — never string concatenation
 - Column aliases match entity fields (`current_stock` → `currentStock` via mapper)
+- Migrations: `.sqm` files, atomic, ordered
 
 ### 10.4 Imports Order
-```ts
+```kotlin
 // 1. External
-import { useState } from 'react';
-// 2. Internal absolute (@/ alias)
-import { useCurrency } from '@/presentation/hooks/useCurrency';
+import com.google.kotlinx.coroutines.*
+
+// 2. Internal absolute (package) 
+import com.mypos.shared.domain.value.objects.Currency
+
 // 3. Relative
-import './Component.css';
+import com.mypos.kmp.app.ui.screens.CartScreen
 ```
 
 ### 10.5 No Comments (unless requested)
@@ -235,25 +241,23 @@ import './Component.css';
 
 | Layer | Framework | Target |
 |---|---|---|
-| **Unit (Domain)** | Jest | 100% functions/branches on VOs, Rules, Entities |
-| **Integration (Data)** | Jest + SQLite | 100% repo methods, use cases, atomic flows |
-| **Migration** | Jest + SQLite | v1→v2 zero-data-loss, idempotent |
-| **Hooks** | Jest + RTL | 100% hook logic |
-| **Components** | Jest + RTL | 100% render/interaction |
+| **Unit (Domain)** | Kotlin Test | 100% functions/branches on VOs, Rules, Entities |
+| **Integration (Data)** | Kotlin Test + SQLDelight | 100% repo methods, use cases, atomic flows |
+| **Migration** | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent |
+| **Composables** | Compose Testing Library | 100% composable logic |
 | **E2E** | Detox / Maestro | Critical user flows (checkout, PIN, backup) |
-| **CI Gate** | All suites pass + `tsc --noEmit` + `eslint` | Required for merge |
+| **CI Gate** | All suites pass + `./gradlew check` + `./gradlew detekt` | Required for merge |
 
 ---
 
 ## 12. Agent Workflow Rules
-
 1. **Read specs first** — `/docs/modules/*/spec.md` before any implementation
 2. **Follow layer boundaries** — never import Infrastructure in Domain
 3. **Use VOs** — `Money`, `Stock`, `SKU`, `Currency` in domain/application
 4. **Atomic transactions** — every write use case uses `withTransactionSync`
 5. **English identifiers** — rename if you see Spanish in code/DB
-6. **i18n keys** — add to `rn-app/src/presentation/i18n/es/*.json` for new UI text
-7. **Run tests** — `cd rn-app && pnpm test` (unit + integration) before marking complete
+6. **i18n keys** — add to `kmp-app/composeResources/values-es/strings.xml` for new UI text
+7. **Run tests** — `cd kmp-app && ./gradlew testDebugUnitTest` (unit + integration) before marking complete
 8. **Update docs** — if schema/contracts change, update `spec.md` + `plan.md` + `test.md`
 
 ---
@@ -261,57 +265,43 @@ import './Component.css';
 ## 13. File Structure Reference
 
 ```
-rn-app/src/
-├── domain/                    # 🔵 Pure Domain (no deps)
-│   ├── entities/              # Product, Category, SaleTransaction, Expense, UserSettings, FinancialSummary...
-│   ├── value-objects/         # Currency, Money, Stock, SKU, PaymentMethod, ChangeAmount
-│   └── rules/                 # stockRules, cartRules, expenseRules, settingsRules
-├── data/                      # 🟢 Data Layer
-│   ├── database/              # client.ts, migrations.ts, schema.sql.ts, seed.sql.ts
-│   ├── repositories/          # Interfaces (Ports) + Sqlite* Implementations
-│   └── mappers/               # rowMappers.ts (snake_case → camelCase)
-├── application/               # 🟡 Use Cases
-│   ├── products/              # ProductManagement
-│   ├── sales/                 # RegisterSale
-│   ├── purchases/             # RegisterPurchase
-│   ├── expenses/              # RegisterExpense
-│   ├── transactions/          # ReverseTransaction (shared)
-│   ├── accumulators/          # GetCashSummary, GetPeriodSummary, UpdateAccumulator
-│   ├── settings/              # GetSettings, UpdateSettings
-│   ├── security/              # VerifyPin, SetPin
-│   └── backup/                # ExportDatabase, RestoreDatabase
-├── infrastructure/            # 🟠 Concrete Services
-│   ├── image/                 # ImageOptimizer, ImageStorage
-│   ├── pdf/                   # ComprobanteRenderer, ComprobanteService
-│   ├── security/              # PinService, BiometricService
-│   ├── settings/              # SettingsStore (SQLite hydration)
-│   └── toast/                 # ToastService
-└── presentation/              # 🟣 UI Layer
-    ├── components/
-    │   ├── ui/                # Button, Input, Modal, Card, Badge, AnimatedPressable
-    │   ├── product/           # ProductGridCard, CategorySelector, QuickCategoryModal...
-    │   ├── cart/              # CartLine, CartSummaryBar, LineItemModal, PaymentModal
-    │   ├── expenses/          # ExpenseListItem, CategorySelector, QuickCategoryModal
-    │   ├── filters/           # SearchBar, CategoryChipsRow, SortMenu
-    │   ├── feedback/          # EmptyState, Toast, ConfirmDialog
-    │   ├── settings/          # SectionHeader, CurrencySelector, PageSizeInput, PinForm...
-    │   ├── accumulators/      # CashBalanceCard, StatCard, BreakdownBar
-    │   ├── movimientos/       # MovimientoListItem, TipoFilterChips
-    │   └── ads/               # AdBanner
-    ├── hooks/                 # useProducts, useCart, useExpenses, useCashSummary...
-    ├── stores/                # Zustand: *Store.ts
-    └── theme/                 # tokens.ts, palette.json, index.ts
-```
-
-**KMP workspace (`kmp-app/`):**
-
-```
 kmp-app/
-├── shared/src/commonMain/kotlin/   # Domain, application, data (SQLDelight), shared UI
-├── composeApp/src/commonMain/      # Compose Multiplatform UI + resources
-├── composeApp/src/androidMain/     # Android platform implementations
-├── gradle/libs.versions.toml       # Version catalog
-└── settings.gradle.kts             # Gradle modules: shared, composeApp
+├── shared/
+│   └── src/
+│       └── commonMain/
+│           └── kotlin/
+│               ├── domain/
+│               │   ├── entities/
+│               │   ├── value-objects/
+│               │   └── rules/
+│               ├── application/
+│               │   ├── products/
+│               │   ├── sales/
+│               │   ├── expenses/
+│               │   ├── transactions/
+│               │   ├── accumulators/
+│               │   └── settings/
+│               └── data/
+│                   └── database/
+│                       ├── schema.sq
+│                       └── migrations/
+├── composeApp/
+│   └── src/
+│       └── commonMain/
+│           ├── kotlin/
+│           │   └── ui/
+│           │   └── resources/
+│           └── resources/
+│               ├── values-es/
+│               │   └── strings.xml
+│               └── common/
+├── composeApp/
+│   └── src/
+│       ├── androidMain/
+│       │   └── kotlin/
+│       └── iosMain/
+│           └── kotlin/
+└── settings.gradle.kts
 ```
 
 ---
@@ -328,4 +318,4 @@ kmp-app/
 
 ---
 
-*Last updated: 2026-11-10 — v2.0.0 Architecture Governance*
+*Last updated: 2026-11-12 — v2.0.0 Architecture Governance*

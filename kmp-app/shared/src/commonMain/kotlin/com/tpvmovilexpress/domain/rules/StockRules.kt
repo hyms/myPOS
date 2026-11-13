@@ -15,7 +15,7 @@ object StockRules {
      * @throws InsufficientStockException if stock is insufficient
      */
     @Throws(InsufficientStockException::class)
-    fun validateStockAvailable(product: Product, quantity: Stock): Stock {
+    public fun validateStockAvailable(product: Product, quantity: Stock): Stock {
         val available = product.currentStock
         val required = quantity
         if (available.isBelow(required)) {
@@ -32,14 +32,14 @@ object StockRules {
     /**
      * Checks if a product's current stock is below its minimum threshold.
      */
-    fun isBelowMin(product: Product): Boolean =
+    public fun isBelowMin(product: Product): Boolean =
         product.currentStock.isBelow(product.minStock)
 
     /**
      * Validates that a stock quantity is valid (non-negative).
      * @throws IllegalArgumentException if stock is negative
      */
-    fun validateNonNegative(stock: Stock): Stock {
+    public fun validateNonNegative(stock: Stock): Stock {
         if (stock.amountMilliunits < 0) {
             throw IllegalArgumentException("Stock cannot be negative: ${stock.amount}")
         }
@@ -50,23 +50,23 @@ object StockRules {
      * Validates that a minimum stock level is valid.
      * @throws IllegalArgumentException if min stock is negative
      */
-    fun validateMinStock(minStock: Stock): Stock {
+    public fun validateMinStock(minStock: Stock): Stock {
         if (minStock.amountMilliunits < 0) {
             throw IllegalArgumentException("Minimum stock cannot be negative: ${minStock.amount}")
         }
         return minStock
     }
-}
 
-/**
- * Exception thrown when stock is insufficient for an operation.
- */
-class InsufficientStockException(
-    val productId: ProductId,
-    val productName: String,
-    val available: Stock,
-    val requested: Stock
-) : IllegalArgumentException(
-    "Insufficient stock for '$productName' (id: ${productId.value}). " +
-    "Available: ${available.amount}, Requested: ${requested.amount}"
-)
+    /**
+     * Exception thrown when stock is insufficient for an operation.
+     */
+    public class InsufficientStockException(
+        public val productId: ProductId,
+        public val productName: String,
+        public val available: Stock,
+        public val requested: Stock
+    ) : IllegalArgumentException(
+        "Insufficient stock for '$productName' (id: ${productId.value}). " +
+        "Available: ${available.amount}, Requested: ${requested.amount}"
+    )
+}

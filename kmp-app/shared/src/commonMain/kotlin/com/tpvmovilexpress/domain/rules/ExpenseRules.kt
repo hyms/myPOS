@@ -1,18 +1,17 @@
 package com.tpvmovilexpress.domain.rules
 
 import com.tpvmovilexpress.domain.valueobjects.Money
-import com.tpvmovilexpress.domain.valueobjects.Currency
 
 /**
  * Domain rules for expense validation.
  */
-object ExpenseRules {
+public object ExpenseRules {
 
     /**
      * Validates that an expense amount is positive.
      * @throws IllegalArgumentException if amount is not positive
      */
-    fun validateAmount(amount: Money): Money {
+    public fun validateAmount(amount: Money): Money {
         require(amount.isPositive) { "Expense amount must be positive, got ${amount.amount}" }
         return amount
     }
@@ -21,7 +20,7 @@ object ExpenseRules {
      * Validates that an expense description is not empty.
      * @throws IllegalArgumentException if description is empty
      */
-    fun validateDescription(description: String): String {
+    public fun validateDescription(description: String): String {
         val trimmed = description.trim()
         require(trimmed.isNotEmpty()) { "Expense description cannot be empty" }
         return trimmed
@@ -30,7 +29,7 @@ object ExpenseRules {
     /**
      * Rounds an amount to 2 decimal places using banker's rounding.
      */
-    fun roundAmount(amount: Double): Double {
+    public fun roundAmount(amount: Double): Double {
         require(amount.isFinite()) { "Amount must be finite" }
         return (amount * 100).roundToInt() / 100.0
     }

@@ -1,0 +1,228 @@
+-- Products table (Catalog & Inventory module)
+
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    sku TEXT,
+    name TEXT NOT NULL,
+    selling_price REAL NOT NULL CHECK (selling_price >= 0),
+    purchase_price REAL NOT NULL CHECK (purchase_price >= 0),
+    current_stock REAL NOT NULL DEFAULT 0.0 CHECK (current_stock >= 0),
+    min_stock REAL NOT NULL DEFAULT 0.0 CHECK (min_stock >= 0),
+    image_uri TEXT,
+    registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    deleted_at INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+-- Partial indexes (only active rows)
+CREATE INDEX idx_products_category ON products(category_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_products_name ON products(name) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_products_sku ON products(sku) WHERE deleted_at IS NULL AND sku IS NOT NULL;
+
+-- ─────────────────────────────────────────────
+-- Queries
+-- ─────────────────────────────────────────────
+
+selectAllWithPopularity:
+SELECT
+    p.id,
+    p.category_id,
+    p.sku,
+    p.name,
+    p.selling_price,
+    p.purchase_price,
+    p.current_stock,
+    p.min_stock,
+    p.image_uri,
+    p.registered_at,
+    p.updated_at,
+    p.deleted_at,
+    COALESCE(SUM(d.quantity), 0) AS popularity
+FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+    ON t.id = d.transaction_id
+    AND t.type = 'SALE'
+    AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+GROUP BY p.id
+ORDER BY p.name ASC
+LIMIT :limit OFFSET :offset;
+
+selectAllWithPopularityByCategory:
+SELECT
+    p.id,
+    p.category_id,
+    p.sku,
+    p.name,
+    p.selling_price,
+    p.purchase_price,
+    p.current_stock,
+    p.min_stock,
+    p.image_uri,
+    p.registered_at,
+    p.updated_at,
+    p.deleted_at,
+    COALESCE(SUM(d.quantity), 0) AS popularity
+FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+    ON t.id = d.transaction_id
+    AND t.type = 'SALE'
+    AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+    AND p.category_id = :categoryId
+GROUP BY p.id
+ORDER BY p.name ASC
+LIMIT :limit OFFSET :offset;
+
+selectAllWithPopularitySearch:
+SELECT
+    p.id,
+    p.category_id,
+    p.sku,
+    p.name,
+    p.selling_price,
+    p.purchase_price,
+    p.current_stock,
+    p.min_stock,
+    p.image_uri,
+    p.registered_at,
+    p.updated_at,
+    p.deleted_at,
+    COALESCE(SUM(d.quantity), 0) AS popularity
+FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+    ON t.id = d.transaction_id
+    AND t.type = 'SALE'
+    AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+    AND p.name LIKE :searchPattern
+GROUP BY p.id
+ORDER BY p.name ASC
+LIMIT :limit OFFSET :offset;
+
+selectAllWithPopularitySearchByCategory:
+SELECT
+    p.id,
+    p.category_id,
+    p.sku,
+    p.name,
+    p.selling_price,
+    p.purchase_price,
+    p.current_stock,
+    p.min_stock,
+    p.image_uri,
+    p.registered_at,
+    p.updated_at,
+    p.deleted_at,
+    COALESCE(SUM(d.quantity), 0) AS popularity
+FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+    ON t.id = d.transaction_id
+    AND t.type = 'SALE'
+    AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+    AND p.name LIKE :searchPattern
+    AND p.category_id = :categoryId
+GROUP BY p.id
+ORDER BY p.name ASC
+LIMIT :limit OFFSET :offset;
+
+selectAllWithPopularityByPopularity:
+SELECT
+    p.id,
+    p.category_id,
+    p.sku,
+    p.name,
+    p.selling_price,
+    p.purchase_price,
+    p.current_stock,
+    p.min_stock,
+    p.image_uri,
+    p.registered_at,
+    p.updated_at,
+    p.deleted_at,
+    COALESCE(SUM(d.quantity), 0) AS popularity
+FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+    ON t.id = d.transaction_id
+    AND t.type = 'SALE'
+    AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+GROUP BY p.id
+ORDER BY popularity DESC, p.name ASC
+LIMIT :limit OFFSET :offset;
+
+selectById:
+SELECT *
+FROM products
+WHERE id = :id;
+
+selectBySku:
+SELECT *
+FROM products
+WHERE sku = :sku AND deleted_at IS NULL;
+
+selectByIds:
+SELECT *
+FROM products
+WHERE id IN :ids AND deleted_at IS NULL;
+
+insert:
+INSERT INTO products (
+    category_id, sku, name, selling_price, purchase_price,
+    current_stock, min_stock, image_uri, registered_at, updated_at
+)
+VALUES (
+    :categoryId, :sku, :name, :sellingPrice, :purchasePrice,
+    :currentStock, :minStock, :imageUri, :registeredAt, :updatedAt
+);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+update:
+UPDATE products
+SET category_id = :categoryId,
+    sku = :sku,
+    name = :name,
+    selling_price = :sellingPrice,
+    purchase_price = :purchasePrice,
+    current_stock = :currentStock,
+    min_stock = :minStock,
+    image_uri = :imageUri,
+    updated_at = :updatedAt
+WHERE id = :id AND deleted_at IS NULL;
+
+softDelete:
+UPDATE products
+SET deleted_at = :deletedAt,
+    updated_at = :deletedAt
+WHERE id = :id AND deleted_at IS NULL;
+
+updateStock:
+UPDATE products
+SET current_stock = :currentStock,
+    updated_at = :updatedAt
+WHERE id = :id AND deleted_at IS NULL;
+
+countActive:
+SELECT COUNT(*)
+FROM products
+WHERE deleted_at IS NULL;
+
+existsById:
+SELECT COUNT(*)
+FROM products
+WHERE id = :id;
+
+existsBySkuExcludingId:
+SELECT COUNT(*)
+FROM products
+WHERE sku = :sku AND deleted_at IS NULL AND id != :excludeId;

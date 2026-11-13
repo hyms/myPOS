@@ -1,14 +1,11 @@
 # TPV Móvil Express
 
-> **Point of Sale Mobile Express** — Offline-first, Expo 56, React Native, SQLite JSI, Clean Architecture v2.0.0
+> **Point of Sale Mobile Express** — Offline-first, Clean Architecture v2.0.0, Dual-App Workspace
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/OWNER/REPO/ci.yml?branch=main&logo=github)](https://github.com/OWNER/REPO/actions)
 [![Test Coverage](https://img.shields.io/codecov/c/github/OWNER/REPO?logo=codecov)](https://codecov.io/gh/OWNER/REPO)
-[![Tech Stack](https://img.shields.io/badge/React%20Native-Expo%2056-000?logo=expo&logoColor=white)](https://expo.dev)
+[![Tech Stack](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Database](https://img.shields.io/badge/SQLite-JSI%20Sync-003B57?logo=sqlite&logoColor=white)](https://docs.expo.dev/versions/latest/sdk/sqlite/)
-[![Language](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Styling](https://img.shields.io/badge/NativeWind-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://www.nativewind.dev)
-[![Lists](https://img.shields.io/badge/FlashList-v2-FF6B6B?logo=react&logoColor=white)](https://shopify.github.io/flash-list/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -20,7 +17,7 @@
 ├── docs/          # Master specs, plans, and test matrices (shared)
 ├── scripts/       # Root build, migration, and automation scripts
 ├── rn-app/        # Legacy React Native + Expo app (TypeScript, Expo Router, NativeWind)
-├── kmp-app/       # Kotlin Multiplatform + Compose Multiplatform app (SQLDelight)
+├── kmp-app/       # Kotlin Multiplatform + Compose Multiplatform app (SQLDelight, Koin)
 ├── AGENTS.md      # Agent governance for the whole workspace
 └── README.md      # This file
 ```
@@ -35,16 +32,15 @@
 
 ```mermaid
 graph TD
-    %% Presentation Layer
-    subgraph PRES["🟣 PRESENTATION (Expo Router + NativeWind)"]
+    %% Presentation Layer (KMP Compose)
+    subgraph PRES["🟣 PRESENTATION (Compose Multiplatform)"]
         SCR[Screens: Tabs / Stack]
-        CMP[Components: ProductGridCard, CartLine, ExpenseListItem, CashBalanceCard...]
-        HKS[Hooks: useProducts, useCart, useExpenses, useCashSummary...]
-        STO[Zustand Stores: saleCartStore, settingsStore, sessionStore...]
-        I18N[i18n: Spanish UI strings only]
+        CMP[Components: ProductGridScreen, LineItemDialog, PaymentDialog, CashBalanceCard...]
+        VMS[ViewModels: SaleViewModel, ExpenseViewModel, CashSummaryViewModel...]
+        I18N[i18n: Spanish UI strings via composeResources/values-es/strings.xml]
     end
 
-    %% Application Layer
+    %% Application Layer (KMP)
     subgraph APP["🟡 APPLICATION (Use Cases)"]
         UC1[RegisterSale]
         UC2[RegisterPurchase]
@@ -59,18 +55,18 @@ graph TD
         UC11[ExportDatabase / RestoreDatabase]
     end
 
-    %% Domain Layer
-    subgraph DOM["🔵 DOMAIN (Pure TS — Zero Deps)"]
+    %% Domain Layer (KMP - Common Main)
+    subgraph DOM["🔵 DOMAIN (Pure Kotlin — Zero Deps)"]
         ENT[Entities: Product, Category, SaleTransaction, Expense, UserSettings, FinancialSummary...]
         VO[Value Objects: Currency, Money, Stock, SKU, PaymentMethod, ChangeAmount]
         RUL[Domain Rules: stockRules, cartRules, expenseRules, settingsRules]
         REP[Repository Interfaces: IProductRepository, ISaleRepository, IExpenseRepository, IAccumulatorRepository, ISettingsRepository]
     end
 
-    %% Infrastructure Layer
+    %% Infrastructure Layer (KMP)
     subgraph INFRA["🟠 INFRASTRUCTURE (Concrete Implementations)"]
         DB[(SQLite JSI: tpv.db)]
-        SQL_REP[Sqlite*Repository Implementations]
+        SQL_REP[Sqlite*Repository Implementations via SQLDelight]
         SEC[PinService, BiometricService]
         IMG[ImageOptimizer, ImageStorage]
         PDF[ComprobanteRenderer, ComprobanteService]
@@ -90,7 +86,7 @@ graph TD
     classDef app fill:#ffe4d4,stroke:#f97316,color:#7c2d12;
     classDef dom fill:#d4fcd4,stroke:#22c55e,color:#14532d;
     classDef infra fill:#fef3c7,stroke:#f59e0b,color:#78350f;
-    class PRES,SCR,CMP,HKS,STO,I18N pres;
+    class PRES,SCR,CMP,VMS,I18N pres;
     class APP,UC1,UC2,UC3,UC4,UC5,UC6,UC7,UC8,UC9,UC10,UC11 app;
     class DOM,ENT,VO,RUL,REP dom;
     class INFRA,DB,SQL_REP,SEC,IMG,PDF,SET,AD,FS infra;
@@ -103,9 +99,11 @@ graph TD
 | Decisión | Justificación |
 |---|---|
 | **Clean Architecture + DDD** | Separación estricta de responsabilidades; Domain puro = testable, portable, sin dependencias de framework |
-| **Offline-First SQLite JSI** | `expo-sqlite` API síncrona (`openDatabaseSync`, `withTransactionSync`) → cero latencia, funciona sin red, ACID nativo |
-| **Expo 56 + New Architecture** | Hermes + Fabric + TurboModules → rendimiento nativo, hot reload rápido, ecosystem maduro |
-| **FlashList v2** | Virtualización real, `numColumns={3}` (catálogo) / `{1}` (listas), sub-50ms render, sin `estimatedItemSize` |
+| **KMP + SQLDelight** | Migraciones atómicas, esquema versionado, `PRAGMA user_version = 2`, cero inconsistencias |
+| **Offline-First SQLite** | SQLDelight genera tipos seguros; `db.withTransactionSync` → ACID nativo, cero latencia |
+| **Compose Material3** | UI unificada Android/iOS, Material You, diseño consistente, single source of truth |
+| **Compose Material You** | Tema dinámico, colores del sistema, adaptación automática a modo oscuro/claro |
+| **Koin** | Inyección de dependencias ligera, `explicitApi()`, nulo-safety estricta |
 | **Specification-Driven + SemVer** | Cada módulo tiene `spec.md`/`plan.md`/`test.md` versionados `v2.0.0` → contratos claros, migraciones coordinadas |
 | **Value Objects compartidos** | `Currency`, `Money`, `Stock`, `SKU` en Domain → invariantes centralizados, no primitivos sueltos |
 | **Atomic Transactions** | Todo write use case usa `db.withTransactionSync` → rollback automático, cero descuadres |
@@ -219,9 +217,10 @@ CREATE TABLE settings (
 ### Prerequisites
 - Node.js ≥ 20
 - pnpm ≥ 9
-- Expo CLI: `pnpm add -g expo-cli` (or use `pnpm dlx expo`)
+- Gradle (comes with Android Studio)
+- Kotlin 1.9+
 
-### Install & Run
+### Legacy React Native App (reference)
 
 ```bash
 # Clone
@@ -243,7 +242,34 @@ pnpm expo start
 # - Physical device (scan QR with Expo Go)
 ```
 
-> The KMP app is built separately: `cd kmp-app && ./gradlew build`.
+### New Kotlin Multiplatform App (active development)
+
+```bash
+# Clone
+git clone https://github.com/OWNER/REPO.git
+cd REPO
+
+# Kotlin Multiplatform app
+cd kmp-app
+
+# Build & run checks
+./gradlew check
+
+# Run unit/integration tests
+./gradlew testDebugUnitTest
+
+# Run Android preview
+./gradlew run
+
+# Or iOS preview
+./gradlew iosX64Run
+
+# Start dev server (optional)
+./gradlew configureKotlinMultiplatform
+```
+
+> **Legacy reference app** runs in `rn-app/` with `pnpm expo start`.  
+> **Active v2.0.0 development** runs in `kmp-app/` with Gradle commands.
 
 ### Environment Variables
 Create `.env.local` (optional, for remote config):
@@ -253,66 +279,59 @@ EXPO_PUBLIC_API_URL=https://api.example.com
 ```
 
 ### Database
-- Single file: `tpv.db` (created on first run)
+- Single file: `tpv.db` (managed by SQLDelight)
 - Migrations auto-run via `PRAGMA user_version` on app bootstrap
-- v1.0.0 → v2.0.0 migration is zero-data-loss (see `rn-app/src/data/database/migrations.ts`)
+- v1.0.0 → v2.0.0 migration is zero-data-loss (see `kmp-app/src/data/database/migrations.ts`)
 
 ---
 
 ## 🧪 Running Tests
 
-> All commands below run from `rn-app/` (the legacy Expo app).
+> All Gradle commands run from `kmp-app/`.
 
 ```bash
 # Unit tests (Domain VOs, Rules, Entities)
-pnpm test:unit
+./gradlew testDebugUnitTest
 
-# Integration tests (Repositories, Use Cases, SQLite)
-pnpm test:integration
+# Integration tests (Repositories, Use Cases, SQLDelight)
+./gradlew testDebugUnitTest --tests "*..integration.*"
 
 # Migration tests (v1→v2 zero-data-loss)
-pnpm test:migration
+./gradlew migrate
 
-# Hook tests
-pnpm test:hooks
+# All tests + type safety + lint (CI gate)
+./gradlew check
 
-# Component tests (React Native Testing Library)
-pnpm test:components
-
-# E2E tests (Detox / Maestro) — requires device/emulator
-pnpm test:e2e
-
-# All tests + TypeScript + Lint (CI gate)
-pnpm test:all
+# Detox / Maestro E2E tests (requires device/emulator)
+./gradlew detoxTest
 # or
-pnpm test && pnpm typecheck && pnpm lint
+./gradlew maestraTest
 ```
 
-### Test Structure
+### Test Structure (Kotlin)
+
 ```
-tests/
-├── unit/
-│   ├── system-settings/        # Currency, Money, UserSettings, settingsRules
-│   ├── catalog-inventory/      # Product, Category, Stock, SKU, stockRules
-│   ├── sales-checkout/         # CartItem, SaleTransaction, cartRules, ChangeAmount
-│   ├── expenses-cashflow/      # Expense, ExpenseCategory, expenseRules
-│   └── financial-accumulators/ # FinancialSummary, PeriodSummary
-├── integration/
-│   ├── system-settings/        # GetSettings, UpdateSettings, VerifyPin, SetPin, Backup
-│   ├── catalog-inventory/      # SqliteProductRepository, ProductManagement
-│   ├── sales-checkout/         # RegisterSale, RegisterPurchase, RevertTransaction
-│   ├── expenses-cashflow/      # RegisterExpense, ReverseTransaction (EXPENSE)
-│   ├── financial-accumulators/ # GetCashSummary, GetPeriodSummary, UpdateAccumulator
-│   └── security/               # PIN gate, constant-time verify
-├── migration/
-│   ├── catalog-inventory/
-│   ├── sales-checkout/
-│   ├── expenses-cashflow/
-│   ├── financial-accumulators/
-│   └── system-settings/
-├── hooks/                      # useProducts, useCart, useExpenses, useCashSummary...
-├── components/                 # ProductGridCard, CartLine, ExpenseListItem, CashBalanceCard...
-└── e2e/                        # checkoutFlow, pinChangeFlow, backupFlow, adEnabledFlow...
+src/
+├── commonMain/
+│   ├── domain/
+│   │   ├── entities/
+│   │   ├── value-objects/
+│   │   └── rules/
+│   ├── application/
+│   │   ├── products/
+│   │   ├── sales/
+│   │   ├── expenses/
+│   │   ├── transactions/
+│   │   ├── accumulators/
+│   │   └── settings/
+│   └── data/
+│       └── database/
+│           ├── schema.sq
+│           └── migrations/
+├── androidTest/
+│   └── ... (Android instrumented tests)
+└── iosTest/
+    └── ... (iOS UI tests via Firebase Test Lab)
 ```
 
 ---
@@ -336,19 +355,19 @@ Each module has `/spec.md` (contracts), `/plan.md` (implementation), `/test.md` 
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Expo SDK 56 (Managed, TypeScript strict) |
-| **Router** | Expo Router v5 (file-based) |
-| **Styling** | NativeWind v4 + Tailwind CSS (design tokens) |
-| **Lists** | `@shopify/flash-list` v2 |
-| **Database** | `expo-sqlite` JSI sync (`openDatabaseSync`, `withTransactionSync`) |
-| **State** | Zustand (granular selectors, manual invalidation) |
-| **Auth** | `expo-secure-store` (PIN SHA-256), `expo-local-authentication` (biometric) |
-| **Images** | `expo-image-manipulator` (400×400, JPEG 70%) + `expo-file-system` + `expo-image` |
-| **Print/Share** | `expo-print` (HTML) + `expo-sharing` |
-| **Backup** | `expo-document-picker` + `expo-file-system` |
-| **Dates** | `dayjs` |
-| **Toasts** | `react-native-toast-message` |
-| **Package Manager** | `pnpm` |
+| **Framework** | Kotlin Multiplatform 1.9+ (managed) |
+| **Router** | Compose Multiplatform |
+| **UI Styling** | Compose Material3 + Material You (design tokens) |
+| **Lists** | `LazyVerticalGrid` / `LazyColumn` |
+| **Database** | SQLDelight + SQLite JSI |
+| **State** | Koin ViewModels + StateFlow |
+| **Auth** | `SecureStore` (PIN hash), `Biometric` API |
+| **Images** | `ImageManipulator` (400×400, JPEG 70%) + `FileSystem` + `Compose Image` |
+| **Print/Share** | `Print` + `Share` APIs |
+| **Backup** | `DocumentPicker` + `FileSystem` |
+| **Dates** | `kotlinx-datetime` |
+| **Toasts** | `compose-toast` |
+| **Package Manager** | `gradle` |
 
 ---
 
@@ -358,14 +377,14 @@ Each module has `/spec.md` (contracts), `/plan.md` (implementation), `/test.md` 
 |---|---|
 | **INV-01** | Non-negative financial math (Money, Stock, totals) |
 | **INV-02** | Soft delete only (`deleted_at`), never hard delete |
-| **INV-03** | All multi-table writes atomic via `withTransactionSync` |
+| **INV-03** | All multi-table writes atomic via `db.withTransactionSync` |
 | **INV-04** | Single `PaymentMethod` per transaction (no split payments) |
 | **INV-05** | Category required for products (`category_id NOT NULL`) |
 | **INV-06** | Singleton tables exactly 1 row (`id=1`, `CHECK`) |
 | **INV-07** | Stock alerts fire **post-commit** only |
 | **INV-08** | Critical actions require PIN (`usePinGate`) |
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, target <40KB |
-| **INV-10** | Strict TypeScript: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` |
+| **INV-10** | Strict Kotlin: `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs, `explicitApi()` |
 
 ---
 
@@ -375,7 +394,7 @@ Each module has `/spec.md` (contracts), `/plan.md` (implementation), `/test.md` 
 2. Create feature branch: `feat/module-name/short-description`
 3. Implement following layer boundaries (Domain → Application → Presentation)
 4. Write tests (unit + integration) — target 100% coverage
-5. Run `pnpm test && pnpm typecheck && pnpm lint`
+5. Run `./gradlew check` (type safety + lint + tests)
 6. Open PR with conventional commit messages (`feat:`, `fix:`, `refactor:`)
 
 ---

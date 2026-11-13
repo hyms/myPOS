@@ -1,0 +1,26 @@
+-- Stub tables for cross-module references (sales-checkout module)
+-- These will be replaced with full definitions in Phase 2 (sales-checkout)
+
+CREATE TABLE IF NOT EXISTS sales_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    payment_method TEXT NOT NULL,
+    total_amount REAL NOT NULL,
+    received_amount REAL,
+    change_amount REAL,
+    note TEXT,
+    registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    deleted_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS transaction_details (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity REAL NOT NULL,
+    unit_price REAL NOT NULL,
+    subtotal REAL NOT NULL,
+    FOREIGN KEY (transaction_id) REFERENCES sales_transactions(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);

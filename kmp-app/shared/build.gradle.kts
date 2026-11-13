@@ -1,15 +1,13 @@
 plugins {
+    id("com.android.library") version "8.6.1"
     id("org.jetbrains.kotlin.multiplatform") version "2.0.20"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20"
-    id("com.squareup.sqldelight") version "2.0.1"
+    id("app.cash.sqldelight") version "2.0.1"
 }
 
 kotlin {
     jvm()
     android()
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
 
     val hostOs = System.getProperty("os.name")
     val isMingwX64 = hostOs.startsWith("Windows")
@@ -32,8 +30,8 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
                 implementation("com.squareup.okio:okio:3.9.0")
-                implementation("com.squareup.sqldelight:runtime:2.0.1")
-                implementation("com.squareup.sqldelight:coroutines-extensions:2.0.1")
+                implementation("app.cash.sqldelight:runtime:2.0.1")
+                implementation("app.cash.sqldelight:coroutines-extensions:2.0.1")
                 implementation("io.insert-koin:koin-core:4.0.0")
                 api("io.insert-koin:koin-core-compose:4.0.0")
             }
@@ -48,24 +46,19 @@ kotlin {
                 implementation("app.cash.turbine:turbine:1.0.1")
             }
         }
+        val jvmTest by getting {
+            dependencies {
+                implementation("app.cash.sqldelight:sqlite-driver:2.0.1")
+            }
+        }
         val androidMain by getting {
             dependencies {
-                implementation("com.squareup.sqldelight:android-driver:2.0.1")
+                implementation("app.cash.sqldelight:android-driver:2.0.1")
             }
         }
         val iosMain by getting {
             dependencies {
-                implementation("com.squareup.sqldelight:native-driver:2.0.1")
-            }
-        }
-        all {
-            languageSettings {
-                freeCompilerArgs.addAll(
-                    "-Xexplicit-api=strict",
-                    "-Xopt-in=kotlin.RequiresOptIn",
-                    "-Xlint:all",
-                    "-Werror"
-                )
+                implementation("app.cash.sqldelight:native-driver:2.0.1")
             }
         }
     }

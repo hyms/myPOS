@@ -4,13 +4,13 @@ package com.tpvmovilexpress.domain.valueobjects
  * Sealed class representing payment methods.
  * Ensures exhaustive when expressions and type safety.
  */
-sealed class PaymentMethod(val code: String, val displayName: String) {
-    object CASH : PaymentMethod("CASH", "Efectivo")
-    object CARD : PaymentMethod("CARD", "Tarjeta")
-    object TRANSFER : PaymentMethod("TRANSFER", "Transferencia")
-    object QR : PaymentMethod("QR", "QR")
+public sealed class PaymentMethod(public val code: String, public val displayName: String) {
+    public object CASH : PaymentMethod("CASH", "Efectivo")
+    public object CARD : PaymentMethod("CARD", "Tarjeta")
+    public object TRANSFER : PaymentMethod("TRANSFER", "Transferencia")
+    public object QR : PaymentMethod("QR", "QR")
 
-    companion object {
+    public companion object {
         private val BY_CODE = mapOf(
             "CASH" to CASH,
             "CARD" to CARD,
@@ -22,19 +22,19 @@ sealed class PaymentMethod(val code: String, val displayName: String) {
          * Creates a [PaymentMethod] from a code string.
          * @throws IllegalArgumentException if code is not recognized
          */
-        fun fromCode(code: String): PaymentMethod =
+        public fun fromCode(code: String): PaymentMethod =
             BY_CODE[code.uppercase()] ?: throw IllegalArgumentException("Invalid payment method: $code")
 
         /**
          * Returns all available payment methods.
          */
-        val all: List<PaymentMethod> = listOf(CASH, CARD, TRANSFER, QR)
+        public val all: List<PaymentMethod> = listOf(CASH, CARD, TRANSFER, QR)
     }
 
     /**
      * Checks if this is a cash payment method.
      */
-    val isCash: Boolean
+    public val isCash: Boolean
         get() = this == CASH
 
     override fun toString(): String = displayName

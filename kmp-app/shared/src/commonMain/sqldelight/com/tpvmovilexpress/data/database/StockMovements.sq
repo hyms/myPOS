@@ -1,0 +1,43 @@
+-- Stock movements table (Catalog & Inventory module)
+-- Append-only audit log for all stock changes
+
+CREATE TABLE stock_movements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('IN', 'OUT', 'ADJUSTMENT')),
+    quantity REAL NOT NULL CHECK (quantity > 0),
+    source_transaction_id INTEGER,
+    note TEXT,
+    registered_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE INDEX idx_stock_movements_product ON stock_movements(product_id);
+CREATE INDEX idx_stock_movements_type ON stock_movements(type);
+
+-- ─────────────────────────────────────────────
+-- Queries
+-- ─────────────────────────────────────────────
+
+insert:
+INSERT INTO stock_movements (
+    product_id, type, quantity, source_transaction_id, note, registered_at
+)
+VALUES (
+    :productId, :type, :quantity, :sourceTransactionId, :note, :registeredAt
+);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+selectById:
+SELECT *
+FROM stock_movements
+WHERE id = :id;
+
+selectByProductId:
+SELECT *
+FROM stock_movements
+WHERE product_id = :productId
+ORDER BY registered_at DESC
+LIMIT :limit OFFSET :offset;

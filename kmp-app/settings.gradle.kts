@@ -6,8 +6,17 @@ pluginManagement {
     }
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id == "com.android.application" || requested.id.id == "org.jetbrains.kotlin.multiplatform") {
+            if (requested.id.id == "com.android.application" || requested.id.id == "com.android.library") {
+                useModule("com.android.tools.build:gradle:8.6.1")
+            }
+            if (requested.id.id == "org.jetbrains.kotlin.multiplatform") {
                 useModule("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.20")
+            }
+            if (requested.id.id == "app.cash.sqldelight") {
+                useModule("app.cash.sqldelight:gradle-plugin:2.0.1")
+            }
+            if (requested.id.id == "org.jetbrains.compose") {
+                useModule("org.jetbrains.compose:compose-gradle-plugin:1.6.10")
             }
         }
     }

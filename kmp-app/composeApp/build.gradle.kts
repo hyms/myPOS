@@ -1,12 +1,16 @@
 plugins {
+    id("com.android.application") version "8.6.1"
     id("org.jetbrains.kotlin.multiplatform") version "2.0.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.20"
     id("org.jetbrains.compose") version "1.6.10"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20"
 }
 
 kotlin {
-    jvm()
-    android()
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
     iosX64()
     iosArm64()
     iosSimulatorArm64()
@@ -42,22 +46,9 @@ kotlin {
                 implementation("org.jetbrains.compose.ui:ui-test-manifest:1.6.10")
             }
         }
-        val iosMain by getting {
-            dependencies {
-                implementation("org.jetbrains.compose.ui:ui:1.6.10")
-            }
-        }
-        all {
-            languageSettings {
-                freeCompilerArgs.addAll(
-                    "-Xexplicit-api=strict",
-                    "-Xopt-in=kotlin.RequiresOptIn",
-                    "-Xlint:all",
-                    "-Werror"
-                )
-            }
-        }
     }
+
+    jvmToolchain(17)
 }
 
 android {
@@ -67,10 +58,8 @@ android {
         minSdk = 24
         targetSdk = 34
     }
-}
-
-compose {
-    compilerOptions {
-        experimentalOptions["strongSkipping"] = true
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
