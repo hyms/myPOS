@@ -8,6 +8,8 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 > **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 1.
 
+> **Workspace layout:** the legacy React Native/Expo codebase lives in `rn-app/`; the new Kotlin Multiplatform project lives in `kmp-app/`. Every `commonMain/`, `composeApp/`, and Gradle path in this plan is relative to `kmp-app/`. Shared specs and plans stay in `/docs/`.
+
 **Total Effort:** ~6 phases across 5 modules, coordinated via shared `commonMain` dependencies.
 
 ---

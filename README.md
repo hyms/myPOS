@@ -13,6 +13,24 @@
 
 ---
 
+## 🗂️ Workspace Layout (Dual-App)
+
+```
+/
+├── docs/          # Master specs, plans, and test matrices (shared)
+├── scripts/       # Root build, migration, and automation scripts
+├── rn-app/        # Legacy React Native + Expo app (TypeScript, Expo Router, NativeWind)
+├── kmp-app/       # Kotlin Multiplatform + Compose Multiplatform app (SQLDelight)
+├── AGENTS.md      # Agent governance for the whole workspace
+└── README.md      # This file
+```
+
+- **`rn-app/`** — current production app. All Expo/Node commands run from this directory.
+- **`kmp-app/`** — target v2.0.0 app. Gradle commands run from this directory.
+- **`docs/`** and **`scripts/`** — shared across both apps; paths stay root-relative.
+
+---
+
 ## 🏗️ Architectural Diagram
 
 ```mermaid
@@ -210,6 +228,9 @@ CREATE TABLE settings (
 git clone https://github.com/OWNER/REPO.git
 cd REPO
 
+# Legacy React Native app
+cd rn-app
+
 # Install dependencies
 pnpm install
 
@@ -222,6 +243,8 @@ pnpm expo start
 # - Physical device (scan QR with Expo Go)
 ```
 
+> The KMP app is built separately: `cd kmp-app && ./gradlew build`.
+
 ### Environment Variables
 Create `.env.local` (optional, for remote config):
 ```env
@@ -232,11 +255,13 @@ EXPO_PUBLIC_API_URL=https://api.example.com
 ### Database
 - Single file: `tpv.db` (created on first run)
 - Migrations auto-run via `PRAGMA user_version` on app bootstrap
-- v1.0.0 → v2.0.0 migration is zero-data-loss (see `migrations.ts`)
+- v1.0.0 → v2.0.0 migration is zero-data-loss (see `rn-app/src/data/database/migrations.ts`)
 
 ---
 
 ## 🧪 Running Tests
+
+> All commands below run from `rn-app/` (the legacy Expo app).
 
 ```bash
 # Unit tests (Domain VOs, Rules, Entities)

@@ -14,7 +14,8 @@ set -euo pipefail
 # ---- Resolve project root (script dir/..) ----
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ANDROID_DIR="$PROJECT_ROOT/android"
+RN_APP_DIR="$PROJECT_ROOT/rn-app"
+ANDROID_DIR="$RN_APP_DIR/android"
 
 # ---- Load environment ----
 # shellcheck source=env.sh

@@ -4,6 +4,24 @@ This document defines the architectural governance, coding standards, and cross-
 
 ---
 
+## 0. Repository Layout (Dual-App Workspace)
+
+| Path | Purpose |
+|---|---|
+| `rn-app/` | Legacy React Native + Expo application (TypeScript, Expo Router, NativeWind, SQLite JSI) |
+| `kmp-app/` | New Kotlin Multiplatform + Compose Multiplatform application (SQLDelight) |
+| `docs/` | Master architectural specs and plans shared by both apps |
+| `scripts/` | Root build, migration, and automation scripts |
+| `AGENTS.md`, `README.md` | Workspace-level governance and documentation |
+
+**Rules:**
+- All RN/Expo code, configs, tests, and tooling live under `rn-app/`; run `pnpm` commands from that directory.
+- All Kotlin/Gradle code lives under `kmp-app/`; run Gradle commands from that directory.
+- Root git assets (`.git/`, `.gitignore`, `.github/`) stay at the root.
+- Documentation paths in this file and in module specs remain root-relative (e.g. `/docs/...`).
+
+---
+
 ## 1. Versioning & Release Governance
 
 | Standard | Value |
@@ -61,7 +79,7 @@ This document defines the architectural governance, coding standards, and cross-
 |---|---|---|
 | **Framework** | Expo SDK 56 (Managed Workflow) | TypeScript strict |
 | **Router** | Expo Router v5 (file-based) | |
-| **UI Styling** | NativeWind v4 + Tailwind CSS | Design tokens in `src/presentation/theme/` |
+| **UI Styling** | NativeWind v4 + Tailwind CSS | Design tokens in `rn-app/src/presentation/theme/` |
 | **Lists** | `@shopify/flash-list` v2 | `numColumns={3}` (catalog), `{1}` (expenses) |
 | **Database** | `expo-sqlite` (JSI sync API) | `openDatabaseSync`, `withTransactionSync` |
 | **State** | Zustand | Granular selectors, manual invalidation |
@@ -96,7 +114,7 @@ This document defines the architectural governance, coding standards, and cross-
 
 ### 5.3 Migration Protocol
 - Versioned via `PRAGMA user_version`
-- **Single source of truth:** `src/data/database/migrations.ts` runner
+- **Single source of truth:** `rn-app/src/data/database/migrations.ts` runner
 - **Ordering (v2.0.0):** `catalog-inventory` → `sales-checkout` → `financial-accumulators` → `expenses-cashflow` → `system-settings`
 - All share `user_version = 2`
 - Atomic: each migration runs in `withTransactionSync`
@@ -107,12 +125,12 @@ This document defines the architectural governance, coding standards, and cross-
 
 | VO | File | Purpose |
 |---|---|---|
-| `Currency` | `src/domain/value-objects/Currency.ts` | `Bs` \| `$` \| `€` with `Intl.NumberFormat` per locale |
-| `Money` | `src/domain/value-objects/Money.ts` | `amount` (2dp) + `Currency`; `add`, `subtract`, `format`, `round2` |
-| `Stock` | `src/domain/value-objects/Stock.ts` | Non-negative decimal (3dp); `add`, `subtract`, `isBelow` |
-| `SKU` | `src/domain/value-objects/SKU.ts` | Alphanumeric + hyphen/underscore, max 32, uppercase |
-| `PaymentMethod` | `src/domain/entities/PaymentMethod.ts` | `CASH` \| `CARD` \| `TRANSFER` \| `QR` |
-| `ChangeAmount` | `src/domain/value-objects/ChangeAmount.ts` | `received - total`; `isSufficient()`, color class |
+| `Currency` | `rn-app/src/domain/value-objects/Currency.ts` | `Bs` \| `$` \| `€` with `Intl.NumberFormat` per locale |
+| `Money` | `rn-app/src/domain/value-objects/Money.ts` | `amount` (2dp) + `Currency`; `add`, `subtract`, `format`, `round2` |
+| `Stock` | `rn-app/src/domain/value-objects/Stock.ts` | Non-negative decimal (3dp); `add`, `subtract`, `isBelow` |
+| `SKU` | `rn-app/src/domain/value-objects/SKU.ts` | Alphanumeric + hyphen/underscore, max 32, uppercase |
+| `PaymentMethod` | `rn-app/src/domain/entities/PaymentMethod.ts` | `CASH` \| `CARD` \| `TRANSFER` \| `QR` |
+| `ChangeAmount` | `rn-app/src/domain/value-objects/ChangeAmount.ts` | `received - total`; `isSufficient()`, color class |
 
 > **All modules consume these VOs.** No primitive `number` for money/stock in domain/application layers.
 
@@ -166,7 +184,7 @@ This document defines the architectural governance, coding standards, and cross-
 | **INV-07** | Stock alerts fire post-commit only | `useStockAlert` hook after successful transaction |
 | **INV-08** | Critical actions require PIN | `usePinGate` hook: change PIN, delete transaction, restore backup |
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `ImageOptimizer` + `ImageStorage` |
-| **INV-10** | Strict TypeScript everywhere | `tsconfig.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` |
+| **INV-10** | Strict TypeScript everywhere | `rn-app/tsconfig.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` |
 
 ---
 
@@ -234,8 +252,8 @@ import './Component.css';
 3. **Use VOs** — `Money`, `Stock`, `SKU`, `Currency` in domain/application
 4. **Atomic transactions** — every write use case uses `withTransactionSync`
 5. **English identifiers** — rename if you see Spanish in code/DB
-6. **i18n keys** — add to `src/presentation/i18n/es/*.json` for new UI text
-7. **Run tests** — unit + integration before marking complete
+6. **i18n keys** — add to `rn-app/src/presentation/i18n/es/*.json` for new UI text
+7. **Run tests** — `cd rn-app && pnpm test` (unit + integration) before marking complete
 8. **Update docs** — if schema/contracts change, update `spec.md` + `plan.md` + `test.md`
 
 ---
@@ -243,7 +261,7 @@ import './Component.css';
 ## 13. File Structure Reference
 
 ```
-src/
+rn-app/src/
 ├── domain/                    # 🔵 Pure Domain (no deps)
 │   ├── entities/              # Product, Category, SaleTransaction, Expense, UserSettings, FinancialSummary...
 │   ├── value-objects/         # Currency, Money, Stock, SKU, PaymentMethod, ChangeAmount
@@ -283,6 +301,17 @@ src/
     ├── hooks/                 # useProducts, useCart, useExpenses, useCashSummary...
     ├── stores/                # Zustand: *Store.ts
     └── theme/                 # tokens.ts, palette.json, index.ts
+```
+
+**KMP workspace (`kmp-app/`):**
+
+```
+kmp-app/
+├── shared/src/commonMain/kotlin/   # Domain, application, data (SQLDelight), shared UI
+├── composeApp/src/commonMain/      # Compose Multiplatform UI + resources
+├── composeApp/src/androidMain/     # Android platform implementations
+├── gradle/libs.versions.toml       # Version catalog
+└── settings.gradle.kts             # Gradle modules: shared, composeApp
 ```
 
 ---
