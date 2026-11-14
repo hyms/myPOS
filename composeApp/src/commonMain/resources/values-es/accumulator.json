@@ -1,0 +1,20 @@
+{
+  "accumulator.caja.title": "Caja",
+  "accumulator.caja.total_sales": "Ventas Totales",
+  "accumulator.caja.total_purchases": "Compras Totales",
+  "accumulator.caja.total_expenses": "Gastos Totales",
+  "accumulator.caja.net_balance": "Balance Neto",
+  "accumulator.caja.updated": "Actualizado: {date}",
+  "accumulator.movements.title": "Movimientos",
+  "accumulator.movements.transaction": "Transacción",
+  "accumulator.movements.sale": "Venta",
+  "accumulator.movements.purchase": "Compra",
+  "accumulator.movements.expense": "Gasto",
+  "accumulator.movements.amount": "Monto",
+  "accumulator.movements.date": "Fecha",
+  "accumulator.movements.method": "Método",
+  "accumulator.report.month": "Resumen Mensual",
+  "accumulator.report.year": "Resumen Anual",
+  "accumulator.error.not_initialized": "Acumulador no inicializado",
+  "accumulator.error.load_failed": "Error al cargar el resumen"
+}
