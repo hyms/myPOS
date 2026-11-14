@@ -31,6 +31,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TPVMovilExpress"
-include("shared")
+rootProject.name = "myPOS"
 include("composeApp")

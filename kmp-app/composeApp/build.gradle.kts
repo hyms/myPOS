@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.multiplatform") version "2.0.20"
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.20"
     id("org.jetbrains.compose") version "1.6.10"
+    id("app.cash.sqldelight") version "2.0.1"
 }
 
 kotlin {
@@ -18,45 +19,59 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(":shared"))
-                implementation("org.jetbrains.compose.runtime:runtime:1.6.10")
-                implementation("org.jetbrains.compose.foundation:foundation:1.6.10")
-                implementation("org.jetbrains.compose.material3:material3:1.6.10")
-                implementation("org.jetbrains.compose.material3:material3-adaptive:1.6.10")
-                implementation("org.jetbrains.compose.ui:ui:1.6.10")
-                implementation("io.insert-koin:koin-core-compose:4.0.0")
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+                implementation(libs.sqldelight.runtime)
+                implementation(libs.sqldelight.coroutines)
+                implementation(libs.koin.core)
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         val commonTest by getting {
             dependencies {
-                implementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
-                implementation("org.jetbrains.kotlin:kotlin-test-junit:2.0.20")
-                implementation("org.jetbrains.compose.ui:ui-test-junit4:1.6.10")
-                implementation("org.jetbrains.compose.ui:ui-test-manifest:1.6.10")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
-                implementation("org.junit.jupiter:junit-jupiter:5.11.3")
-                implementation("org.junit.jupiter:junit-jupiter-params:5.11.3")
-                implementation("app.cash.turbine:turbine:1.0.1")
+                implementation(kotlin("test"))
+                implementation(libs.koin.test)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
         val androidMain by getting {
             dependencies {
-                implementation("org.jetbrains.compose.ui:ui:1.6.10")
-                implementation("org.jetbrains.compose.ui:ui-test-junit4:1.6.10")
-                implementation("org.jetbrains.compose.ui:ui-test-manifest:1.6.10")
+                implementation(libs.sqldelight.android.driver)
             }
         }
+        val iosMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(libs.sqldelight.native.driver)
+            }
+        }
+        val iosX64Main by getting { dependsOn(iosMain) }
+        val iosArm64Main by getting { dependsOn(iosMain) }
+        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
     }
+}
 
-    jvmToolchain(17)
+sqldelight {
+    databases {
+        create("TpvDatabase") {
+            packageName = "com.copitoB.mypos.data.repository"
+            srcDirs("src/commonMain/sqldelight")
+        }
+    }
 }
 
 android {
-    namespace = "com.tpvmovilexpress.composeapp"
+    namespace = "com.copitoB.mypos"
     compileSdk = 34
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     defaultConfig {
+        applicationId = "com.copitoB.mypos"
         minSdk = 24
         targetSdk = 34
+        versionCode = 1
+        versionName = "1.0.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

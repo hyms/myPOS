@@ -1,62 +1,73 @@
-# ──────────────────────────────────────────────
-# Gradle
-# ──────────────────────────────────────────────
+# ==========================================
+# Gradle & Kotlin Multiplatform
+# ==========================================
 .gradle/
 build/
 **/build/
-
-# ──────────────────────────────────────────────
-# Kotlin / KMP
-# ──────────────────────────────────────────────
-*.class
-*.jar
-*.war
-*.ear
-*.log
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
 kotlin-js-store/
+.kotlin/
 
-# ──────────────────────────────────────────────
-# Android
-# ──────────────────────────────────────────────
+# ==========================================
+# Android & NDK
+# ==========================================
 local.properties
 *.apk
 *.aab
 *.ap_
 *.dex
+*.class
 .cxx/
-*.jks
+.externalNativeBuild/
+captures/
+output.json
 *.keystore
+*.jks
 
-# ──────────────────────────────────────────────
-# iOS / Xcode
-# ──────────────────────────────────────────────
+# ==========================================
+# iOS / Xcode / CocoaPods / KMP Konan
+# ==========================================
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+xcuserdata/
 Pods/
 DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
+*.konan/
+.konan/
 
-# ──────────────────────────────────────────────
-# SQLDelight generated sources
-# ──────────────────────────────────────────────
-**/generated/sqldelight/
+# ==========================================
+# SQLDelight & Generated Artifacts
+# ==========================================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
 
-# ──────────────────────────────────────────────
-# IDE
-# ──────────────────────────────────────────────
+# ==========================================
+# IDEs (JetBrains Rider / IntelliJ / Android Studio / Fleet)
+# ==========================================
 .idea/
 *.iml
-*.iws
 *.ipr
-.vscode/
+*.iws
 .fleet/
+.vscode/
 *.swp
+*~
 
-# ──────────────────────────────────────────────
-# OS
-# ──────────────────────────────────────────────
+# ==========================================
+# OS & Logs
+# ==========================================
 .DS_Store
 Thumbs.db
-*.bak
+*.log
+hs_err_pid*
+replay_pid*

@@ -1,49 +1,23 @@
 [versions]
 kotlin = "2.0.20"
-compose = "1.6.10"
-composeCompiler = "2.0.20-1.6.10"
-coroutines = "1.8.0"
-serialization = "1.6.3"
+compose-multiplatform = "1.6.10"
+android-gradle-plugin = "8.6.1"
 sqldelight = "2.0.1"
-koin = "4.0.0"
-koin-compose = "4.0.0"
-junit = "5.11.3"
-turbine = "1.0.1"
-kotlinx-datetime = "0.6.0"
-okio = "3.9.0"
+koin = "3.5.6"
+kotlinx-coroutines = "1.8.1"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-compose = { id = "org.jetbrains.compose", version.ref = "compose" }
-sqldelight = { id = "com.squareup.sqldelight", version.ref = "sqldelight" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [libraries]
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
-kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
-okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
-
-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose" }
-compose-material3-adaptive = { module = "org.jetbrains.compose.material3:material3-adaptive", version.ref = "compose" }
-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
-compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test-junit4", version.ref = "compose" }
-compose-ui-test-manifest = { module = "org.jetbrains.compose.ui:ui-test-manifest", version.ref = "compose" }
-compose-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "composeCompiler" }
-
-sqldelight-runtime = { module = "com.squareup.sqldelight:runtime", version.ref = "sqldelight" }
-sqldelight-android-driver = { module = "com.squareup.sqldelight:android-driver", version.ref = "sqldelight" }
-sqldelight-ios-driver = { module = "com.squareup.sqldelight:native-driver", version.ref = "sqldelight" }
-sqldelight-coroutines-extensions = { module = "com.squareup.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
-
-koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
-koin-core-compose = { module = "io.insert-koin:koin-core-compose", version.ref = "koin-compose" }
-
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
-junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
-turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
+sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-android-driver = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
+sqldelight-native-driver = { group = "app.cash.sqldelight", name = "native-driver", version.ref = "sqldelight" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }

@@ -249,22 +249,22 @@ pnpm expo start
 git clone https://github.com/OWNER/REPO.git
 cd REPO
 
-# Kotlin Multiplatform app
+# Kotlin Multiplatform app (Mobile only: Android + iOS)
 cd kmp-app
 
 # Build & run checks
 ./gradlew check
 
-# Run unit/integration tests
+# Run unit/integration tests (Android)
 ./gradlew testDebugUnitTest
 
-# Run Android preview
+# Run on Android
 ./gradlew run
 
-# Or iOS preview
-./gradlew iosX64Run
+# Run on iOS simulator
+./gradlew iosSimulatorArm64Run
 
-# Start dev server (optional)
+# Configure Kotlin Multiplatform (first run / dependency sync)
 ./gradlew configureKotlinMultiplatform
 ```
 

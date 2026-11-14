@@ -1,10 +1,29 @@
-.gradle/
-build/
-gradle/wrapper/gradle-wrapper.jar
+# OS
 .DS_Store
-*.iml
+Thumbs.db
+
+# IDE / Editors
 .idea/
-local.properties
-*.keystore
-*.jks
-.env
+.vscode/
+.fleet/
+*.iml
+*.swp
+
+# Secrets / Environment
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# Local AI / Tooling
+.agents/
+.kilo/
+
+# Common junk
+*.orig
+*.orig.*
+*.bak
+
+# Gradle wrapper binary (downloaded by wrapper scripts)
+**/gradle/wrapper/gradle-wrapper.jar

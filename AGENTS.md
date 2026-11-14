@@ -178,7 +178,7 @@ This document defines the architectural governance, coding standards, and cross-
 | **INV-07** | Stock alerts fire post-commit only | `useStockAlert` composable after successful transaction |
 | **INV-08** | Critical actions require PIN | `usePinGate` composable: change PIN, delete transaction, restore backup |
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `ImageOptimizer` + `ImageStorage` |
-| **INV-10** | Strict Kotlin everywhere | `kmp-app/build.gradle.kts`: `kotlin("jvm") version "1.9.0"`, `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs |
+| **INV-10** | Strict Kotlin everywhere | `kmp-app/build.gradle.kts`: `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs |
 
 ---
 
