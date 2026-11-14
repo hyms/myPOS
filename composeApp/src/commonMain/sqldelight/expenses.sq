@@ -1,0 +1,29 @@
+-- Queries for expenses (sales_transactions type=EXPENSE)
+
+SELECT * FROM sales_transactions
+WHERE type = 'EXPENSE' AND deleted_at IS NULL
+ORDER BY registered_at DESC
+LIMIT :limit OFFSET :offset;
+
+SELECT * FROM sales_transactions
+WHERE type = 'EXPENSE' AND deleted_at IS NULL
+  AND strftime('%Y-%m', registered_at) = :month
+ORDER BY registered_at DESC;
+
+SELECT SUM(total_amount) FROM sales_transactions
+WHERE type = 'EXPENSE' AND deleted_at IS NULL;
+
+SELECT * FROM sales_transactions WHERE id = :id AND type = 'EXPENSE' AND deleted_at IS NULL;
+
+-- Queries for expense_categories table
+
+SELECT * FROM expense_categories WHERE deleted_at IS NULL ORDER BY name ASC;
+
+SELECT * FROM expense_categories WHERE id = :id AND deleted_at IS NULL;
+
+INSERT INTO expense_categories (name, registered_at)
+VALUES (:name, :registeredAt);
+
+UPDATE expense_categories SET name = :name WHERE id = :id;
+
+UPDATE expense_categories SET deleted_at = :deletedAt WHERE id = :id;

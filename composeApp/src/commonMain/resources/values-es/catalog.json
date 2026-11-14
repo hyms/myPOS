@@ -1,0 +1,22 @@
+{
+  "catalog.product.list.title": "Productos",
+  "catalog.product.list.add": "Agregar producto",
+  "catalog.product.list.sku": "SKU",
+  "catalog.product.list.stock": "Stock",
+  "catalog.product.list.min_stock": "Stock mín.",
+  "catalog.product.list.delete": "Eliminar",
+  "catalog.product.form.title_new": "Nuevo Producto",
+  "catalog.product.form.title_edit": "Editar Producto",
+  "catalog.product.form.name": "Nombre",
+  "catalog.product.form.sku": "SKU",
+  "catalog.product.form.selling_price": "Precio de Venta",
+  "catalog.product.form.purchase_price": "Precio de Compra",
+  "catalog.product.form.current_stock": "Stock Actual",
+  "catalog.product.form.min_stock": "Stock Mínimo",
+  "catalog.product.form.save": "Guardar",
+  "catalog.product.form.cancel": "Cancelar",
+  "catalog.error.sku_exists": "El SKU ya existe: {sku}",
+  "catalog.error.invalid_stock": "Valor de stock inválido",
+  "catalog.error.product_not_found": "Producto no encontrado: {id}",
+  "catalog.low_stock.alert": "Stock bajo: {product} (actual: {current}, mínimo: {min})"
+}
