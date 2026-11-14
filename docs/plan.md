@@ -6,9 +6,9 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 **Migration Strategy:** Single SQLDelight migration runner (`.sqm` files) with ordered, atomic migrations sharing `PRAGMA user_version = 2`. All domain logic in `commonMain`, platform-specific implementations in `androidMain`/`iosMain`.
 
-> **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 1.
+> **Status (2026-11-14 audit):** Phase 0 Shared Kernel artifacts are implemented in `kmp-app/composeApp` (VOs, rules, SQLDelight schema/migration files, unit tests present). **Gradle compilation, SQLDelight codegen, and test-pass gates remain unverified (pending network/sync/build).** Implementation of Phase 1+ should not be marked complete until those gates pass.
 
-> **Workspace layout:** the legacy React Native/Expo codebase lives in `rn-app/`; the new Kotlin Multiplatform project lives in `kmp-app/`. Every `commonMain/`, `composeApp/`, and Gradle path in this plan is relative to `kmp-app/`. Shared specs and plans stay in `/docs/`.
+> **Workspace layout:** the legacy React Native/Expo codebase lives in `rn-app/`; the new Kotlin Multiplatform project lives in `kmp-app/`. Source paths in this plan may refer to `commonMain/` conceptually; the current consolidated implementation lives under `kmp-app/composeApp/src/commonMain/` (package `com.copitoB.mypos.*`), mobile-only (Android/iOS). Shared specs and plans stay in `/docs/`.
 
 **Total Effort:** ~6 phases across 5 modules, coordinated via shared `commonMain` dependencies.
 
@@ -37,23 +37,24 @@ This document consolidates the implementation roadmaps for all five bounded cont
 ### Phase 0: Foundation — Shared Kernel Definition (Week 1)
 **Goal:** Define all shared value objects, domain rules, and SQLDelight schema in `commonMain` using Kotlin idioms (value classes, immutable data classes, sealed interfaces).
 
-| Task | File | Module | Status |
-|------|------|--------|--------|
-| Define `Currency` value class | `commonMain/domain/value-objects/Currency.kt` | system-settings | 🆕 |
-| Define `Money` value class | `commonMain/domain/value-objects/Money.kt` | system-settings | 🆕 |
-| Define `Stock` value class | `commonMain/domain/value-objects/Stock.kt` | catalog-inventory | 🆕 |
-| Define `SKU` value class | `commonMain/domain/value-objects/SKU.kt` | catalog-inventory | 🆕 |
-| Define `PaymentMethod` sealed class | `commonMain/domain/entities/PaymentMethod.kt` | sales-checkout | 🆕 |
-| Define `ChangeAmount` value class | `commonMain/domain/value-objects/ChangeAmount.kt` | sales-checkout | 🆕 |
-| Define `TransactionType` sealed class | `commonMain/domain/entities/TransactionType.kt` | shared | 🆕 |
-| Define `stockRules` | `commonMain/domain/rules/StockRules.kt` | catalog-inventory | 🆕 |
-| Define `cartRules` | `commonMain/domain/rules/CartRules.kt` | sales-checkout | 🆕 |
-| Define `expenseRules` | `commonMain/domain/rules/ExpenseRules.kt` | expenses-cashflow | 🆕 |
-| Define `settingsRules` | `commonMain/domain/rules/SettingsRules.kt` | system-settings | 🆕 |
-| Create SQLDelight schema (`.sq`) | `commonMain/sqldelight/schema.sq` | all | 🆕 |
-| Create SQLDelight migrations (`.sqm`) | `commonMain/sqldelight/migrations/` | all | 🆕 |
+| Task | File (actual in `kmp-app/composeApp/src/commonMain/`) | Module | Status |
+|------|--------------------------------------------------------|--------|--------|
+| Define `Currency` value class | `kotlin/com/copitoB/mypos/domain/value-objects/Currency.kt` | system-settings | [x] ✅ DONE (file present) |
+| Define `Money` value class | `kotlin/com/copitoB/mypos/domain/value-objects/Money.kt` | system-settings | [x] ✅ DONE (file present) |
+| Define `Stock` value class | `kotlin/com/copitoB/mypos/domain/value-objects/Stock.kt` | catalog-inventory | [x] ✅ DONE (file present) |
+| Define `SKU` value class | `kotlin/com/copitoB/mypos/domain/value-objects/SKU.kt` | catalog-inventory | [x] ✅ DONE (file present) |
+| Define `PaymentMethod` | `kotlin/com/copitoB/mypos/domain/value-objects/PaymentMethod.kt` | sales-checkout | [x] ✅ DONE (file present; verify sealed-class form vs spec) |
+| Define `ChangeAmount` value class | `kotlin/com/copitoB/mypos/domain/value-objects/ChangeAmount.kt` | sales-checkout | [x] ✅ DONE (file present) |
+| Define `TransactionType` | `kotlin/com/copitoB/mypos/domain/value-objects/TransactionType.kt` | shared | [x] ✅ DONE (file present; verify sealed-class form vs spec) |
+| Define `stockRules` | `kotlin/com/copitoB/mypos/domain/rules/StockRules.kt` | catalog-inventory | [x] ✅ DONE (file present) |
+| Define `cartRules` | `kotlin/com/copitoB/mypos/domain/rules/CartRules.kt` | sales-checkout | [x] ✅ DONE (file present) |
+| Define `expenseRules` | `kotlin/com/copitoB/mypos/domain/rules/ExpenseRules.kt` | expenses-cashflow | [x] ✅ DONE (file present) |
+| Define `settingsRules` | `kotlin/com/copitoB/mypos/domain/rules/SettingsRules.kt` | system-settings | [x] ✅ DONE (file present) |
+| Create SQLDelight schema (`.sq`) | `sqldelight/schema.sq` (+ `products.sq`, `sales.sq`, `expenses.sq`, `financial_accumulators.sq`, `settings.sq`) | all | [x] ✅ DONE (files present) |
+| Create SQLDelight migrations (`.sqm`) | `sqldelight/migrations/v1_0_0_to_v2_0_0.sqm` | all | [~] ⏳ PARTIAL (migration file present; per-module split/ordering as originally planned not yet verified) |
+| Unit tests (VOs/rules) | `src/commonTest/kotlin/com/copitoB/mypos/domain/{value-objects,rules}/*Test.kt` | shared | [~] ⏳ PARTIAL (test sources present; execution/100% coverage not verified) |
 
-**Gate:** All shared VOs compile in `commonMain`, unit tests pass (100% coverage), SQLDelight generates query APIs.
+**Gate:** ⏳ PENDING — All shared VOs compile in `commonMain`, unit tests pass (100% coverage), SQLDelight generates query APIs. **Not yet verified:** Gradle sync/build (`./gradlew :composeApp:compileDebugKotlinAndroid`), Android unit tests (`./gradlew :composeApp:testDebugUnitTest`), iOS simulator tests (`./gradlew :composeApp:iosSimulatorArm64Test`), SQLDelight codegen, and coverage. Pending before starting Phase 1 implementation work.
 
 ---
 

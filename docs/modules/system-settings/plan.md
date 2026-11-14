@@ -1,6 +1,6 @@
 # System Settings — Implementation Plan (v2.0.0 KMP)
 
-> **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 5 (last module).
+> **Status (2026-11-14 audit):** Phase 0 Shared Kernel artifacts present in `kmp-app/composeApp` (VOs, rules, SQLDelight schema/migration, unit tests). Gradle compile/codegen/test gates ⏳ PENDING (network/sync/build not verified). Implementation of Phase 5+ items remains unverified/incomplete.
 
 ## Overview
 

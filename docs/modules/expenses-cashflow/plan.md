@@ -1,6 +1,6 @@
 # Expenses & Cash Flow — Implementation Plan (v2.0.0 KMP)
 
-> **Status (2026-11-12):** KMP migration planning phase. Phase 0 (Shared Kernel definition) complete on paper. Implementation begins with Phase 4 after Financial Accumulators.
+> **Status (2026-11-14 audit):** Phase 0 Shared Kernel artifacts present in `kmp-app/composeApp` (VOs, rules, SQLDelight schema/migration, unit tests). Gradle compile/codegen/test gates ⏳ PENDING (network/sync/build not verified). Implementation of Phase 4+ items remains unverified/incomplete.
 
 ## Overview
 
