@@ -1,5 +1,6 @@
-package com.copitoB.mypos.domain.value-objects
+package com.copitoB.mypos.domain.valueobjects
 
+import java.math.BigDecimal
 import java.util.Currency as JCurrency
 import java.util.Locale
 

@@ -1,7 +1,7 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.PaymentMethod
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 
 data class SaleTransaction(
   val id: Long? = null,
@@ -11,12 +11,4 @@ data class SaleTransaction(
   val detail: String? = null,
   val registeredAt: String? = null,
   val deletedAt: String? = null
-)
-
-data class TransactionDetail(
-  val id: Long? = null,
-  val transactionId: Long,
-  val productId: Long,
-  val quantity: Double,
-  val unitPrice: Double
 )

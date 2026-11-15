@@ -4,10 +4,10 @@ import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
 import com.copitoB.mypos.domain.repository.ProductRepository
 import com.copitoB.mypos.domain.rules.StockRules
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.SKU
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.SKU
+import com.copitoB.mypos.domain.valueobjects.Stock
 import java.math.BigDecimal
 
 class ProductManagement(

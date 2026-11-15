@@ -1,9 +1,9 @@
-package com.copitoB.mypos.data.repository
+package com.copitoB.mypos.domain.repository
 
 import com.copitoB.mypos.domain.entities.Category
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Stock
 import kotlinx.coroutines.flow.Flow
 
 interface ProductRepository {

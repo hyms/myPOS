@@ -1,4 +1,4 @@
-package com.copitoB.mypos.domain.value-objects
+package com.copitoB.mypos.domain.valueobjects
 
 import java.math.BigDecimal
 import kotlin.test.Test

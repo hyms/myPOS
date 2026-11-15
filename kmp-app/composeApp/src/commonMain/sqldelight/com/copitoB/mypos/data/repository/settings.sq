@@ -1,8 +1,8 @@
 -- Queries for settings table
 
-SELECT * FROM settings WHERE id = :id;
+settingsFindById: SELECT * FROM settings WHERE id = :id;
 
-UPDATE settings
+settingsUpdate: UPDATE settings
 SET currency_code = :currencyCode,
     page_size = :pageSize,
     biometric_enabled = :biometricEnabled,

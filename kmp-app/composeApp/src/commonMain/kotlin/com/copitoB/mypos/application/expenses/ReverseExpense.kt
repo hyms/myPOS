@@ -1,23 +1,31 @@
-package com.copitoB.mypos.application.transactions
+package com.copitoB.mypos.application.expenses
 
-import com.copitoB.mypos.data.repository.ExpenseRepository
-import com.copitoB.mypos.data.repository.SaleRepository
+import com.copitoB.mypos.application.accumulators.UpdateAccumulator
+import com.copitoB.mypos.domain.repository.ExpenseRepository
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import java.math.BigDecimal
 
 class ReverseExpense(
-  private val saleRepository: SaleRepository,
-  private val expenseRepository: ExpenseRepository
+  private val expenseRepository: ExpenseRepository,
+  private val updateAccumulator: UpdateAccumulator
 ) {
   data class Result(val transactionId: Long)
 
   suspend fun execute(transactionId: Long): Result {
-    val transaction = saleRepository.findById(transactionId)
+    val transaction = expenseRepository.findById(transactionId)
       ?: throw IllegalArgumentException("Expense transaction not found: $transactionId")
 
-    require(transaction.type == "EXPENSE") { "Transaction is not an expense" }
-
     // Reverse accumulator: decrease total_expenses, increase net_balance
-    // This is handled by UpdateAccumulator with negative deltas
-    saleRepository.softDelete(transactionId)
+    updateAccumulator(
+      UpdateAccumulator.Deltas(
+        salesDelta = Money(BigDecimal("0.00"), Currency.Bs),
+        purchasesDelta = Money(BigDecimal("0.00"), Currency.Bs),
+        expensesDelta = Money(transaction.amount.amount.negate(), Currency.Bs)
+      )
+    )
+
+    expenseRepository.softDelete(transactionId)
 
     return Result(transactionId = transactionId)
   }

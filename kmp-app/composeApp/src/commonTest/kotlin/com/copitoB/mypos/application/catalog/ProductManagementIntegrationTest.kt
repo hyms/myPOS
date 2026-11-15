@@ -1,9 +1,9 @@
 package com.copitoB.mypos.application.catalog
 
 import com.copitoB.mypos.domain.entities.ProductInput
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.Stock
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals

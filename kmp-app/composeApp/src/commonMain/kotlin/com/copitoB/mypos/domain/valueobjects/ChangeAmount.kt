@@ -1,4 +1,4 @@
-package com.copitoB.mypos.domain.value-objects
+package com.copitoB.mypos.domain.valueobjects
 
 data class ChangeAmount(val received: Money, val total: Money) {
   init {

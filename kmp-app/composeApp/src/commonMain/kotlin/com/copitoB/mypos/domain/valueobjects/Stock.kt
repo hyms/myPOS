@@ -1,9 +1,19 @@
-package com.copitoB.mypos.domain.value-objects
+package com.copitoB.mypos.domain.valueobjects
 
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 data class Stock(val value: BigDecimal) {
+
+  companion object {
+    fun parseOrNull(input: String): Stock? {
+      return try {
+        Stock(BigDecimal(input))
+      } catch (_: NumberFormatException) {
+        null
+      }
+    }
+  }
   init {
     require(value.scale() <= 3) { "Stock must have at most 3 decimal places" }
     require(value.signum() >= 0) { "Stock must be non-negative" }

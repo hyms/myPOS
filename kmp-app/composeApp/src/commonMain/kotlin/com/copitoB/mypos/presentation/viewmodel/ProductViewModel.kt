@@ -62,7 +62,7 @@ class ProductViewModel(
 
   fun adjustStock(productId: Long, newStock: String, reason: String) {
     viewModelScope.launch {
-      val stock = com.copitoB.mypos.domain.value-objects.Stock.parseOrNull(newStock)
+      val stock = com.copitoB.mypos.domain.valueobjects.Stock.parseOrNull(newStock)
       if (stock == null) {
         _error.value = "Invalid stock value"
         return@launch

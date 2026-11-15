@@ -1,7 +1,7 @@
 package com.copitoB.mypos.application.transactions
 
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.Currency
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals

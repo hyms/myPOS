@@ -1,6 +1,6 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Stock
 
 data class ProductInput(
   val categoryId: Long,

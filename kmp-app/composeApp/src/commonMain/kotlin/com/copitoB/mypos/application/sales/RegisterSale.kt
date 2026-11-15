@@ -5,11 +5,13 @@ import com.copitoB.mypos.domain.entities.SaleTransaction
 import com.copitoB.mypos.domain.repository.ProductRepository
 import com.copitoB.mypos.domain.repository.SaleRepository
 import com.copitoB.mypos.domain.rules.CartRules
+import com.copitoB.mypos.domain.rules.CartTotals
 import com.copitoB.mypos.domain.rules.StockRules
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.PaymentMethod
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.ChangeAmount
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
+import com.copitoB.mypos.domain.valueobjects.Stock
 import java.math.BigDecimal
 
 class RegisterSale(
@@ -18,8 +20,8 @@ class RegisterSale(
 ) {
   data class Result(
     val transaction: SaleTransaction,
-    val totals: CartRules.CartTotals,
-    val change: Money?
+    val totals: CartTotals,
+    val change: ChangeAmount?
   )
 
   suspend fun execute(
@@ -79,7 +81,7 @@ class RegisterPurchase(
   private val saleRepository: SaleRepository,
   private val productRepository: ProductRepository
 ) {
-  data class Result(val transaction: SaleTransaction, val totals: CartRules.CartTotals)
+  data class Result(val transaction: SaleTransaction, val totals: CartTotals)
 
   suspend fun execute(
     items: List<ICartItem>,

@@ -3,14 +3,13 @@ package com.copitoB.mypos.application.accumulators
 import com.copitoB.mypos.domain.entities.FinancialSummary
 import com.copitoB.mypos.domain.entities.PeriodSummary
 import com.copitoB.mypos.domain.repository.AccumulatorRepository
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Money
 import java.math.BigDecimal
 
 class GetCashSummary(
   private val accumulatorRepository: AccumulatorRepository
 ) {
-  operator fun invoke(): FinancialSummary {
+  operator suspend fun invoke(): FinancialSummary {
     return accumulatorRepository.getCashSummary()
   }
 }
@@ -18,7 +17,7 @@ class GetCashSummary(
 class GetPeriodSummary(
   private val accumulatorRepository: AccumulatorRepository
 ) {
-  operator fun invoke(period: String): PeriodSummary {
+  operator suspend fun invoke(period: String): PeriodSummary {
     return accumulatorRepository.getPeriodSummary(period)
   }
 }
@@ -32,7 +31,11 @@ class UpdateAccumulator(
     val expensesDelta: Money
   )
 
-  operator fun invoke(deltas: Deltas) {
-    accumulatorRepository.updateAccumulator(deltas)
+  operator suspend fun invoke(deltas: Deltas) {
+    accumulatorRepository.updateAccumulator(
+      salesDelta = deltas.salesDelta,
+      purchasesDelta = deltas.purchasesDelta,
+      expensesDelta = deltas.expensesDelta
+    )
   }
 }

@@ -1,6 +1,6 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Money
 
 data class FinancialSummary(
   val totalSales: Money,

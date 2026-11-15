@@ -3,15 +3,15 @@ package com.copitoB.mypos.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import com.copitoB.mypos.domain.entities.ICartItem
 import com.copitoB.mypos.application.sales.RegisterSale
-import com.copitoB.mypos.domain.value-objects.ChangeAmount
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.PaymentMethod
+import com.copitoB.mypos.domain.valueobjects.ChangeAmount
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.viewModelScope
+import androidx.lifecycle.viewModelScope
 
 class CartViewModel(
   private val registerSale: RegisterSale
@@ -35,7 +35,7 @@ class CartViewModel(
   }
 
   fun removeItem(index: Int) {
-    _items.update { it.minusAt(index) }
+    _items.update { it.filterIndexed { i, _ -> i != index } }
     _error.value = null
   }
 
@@ -45,7 +45,7 @@ class CartViewModel(
     _error.value = null
   }
 
-  fun setChange(amount: String, currency: com.copitoB.mypos.domain.value-objects.Currency) {
+  fun setChange(amount: String, currency: com.copitoB.mypos.domain.valueobjects.Currency) {
     try {
       val received = Money(java.math.BigDecimal(amount), currency)
       if (_items.value.isNotEmpty()) {

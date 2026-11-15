@@ -1,10 +1,12 @@
 package com.copitoB.mypos.application.expenses
 
 import com.copitoB.mypos.application.accumulators.UpdateAccumulator
-import com.copitoB.mypos.data.repository.ExpenseRepository
+import com.copitoB.mypos.domain.entities.ExpenseInput
+import com.copitoB.mypos.domain.repository.ExpenseRepository
 import com.copitoB.mypos.domain.rules.ExpenseRules
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import java.math.BigDecimal
 
 class RegisterExpense(
@@ -17,7 +19,7 @@ class RegisterExpense(
     categoryId: Long,
     amount: String,
     description: String,
-    paymentMethod: String
+    paymentMethod: PaymentMethod
   ): Result {
     val amountBigDecimal = ExpenseRules.validateExpenseAmount(BigDecimal(amount))
     val validatedDescription = ExpenseRules.validateExpenseDescription(description)
@@ -28,7 +30,7 @@ class RegisterExpense(
         categoryId = categoryId,
         amount = roundedAmount.toString(),
         description = validatedDescription,
-        paymentMethod = paymentMethod
+        paymentMethod = paymentMethod.code
       )
     ).id!!
 

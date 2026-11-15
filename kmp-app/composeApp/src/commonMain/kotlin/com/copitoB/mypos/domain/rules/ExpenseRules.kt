@@ -1,12 +1,11 @@
 package com.copitoB.mypos.domain.rules
 
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Money
 import java.math.BigDecimal
 
 object ExpenseRules {
   fun validateExpenseAmount(amount: BigDecimal): BigDecimal {
     require(amount.signum() > 0) { "Amount must be greater than 0" }
-    require(amount.isFinite) { "Amount must be finite" }
     return amount
   }
 

@@ -1,115 +1,110 @@
 package com.copitoB.mypos.data.repository
 
+import app.cash.sqldelight.db.SqlDriver
+import com.copitoB.mypos.data.repository.TpvDatabase
 import com.copitoB.mypos.domain.entities.Expense
 import com.copitoB.mypos.domain.entities.ExpenseCategory
 import com.copitoB.mypos.domain.entities.ExpenseInput
-import com.copitoB.mypos.domain.value-objects.Money
-import app.cash.sqldelight.CoroutinesExtensions.awaitFirstOrNull
-import app.cash.sqldelight.CoroutinesExtensions.asFlow
-import app.cash.sqldelight.db
-import com.copitoB.mypos.data.repository.TpvDatabase.Companion.Driver
+import com.copitoB.mypos.domain.repository.ExpenseRepository
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-interface ExpenseRepository {
-  suspend fun create(input: ExpenseInput): Expense
-  suspend fun findById(id: Long): Expense?
-  suspend fun list(limit: Int, offset: Int): List<Expense>
-  suspend fun listByMonth(month: String): List<Expense>
-  suspend fun softDelete(id: Long)
-  suspend fun totalExpenses(): Money
-  suspend fun listCategories(): List<ExpenseCategory>
-  suspend fun findCategoryById(id: Long): ExpenseCategory?
-  suspend fun createCategory(name: String): ExpenseCategory
-  suspend fun softDeleteCategory(id: Long)
-  fun watchExpenses(): Flow<List<Expense>>
-}
-
 class SqliteExpenseRepository(
-  private val driver: Driver
+  private val driver: SqlDriver
 ) : ExpenseRepository {
-  private val queries = com.copitoB.mypos.data.repository.TpvDatabase(driver)
+  private val queries = TpvDatabase(driver)
 
   override suspend fun create(input: ExpenseInput): Expense {
-    return queries.db.withTransaction {
-      queries.SalesTransactionsQueries.insert(
+    var id: Long = 0
+    queries.expensesQueries.transaction(true) {
+      queries.expensesQueries.expenseInsert(
         type = "EXPENSE",
         totalAmount = input.amount.toDouble(),
         paymentMethod = input.paymentMethod,
         detail = input.description,
         registeredAt = java.time.Instant.now().toString()
       )
-      val id = queries.db.lastInsertRowId
-      findById(id)!!
+      id = queries.expensesQueries.lastInsertId().executeAsOne()
     }
+    return findById(id)!!
   }
 
   override suspend fun findById(id: Long): Expense? {
-    return queries.SalesTransactionsQueries.findById(id = id).awaitFirstOrNull()?.let { mapExpense(it) }
+    return queries.expensesQueries.expenseFindById(id = id).executeAsList()
+      .firstOrNull()?.let { mapExpense(it) }
   }
 
   override suspend fun list(limit: Int, offset: Int): List<Expense> {
-    return queries.SalesTransactionsQueries.listExpenses(limit = limit, offset = offset).asList().map { mapExpense(it) }
+    return queries.expensesQueries.expenseList(limit = limit.toLong(), offset = offset.toLong()).executeAsList().map { mapExpense(it) }
   }
 
   override suspend fun listByMonth(month: String): List<Expense> {
-    return queries.SalesTransactionsQueries.listExpensesByMonth(month = month).asList().map { mapExpense(it) }
+    return queries.expensesQueries.expenseListByMonth(month = month).executeAsList().map { mapExpense(it) }
   }
 
   override suspend fun softDelete(id: Long) {
-    queries.db.withTransaction {
-      queries.SalesTransactionsQueries.softDelete(id = id, deletedAt = java.time.Instant.now().toString())
+    queries.expensesQueries.transaction(true) {
+      queries.expensesQueries.expenseSoftDelete(id = id, deletedAt = java.time.Instant.now().toString())
     }
   }
 
   override suspend fun totalExpenses(): Money {
-    val total = queries.SalesTransactionsQueries.sumExpenses()
-    return Money(java.math.BigDecimal(total.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs)
+    val result = queries.expensesQueries.expenseSum().executeAsOne()
+    return Money(java.math.BigDecimal((result.SUM ?: 0.0).toString()), Currency.Bs)
   }
 
   override suspend fun listCategories(): List<ExpenseCategory> {
-    return queries.ExpenseCategoryQueries.findAll().asList().map { mapCategory(it) }
+    return queries.expensesQueries.expenseCategoriesFindAll().executeAsList().map { mapCategory(it) }
   }
 
   override suspend fun findCategoryById(id: Long): ExpenseCategory? {
-    return queries.ExpenseCategoryQueries.findById(id = id).awaitFirstOrNull()?.let { mapCategory(it) }
+    return queries.expensesQueries.expenseCategoriesFindById(id = id).executeAsList()
+      .firstOrNull()?.let { mapCategory(it) }
   }
 
   override suspend fun createCategory(name: String): ExpenseCategory {
-    return queries.db.withTransaction {
-      queries.ExpenseCategoryQueries.insert(name = name, registeredAt = java.time.Instant.now().toString())
-      val id = queries.db.lastInsertRowId
-      findCategoryById(id)!!
+    var id: Long = 0
+    queries.expensesQueries.transaction(true) {
+      queries.expensesQueries.expenseCategoriesInsert(
+        name = name,
+        registeredAt = java.time.Instant.now().toString()
+      )
+      id = queries.expensesQueries.lastInsertIdCategory().executeAsOne()
     }
+    return findCategoryById(id)!!
   }
 
   override suspend fun softDeleteCategory(id: Long) {
-    queries.db.withTransaction {
-      queries.ExpenseCategoryQueries.softDelete(id = id, deletedAt = java.time.Instant.now().toString())
+    queries.expensesQueries.transaction(true) {
+      queries.expensesQueries.expenseCategoriesSoftDelete(id = id, deletedAt = java.time.Instant.now().toString())
     }
   }
 
   override fun watchExpenses(): Flow<List<Expense>> = flow {
-    emit(queries.SalesTransactionsQueries.listExpenses(limit = 100, offset = 0).asList().map { mapExpense(it) })
+    emit(queries.expensesQueries.expenseList(limit = 100, offset = 0).executeAsList().map { mapExpense(it) })
   }
 
-  private fun mapExpense(row: com.copitoB.mypos.data.repository.TpvDatabase.SaleTransaction): Expense {
+  private fun mapExpense(row: Sales_transactions): Expense {
     return Expense(
       id = row.id,
-      categoryId = 1L, // Default category - expenses don't have category_id in shared table
-      amount = Money(java.math.BigDecimal(row.totalAmount.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs),
+      categoryId = null,
+      amount = Money(java.math.BigDecimal(row.total_amount.toString()), Currency.Bs),
       description = row.detail ?: "",
-      paymentMethod = row.paymentMethod,
-      registeredAt = row.registeredAt,
-      deletedAt = row.deletedAt
+      paymentMethod = PaymentMethod.valueOf(row.payment_method),
+      registeredAt = row.registered_at,
+      deletedAt = row.deleted_at
     )
   }
 
-  private fun mapCategory(row: com.copitoB.mypos.data.repository.TpvDatabase.ExpenseCategory): ExpenseCategory {
+  private fun mapCategory(row: Expense_categories): ExpenseCategory {
     return ExpenseCategory(
       id = row.id,
       name = row.name,
-      registeredAt = row.registeredAt,
-      deletedAt = row.deletedAt
+      registeredAt = row.registered_at,
+      deletedAt = row.deleted_at
     )
   }
 }

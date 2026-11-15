@@ -3,7 +3,7 @@ package com.copitoB.mypos.application.transactions
 import com.copitoB.mypos.domain.repository.ProductRepository
 import com.copitoB.mypos.domain.repository.SaleRepository
 import com.copitoB.mypos.domain.rules.StockRules
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Stock
 import java.math.BigDecimal
 
 class RevertTransaction(

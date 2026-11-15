@@ -27,6 +27,8 @@ kotlin {
                 implementation(libs.sqldelight.coroutines)
                 implementation(libs.koin.core)
                 implementation(libs.kotlinx.coroutines.core)
+                implementation(libs.lifecycle.viewmodel.compose)
+                implementation(libs.lifecycle.viewmodel.ktx)
             }
         }
         val commonTest by getting {

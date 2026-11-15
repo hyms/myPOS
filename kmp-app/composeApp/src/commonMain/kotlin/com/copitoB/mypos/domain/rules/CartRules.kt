@@ -1,8 +1,8 @@
 package com.copitoB.mypos.domain.rules
 
 import com.copitoB.mypos.domain.entities.ICartItem
-import com.copitoB.mypos.domain.value-objects.ChangeAmount
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.ChangeAmount
+import com.copitoB.mypos.domain.valueobjects.Money
 
 object CartRules {
   fun getUnitPrice(item: ICartItem, saleType: String): Double {

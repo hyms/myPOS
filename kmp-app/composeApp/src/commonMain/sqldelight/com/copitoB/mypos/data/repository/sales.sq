@@ -1,19 +1,22 @@
 -- Queries for sales_transactions table
 
-SELECT * FROM sales_transactions WHERE deleted_at IS NULL ORDER BY registered_at DESC;
+salesFindAll: SELECT * FROM sales_transactions WHERE deleted_at IS NULL ORDER BY registered_at DESC;
 
-SELECT * FROM sales_transactions WHERE id = :id AND deleted_at IS NULL;
+salesFindById: SELECT * FROM sales_transactions WHERE id = :id AND deleted_at IS NULL;
 
-SELECT * FROM sales_transactions WHERE type = :type AND deleted_at IS NULL ORDER BY registered_at DESC LIMIT :limit OFFSET :offset;
+salesFindByType: SELECT * FROM sales_transactions WHERE type = :type AND deleted_at IS NULL ORDER BY registered_at DESC LIMIT :limit OFFSET :offset;
 
-INSERT INTO sales_transactions (type, total_amount, payment_method, detail, registered_at)
+salesInsert: INSERT INTO sales_transactions (type, total_amount, payment_method, detail, registered_at)
 VALUES (:type, :totalAmount, :paymentMethod, :detail, :registeredAt);
 
-UPDATE sales_transactions SET deleted_at = :deletedAt WHERE id = :id;
+salesSoftDelete: UPDATE sales_transactions SET deleted_at = :deletedAt WHERE id = :id;
+
+-- Get last inserted row id for sales_transactions
+lastInsertId: SELECT last_insert_rowid();
 
 -- Queries for transaction_details table
 
-SELECT * FROM transaction_details WHERE transaction_id = :transactionId;
+detailsFindByTransaction: SELECT * FROM transaction_details WHERE transaction_id = :transactionId;
 
-INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price)
+detailsInsert: INSERT INTO transaction_details (transaction_id, product_id, quantity, unit_price)
 VALUES (:transactionId, :productId, :quantity, :unitPrice);

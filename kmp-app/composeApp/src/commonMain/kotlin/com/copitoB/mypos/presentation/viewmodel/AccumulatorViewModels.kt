@@ -48,17 +48,17 @@ class CashSummaryViewModel(
       try {
         updateAccumulator(
           UpdateAccumulator.Deltas(
-            salesDelta = com.copitoB.mypos.domain.value-objects.Money(
+            salesDelta = com.copitoB.mypos.domain.valueobjects.Money(
               java.math.BigDecimal(salesDelta),
-              com.copitoB.mypos.domain.value-objects.Currency.Bs
+              com.copitoB.mypos.domain.valueobjects.Currency.Bs
             ),
-            purchasesDelta = com.copitoB.mypos.domain.value-objects.Money(
+            purchasesDelta = com.copitoB.mypos.domain.valueobjects.Money(
               java.math.BigDecimal(purchasesDelta),
-              com.copitoB.mypos.domain.value-objects.Currency.Bs
+              com.copitoB.mypos.domain.valueobjects.Currency.Bs
             ),
-            expensesDelta = com.copitoB.mypos.domain.value-objects.Money(
+            expensesDelta = com.copitoB.mypos.domain.valueobjects.Money(
               java.math.BigDecimal(expensesDelta),
-              com.copitoB.mypos.domain.value-objects.Currency.Bs
+              com.copitoB.mypos.domain.valueobjects.Currency.Bs
             )
           )
         )

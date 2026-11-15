@@ -2,8 +2,8 @@ package com.copitoB.mypos.application.sales
 
 import com.copitoB.mypos.domain.entities.ICartItem
 import com.copitoB.mypos.domain.entities.SimpleCartItem
-import com.copitoB.mypos.domain.value-objects.Currency
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.rules.CartRules
 import java.math.BigDecimal
 import kotlin.test.Test

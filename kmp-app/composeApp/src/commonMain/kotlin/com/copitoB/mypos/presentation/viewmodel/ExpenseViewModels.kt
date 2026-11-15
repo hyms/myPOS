@@ -2,15 +2,16 @@ package com.copitoB.mypos.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.copitoB.mypos.application.expenses.RegisterExpense
-import com.copitoB.mypos.data.repository.ExpenseRepository
+import com.copitoB.mypos.domain.repository.ExpenseRepository
 import com.copitoB.mypos.domain.entities.Expense
 import com.copitoB.mypos.domain.entities.ExpenseCategory
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.viewModelScope
+import androidx.lifecycle.viewModelScope
 
 class ExpenseViewModel(
   private val expenseRepository: ExpenseRepository,
@@ -44,7 +45,7 @@ class ExpenseViewModel(
     categoryId: Long,
     amount: String,
     description: String,
-    paymentMethod: String
+    paymentMethod: PaymentMethod
   ) {
     viewModelScope.launch {
       _loading.value = true

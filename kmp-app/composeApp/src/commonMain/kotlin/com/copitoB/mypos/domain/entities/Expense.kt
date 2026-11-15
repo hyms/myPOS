@@ -1,13 +1,14 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Money
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 
 data class Expense(
   val id: Long? = null,
-  val categoryId: Long,
+  val categoryId: Long?,
   val amount: Money,
   val description: String,
-  val paymentMethod: String,
+  val paymentMethod: PaymentMethod,
   val registeredAt: String? = null,
   val deletedAt: String? = null
 )

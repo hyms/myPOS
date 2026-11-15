@@ -2,46 +2,37 @@ package com.copitoB.mypos.data.repository
 
 import com.copitoB.mypos.domain.entities.FinancialSummary
 import com.copitoB.mypos.domain.entities.PeriodSummary
-import com.copitoB.mypos.domain.value-objects.Money
-import app.cash.sqldelight.CoroutinesExtensions.awaitFirstOrNull
-import app.cash.sqldelight.CoroutinesExtensions.asFlow
-import app.cash.sqldelight.db
-import com.copitoB.mypos.data.repository.TpvDatabase.Companion.Driver
+import com.copitoB.mypos.domain.valueobjects.Currency
+import com.copitoB.mypos.domain.valueobjects.Money
+import app.cash.sqldelight.db.SqlDriver
+import com.copitoB.mypos.data.repository.TpvDatabase
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-interface AccumulatorRepository {
-  fun getCashSummary(): FinancialSummary
-  fun getPeriodSummary(period: String): PeriodSummary
-  fun updateAccumulator(salesDelta: Money, purchasesDelta: Money, expensesDelta: Money)
-  fun watchCashSummary(): Flow<FinancialSummary>
-}
-
 class SqliteAccumulatorRepository(
-  private val driver: Driver
-) : AccumulatorRepository {
-  private val queries = com.copitoB.mypos.data.repository.TpvDatabase(driver)
+  private val driver: SqlDriver
+) : com.copitoB.mypos.domain.repository.AccumulatorRepository {
+  private val queries = TpvDatabase(driver)
 
-  override fun getCashSummary(): FinancialSummary {
-    val row = queries.FinancialAccumulatorsQueries.findById(id = 1L).awaitFirstOrNull()
-      ?: throw IllegalStateException("Accumulator not initialized")
+  override suspend fun getCashSummary(): FinancialSummary {
+    val row = queries.financial_accumulatorsQueries.financialAccumulatorsFindById(id = 1L).executeAsOne()
     return FinancialSummary(
-      totalSales = Money(BigDecimal(row.totalSales.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs),
-      totalPurchases = Money(BigDecimal(row.totalPurchases.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs),
-      totalExpenses = Money(BigDecimal(row.totalExpenses.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs),
-      netBalance = Money(BigDecimal(row.netBalance.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs),
-      updatedAt = row.updatedAt
+      totalSales = Money(java.math.BigDecimal(row.total_sales.toString()), Currency.Bs),
+      totalPurchases = Money(java.math.BigDecimal(row.total_purchases.toString()), Currency.Bs),
+      totalExpenses = Money(java.math.BigDecimal(row.total_expenses.toString()), Currency.Bs),
+      netBalance = Money(java.math.BigDecimal(row.net_balance.toString()), Currency.Bs),
+      updatedAt = row.updated_at
     )
   }
 
-  override fun getPeriodSummary(period: String): PeriodSummary {
-    // Aggregate from sales_transactions for the given period (MONTH or YEAR)
-    val sales = queries.SalesTransactionsQueries.sumByType(type = "SALE", period = period)
-    val purchases = queries.SalesTransactionsQueries.sumByType(type = "PURCHASE", period = period)
-    val expenses = queries.SalesTransactionsQueries.sumByType(type = "EXPENSE", period = period)
+  override suspend fun getPeriodSummary(period: String): PeriodSummary {
+    val sales = queries.financial_accumulatorsQueries.salesSumByTypeMonth(type = "SALE", period = period).executeAsOne().SUM
+    val purchases = queries.financial_accumulatorsQueries.salesSumByTypeMonth(type = "PURCHASE", period = period).executeAsOne().SUM
+    val expenses = queries.financial_accumulatorsQueries.salesSumByTypeMonth(type = "EXPENSE", period = period).executeAsOne().SUM
 
-    val salesMoney = Money(BigDecimal(sales.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs)
-    val purchasesMoney = Money(BigDecimal(purchases.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs)
-    val expensesMoney = Money(BigDecimal(expenses.toString()), com.copitoB.mypos.domain.value-objects.Currency.Bs)
+    val salesMoney = Money(java.math.BigDecimal((sales ?: 0.0).toString()), Currency.Bs)
+    val purchasesMoney = Money(java.math.BigDecimal((purchases ?: 0.0).toString()), Currency.Bs)
+    val expensesMoney = Money(java.math.BigDecimal((expenses ?: 0.0).toString()), Currency.Bs)
     val net = salesMoney.minus(purchasesMoney).minus(expensesMoney)
 
     return PeriodSummary(
@@ -53,14 +44,14 @@ class SqliteAccumulatorRepository(
     )
   }
 
-  override fun updateAccumulator(salesDelta: Money, purchasesDelta: Money, expensesDelta: Money) {
-    queries.db.withTransaction {
-      queries.FinancialAccumulatorsQueries.update(
+  override suspend fun updateAccumulator(salesDelta: Money, purchasesDelta: Money, expensesDelta: Money) {
+    queries.financial_accumulatorsQueries.transaction(true) {
+      queries.financial_accumulatorsQueries.financialAccumulatorsUpdate(
         id = 1L,
-        totalSales = queries.FinancialAccumulatorsQueries.findById(id = 1L).awaitFirstOrNull()!!.totalSales + salesDelta.amount.toDouble(),
-        totalPurchases = queries.FinancialAccumulatorsQueries.findById(id = 1L).awaitFirstOrNull()!!.totalPurchases + purchasesDelta.amount.toDouble(),
-        totalExpenses = queries.FinancialAccumulatorsQueries.findById(id = 1L).awaitFirstOrNull()!!.totalExpenses + expensesDelta.amount.toDouble(),
-        netBalance = queries.FinancialAccumulatorsQueries.findById(id = 1L).awaitFirstOrNull()!!.netBalance + salesDelta.amount.toDouble() - purchasesDelta.amount.toDouble() - expensesDelta.amount.toDouble(),
+        totalSales = queries.financial_accumulatorsQueries.financialAccumulatorsFindById(id = 1L).executeAsOne().total_sales + salesDelta.amount.toDouble(),
+        totalPurchases = queries.financial_accumulatorsQueries.financialAccumulatorsFindById(id = 1L).executeAsOne().total_purchases + purchasesDelta.amount.toDouble(),
+        totalExpenses = queries.financial_accumulatorsQueries.financialAccumulatorsFindById(id = 1L).executeAsOne().total_expenses + expensesDelta.amount.toDouble(),
+        netBalance = queries.financial_accumulatorsQueries.financialAccumulatorsFindById(id = 1L).executeAsOne().net_balance + salesDelta.amount.toDouble() - purchasesDelta.amount.toDouble() - expensesDelta.amount.toDouble(),
         updatedAt = java.time.Instant.now().toString()
       )
     }

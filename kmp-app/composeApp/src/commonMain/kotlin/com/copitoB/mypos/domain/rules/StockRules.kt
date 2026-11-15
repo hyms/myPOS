@@ -1,7 +1,7 @@
 package com.copitoB.mypos.domain.rules
 
 import com.copitoB.mypos.domain.entities.Product
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Stock
 
 object StockRules {
   fun validateNonNegative(stock: Stock): Stock {

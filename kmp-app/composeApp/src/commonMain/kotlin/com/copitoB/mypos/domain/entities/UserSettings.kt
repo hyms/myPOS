@@ -1,6 +1,6 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Currency
+import com.copitoB.mypos.domain.valueobjects.Currency
 
 data class UserSettings(
   val id: Long = 1,

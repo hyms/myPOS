@@ -1,8 +1,8 @@
 package com.copitoB.mypos.domain.entities
 
-import com.copitoB.mypos.domain.value-objects.Money
-import com.copitoB.mypos.domain.value-objects.SKU
-import com.copitoB.mypos.domain.value-objects.Stock
+import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.domain.valueobjects.SKU
+import com.copitoB.mypos.domain.valueobjects.Stock
 
 data class Product(
   val id: Long? = null,
