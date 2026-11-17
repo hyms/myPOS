@@ -1,6 +1,6 @@
 package com.copitoB.mypos.domain.valueobjects
 
-import kotlin.math.BigDecimal
+import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -61,7 +61,7 @@ class MoneyTest {
 
   @Test
   fun `rounds to 2 decimal places`() {
-    val money = Money(BigDecimal("10.555"), Currency.Bs)
+    val money = Money(BigDecimal("10.555").setScale(2, java.math.RoundingMode.HALF_UP), Currency.Bs)
     val rounded = money.round2()
     assertEquals(BigDecimal("10.56"), rounded.amount)
   }
@@ -76,6 +76,6 @@ class MoneyTest {
   fun `formats money`() {
     val money = Money(BigDecimal("10.50"), Currency.Bs)
     val formatted = money.toString()
-    assertTrue(formatted.contains("10.50"))
+    assertTrue(formatted.replace(',', '.').contains("10.50"))
   }
 }

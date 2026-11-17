@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.viewModelScope
+import androidx.lifecycle.viewModelScope
 
 class SettingsViewModel(
   private val getSettings: GetSettings,
-  private val updateSettings: UpdateSettings
+  private val updateSettingsUseCase: UpdateSettings
 ) : ViewModel() {
 
   private val _settings = MutableStateFlow<UserSettings?>(null)
@@ -45,7 +45,7 @@ class SettingsViewModel(
       _loading.value = true
       _error.value = null
       try {
-        _settings.value = updateSettings(input)
+        _settings.value = updateSettingsUseCase(input)
       } catch (e: Exception) {
         _error.value = e.message
       } finally {

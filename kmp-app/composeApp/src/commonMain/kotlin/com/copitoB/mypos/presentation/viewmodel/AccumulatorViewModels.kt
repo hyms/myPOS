@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.viewModelScope
+import androidx.lifecycle.viewModelScope
 
 class CashSummaryViewModel(
   private val getCashSummary: GetCashSummary,

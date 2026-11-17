@@ -19,7 +19,7 @@ class RevertTransactionIntegrationTest {
 
     // Revert sale: net_balance -= 100
     netBalance = netBalance.subtract(BigDecimal("100.00"))
-    assertEquals(BigDecimal.ZERO, netBalance)
+    assertEquals(BigDecimal("0.00"), netBalance)
 
     assertTrue(netBalance.compareTo(BigDecimal.ZERO) == 0)
   }

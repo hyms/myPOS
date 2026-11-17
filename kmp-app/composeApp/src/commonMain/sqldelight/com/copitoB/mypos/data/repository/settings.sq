@@ -9,3 +9,7 @@ SET currency_code = :currencyCode,
     ad_enabled = :adEnabled,
     updated_at = :updatedAt
 WHERE id = :id;
+
+-- Upsert the singleton settings row (idempotent, persists on fresh DBs)
+settingsUpsert: INSERT OR REPLACE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
+VALUES (1, :currencyCode, :pageSize, :biometricEnabled, :adEnabled, :updatedAt);

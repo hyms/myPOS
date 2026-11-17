@@ -22,7 +22,7 @@ data class ExpenseCategory(
 
 data class ExpenseInput(
   val categoryId: Long,
-  val amount: String,
+  val amount: Money,
   val description: String,
-  val paymentMethod: String
+  val paymentMethod: PaymentMethod
 )

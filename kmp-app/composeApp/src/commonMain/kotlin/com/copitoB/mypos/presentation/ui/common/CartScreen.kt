@@ -1,20 +1,30 @@
 package com.copitoB.mypos.presentation.ui.common
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import com.copitoB.mypos.domain.entities.ICartItem
 
 @Composable
@@ -32,30 +42,31 @@ fun CartScreen(
   Column(
     modifier = Modifier.fillMaxSize().padding(16.dp)
   ) {
-    androidx.compose.material3.Text(
+    Text(
       text = "Carrito de Compras",
       style = MaterialTheme.typography.headlineMedium
     )
 
-    androidx.compose.foundation.lazy.LazyColumn(
-      modifier = Modifier.weight(1f)
+    LazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      contentPadding = PaddingValues(0.dp)
     ) {
       items(items, key = { it.productId.toString() }) { item ->
-        androidx.compose.material3.Card(
+        Card(
           modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         ) {
-          androidx.compose.foundation.layout.Row(
-            modifier = androidx.compose.foundation.layout.RowScopeModifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+          Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(text = item.productName, style = MaterialTheme.typography.titleMedium)
               Text(text = "Qty: ${item.quantity} x ${item.unitPrice}", style = MaterialTheme.typography.bodySmall)
               Text(text = "Subtotal: ${item.subtotal}", style = MaterialTheme.typography.bodySmall)
             }
-            androidx.compose.material3.IconButton(onClick = { onRemoveItem(items.indexOf(item)) }) {
-              androidx.compose.material3.Icon(
-                imageVector = androidx.compose.material.icons.Icons.Default.Delete,
+            IconButton(onClick = { onRemoveItem(items.indexOf(item)) }) {
+              Icon(
+                imageVector = Icons.Default.Delete,
                 contentDescription = "Eliminar item"
               )
             }
@@ -64,26 +75,26 @@ fun CartScreen(
       }
     }
 
-    androidx.compose.material3.Text(
+    Text(
       text = "Subtotal: $subtotal",
       style = MaterialTheme.typography.titleLarge
     )
 
-    androidx.compose.material3.TextField(
+    TextField(
       value = discount.toString(),
       onValueChange = { discount = it.toDoubleOrNull() ?: 0.0 },
       label = { Text("Descuento") },
       modifier = Modifier.fillMaxWidth()
     )
 
-    androidx.compose.material3.TextField(
+    TextField(
       value = received,
       onValueChange = { received = it },
       label = { Text("Efectivo recibido") },
       modifier = Modifier.fillMaxWidth()
     )
 
-    androidx.compose.foundation.layout.Row(
+    Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
     ) {

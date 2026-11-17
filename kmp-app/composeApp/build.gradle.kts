@@ -1,7 +1,7 @@
 plugins {
-    id("com.android.application") version "8.6.1"
+    id("com.android.application") version "9.5.1"
     id("org.jetbrains.kotlin.multiplatform") version "2.0.20"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
     id("org.jetbrains.compose") version "1.6.10"
     id("app.cash.sqldelight") version "2.0.1"
 }
@@ -29,6 +29,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.lifecycle.viewmodel.compose)
                 implementation(libs.lifecycle.viewmodel.ktx)
+                implementation(libs.activity.compose)
             }
         }
         val commonTest by getting {

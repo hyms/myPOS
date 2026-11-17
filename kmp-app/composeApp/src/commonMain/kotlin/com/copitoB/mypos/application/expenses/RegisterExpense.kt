@@ -4,10 +4,7 @@ import com.copitoB.mypos.application.accumulators.UpdateAccumulator
 import com.copitoB.mypos.domain.entities.ExpenseInput
 import com.copitoB.mypos.domain.repository.ExpenseRepository
 import com.copitoB.mypos.domain.rules.ExpenseRules
-import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
-import com.copitoB.mypos.domain.valueobjects.PaymentMethod
-import java.math.BigDecimal
 
 class RegisterExpense(
   private val expenseRepository: ExpenseRepository,
@@ -17,29 +14,29 @@ class RegisterExpense(
 
   suspend fun execute(
     categoryId: Long,
-    amount: String,
+    amount: Money,
     description: String,
-    paymentMethod: PaymentMethod
+    paymentMethod: com.copitoB.mypos.domain.valueobjects.PaymentMethod
   ): Result {
-    val amountBigDecimal = ExpenseRules.validateExpenseAmount(BigDecimal(amount))
+    val validatedAmount = ExpenseRules.validateExpenseAmount(amount)
+    val roundedAmount = ExpenseRules.roundAmount(validatedAmount)
     val validatedDescription = ExpenseRules.validateExpenseDescription(description)
-    val roundedAmount = ExpenseRules.roundAmount(amountBigDecimal)
 
     val expenseId = expenseRepository.create(
       ExpenseInput(
         categoryId = categoryId,
-        amount = roundedAmount.toString(),
+        amount = roundedAmount,
         description = validatedDescription,
-        paymentMethod = paymentMethod.code
+        paymentMethod = paymentMethod
       )
     ).id!!
 
     // Update accumulator atomically
     updateAccumulator(
       UpdateAccumulator.Deltas(
-        salesDelta = Money(BigDecimal("0.00"), Currency.Bs),
-        purchasesDelta = Money(BigDecimal("0.00"), Currency.Bs),
-        expensesDelta = Money(roundedAmount, Currency.Bs)
+        salesDelta = Money(java.math.BigDecimal("0.00"), amount.currency),
+        purchasesDelta = Money(java.math.BigDecimal("0.00"), amount.currency),
+        expensesDelta = roundedAmount
       )
     )
 

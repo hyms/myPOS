@@ -4,6 +4,10 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 data class Money(val amount: BigDecimal, val currency: Currency) {
+  companion object {
+    fun zero(currency: Currency = Currency.Bs): Money = Money(BigDecimal.ZERO, currency)
+  }
+
   init {
     require(amount.scale() <= 2) { "Money amount must have at most 2 decimal places" }
     require(amount.signum() >= 0) { "Money amount must be non-negative" }

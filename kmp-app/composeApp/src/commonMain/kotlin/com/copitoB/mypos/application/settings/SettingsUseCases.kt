@@ -3,7 +3,7 @@ package com.copitoB.mypos.application.settings
 import com.copitoB.mypos.domain.entities.UserSettings
 import com.copitoB.mypos.domain.entities.UpdateSettingsInput
 import com.copitoB.mypos.domain.rules.SettingsRules
-import com.copitoB.mypos.data.repository.SettingsRepository
+import com.copitoB.mypos.domain.repository.SettingsRepository
 
 class GetSettings(
   private val settingsRepository: SettingsRepository

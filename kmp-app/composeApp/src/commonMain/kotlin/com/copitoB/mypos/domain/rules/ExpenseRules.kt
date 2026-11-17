@@ -1,11 +1,10 @@
 package com.copitoB.mypos.domain.rules
 
 import com.copitoB.mypos.domain.valueobjects.Money
-import java.math.BigDecimal
 
 object ExpenseRules {
-  fun validateExpenseAmount(amount: BigDecimal): BigDecimal {
-    require(amount.signum() > 0) { "Amount must be greater than 0" }
+  fun validateExpenseAmount(amount: Money): Money {
+    require(amount.amount.signum() > 0) { "Amount must be greater than 0" }
     return amount
   }
 
@@ -14,7 +13,7 @@ object ExpenseRules {
     return description.trim()
   }
 
-  fun roundAmount(amount: BigDecimal): BigDecimal {
-    return amount.setScale(2, java.math.RoundingMode.HALF_UP)
+  fun roundAmount(amount: Money): Money {
+    return Money(amount.amount.setScale(2, java.math.RoundingMode.HALF_UP), amount.currency)
   }
 }

@@ -1,7 +1,6 @@
 package com.copitoB.mypos.domain.valueobjects
 
 import java.math.BigDecimal
-import java.util.Currency as JCurrency
 import java.util.Locale
 
 sealed class Currency(val code: String, val symbol: String) {
@@ -17,8 +16,13 @@ sealed class Currency(val code: String, val symbol: String) {
     }
 
   fun format(amount: BigDecimal): String {
+    val isoCode = when (this) {
+      is Bs -> "BOB"
+      is Dollar -> "USD"
+      is Euro -> "EUR"
+    }
     val nf = java.text.NumberFormat.getCurrencyInstance(locales.firstOrNull() ?: Locale.getDefault())
-    nf.currency = JCurrency.getInstance(code)
+    nf.currency = java.util.Currency.getInstance(isoCode)
     nf.maximumFractionDigits = 2
     nf.minimumFractionDigits = 2
     return nf.format(amount)

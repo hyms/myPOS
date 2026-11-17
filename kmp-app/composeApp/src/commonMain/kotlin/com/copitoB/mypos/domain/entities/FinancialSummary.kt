@@ -7,6 +7,7 @@ data class FinancialSummary(
   val totalPurchases: Money,
   val totalExpenses: Money,
   val netBalance: Money,
+  val netBalanceIsNegative: Boolean = false,
   val updatedAt: String? = null
 )
 

@@ -5,6 +5,7 @@ import com.copitoB.mypos.application.expenses.RegisterExpense
 import com.copitoB.mypos.domain.repository.ExpenseRepository
 import com.copitoB.mypos.domain.entities.Expense
 import com.copitoB.mypos.domain.entities.ExpenseCategory
+import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +44,7 @@ class ExpenseViewModel(
 
   fun registerExpense(
     categoryId: Long,
-    amount: String,
+    amount: Money,
     description: String,
     paymentMethod: PaymentMethod
   ) {

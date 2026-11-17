@@ -23,6 +23,6 @@ class CurrencyTest {
   fun `formats currency`() {
     val money = Money(BigDecimal("10.50"), Currency.Bs)
     val formatted = Currency.Bs.format(money.amount)
-    assertTrue(formatted.contains("10.50"))
+    assertTrue(formatted.replace(',', '.').contains("10.50"))
   }
 }

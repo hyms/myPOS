@@ -7,6 +7,9 @@ import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.valueobjects.SKU
 import com.copitoB.mypos.domain.valueobjects.Stock
+import com.copitoB.mypos.domain.valueobjects.toMoneyRounded
+import com.copitoB.mypos.domain.valueobjects.toStockRounded
+import java.math.BigDecimal
 import com.copitoB.mypos.data.repository.Products
 import com.copitoB.mypos.data.repository.TpvDatabase
 import kotlinx.coroutines.flow.Flow
@@ -92,7 +95,7 @@ class SqliteProductRepository(
   override suspend fun adjustStock(productId: Long, delta: Stock, reason: String) {
     queries.productsQueries.transaction(true) {
       val current = queries.productsQueries.findById(id = productId).executeAsList().firstOrNull()!!
-      val newStock = Stock(java.math.BigDecimal(current.current_stock.toString())).plus(delta)
+      val newStock = (current.current_stock ?: 0.0).toStockRounded().plus(delta)
       queries.productsQueries.update(
         id = productId,
         categoryId = current.category_id,
@@ -118,10 +121,10 @@ class SqliteProductRepository(
       categoryId = row.category_id,
       sku = row.sku?.let { SKU.create(it) },
       name = row.name,
-      sellingPrice = Money(java.math.BigDecimal(row.selling_price.toString()), Currency.Bs),
-      purchasePrice = Money(java.math.BigDecimal(row.purchase_price.toString()), Currency.Bs),
-      currentStock = Stock(java.math.BigDecimal(row.current_stock.toString())),
-      minStock = Stock(java.math.BigDecimal(row.min_stock.toString())),
+      sellingPrice = row.selling_price?.toMoneyRounded(Currency.Bs) ?: Money.zero(Currency.Bs),
+      purchasePrice = row.purchase_price?.toMoneyRounded(Currency.Bs) ?: Money.zero(Currency.Bs),
+      currentStock = row.current_stock?.toStockRounded() ?: Stock(BigDecimal.ZERO),
+      minStock = row.min_stock?.toStockRounded() ?: Stock(BigDecimal.ZERO),
       imageUri = row.image_uri,
       registeredAt = row.registered_at,
       updatedAt = row.updated_at,

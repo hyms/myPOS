@@ -1,6 +1,6 @@
 package com.copitoB.mypos.domain.valueobjects
 
-import kotlin.math.BigDecimal
+import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

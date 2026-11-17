@@ -1,5 +1,6 @@
 package com.copitoB.mypos.application.sales
 
+import com.copitoB.mypos.application.accumulators.UpdateAccumulator
 import com.copitoB.mypos.domain.entities.ICartItem
 import com.copitoB.mypos.domain.entities.SaleTransaction
 import com.copitoB.mypos.domain.repository.ProductRepository
@@ -16,7 +17,8 @@ import java.math.BigDecimal
 
 class RegisterSale(
   private val saleRepository: SaleRepository,
-  private val productRepository: ProductRepository
+  private val productRepository: ProductRepository,
+  private val updateAccumulator: UpdateAccumulator
 ) {
   data class Result(
     val transaction: SaleTransaction,
@@ -68,18 +70,25 @@ class RegisterSale(
         productRepository.adjustStock(item.productId, newStock, "Sale: $detail")
       }
 
-      val change = received?.let { r ->
-        CartRules.calcChange(total = totalMoney, received = r)
-      }
+      // Update cash accumulator atomically
+      updateAccumulator(
+        UpdateAccumulator.Deltas(
+          salesDelta = totalMoney,
+          purchasesDelta = Money.zero(totalMoney.currency),
+          expensesDelta = Money.zero(totalMoney.currency)
+        )
+      )
 
-      Result(transaction = transaction, totals = totals, change = change)
+      val changeAmount = received?.let { ChangeAmount(received = it, total = totalMoney) }
+      Result(transaction = transaction, totals = totals, change = changeAmount)
     }
   }
 }
 
 class RegisterPurchase(
   private val saleRepository: SaleRepository,
-  private val productRepository: ProductRepository
+  private val productRepository: ProductRepository,
+  private val updateAccumulator: UpdateAccumulator
 ) {
   data class Result(val transaction: SaleTransaction, val totals: CartTotals)
 
@@ -113,6 +122,16 @@ class RegisterPurchase(
         )
         productRepository.adjustStock(item.productId, newStock, "Purchase: $detail")
       }
+
+      // Update cash accumulator atomically
+      updateAccumulator(
+        UpdateAccumulator.Deltas(
+          salesDelta = Money.zero(totalMoney.currency),
+          purchasesDelta = totalMoney,
+          expensesDelta = Money.zero(totalMoney.currency)
+        )
+      )
+
       Result(transaction = transaction, totals = totals)
     }
   }

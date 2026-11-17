@@ -1,6 +1,5 @@
 package com.copitoB.mypos.domain.repository
 
-import com.copitoB.mypos.domain.entities.Category
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
 import com.copitoB.mypos.domain.valueobjects.Stock
@@ -16,13 +15,4 @@ interface ProductRepository {
   suspend fun softDelete(id: Long)
   suspend fun adjustStock(productId: Long, delta: Stock, reason: String)
   fun watchAll(): Flow<List<Product>>
-}
-
-interface CategoryRepository {
-  suspend fun create(name: String): Category
-  suspend fun findById(id: Long): Category?
-  suspend fun list(): List<Category>
-  suspend fun update(id: Long, name: String): Category
-  suspend fun softDelete(id: Long)
-  fun watchAll(): Flow<List<Category>>
 }

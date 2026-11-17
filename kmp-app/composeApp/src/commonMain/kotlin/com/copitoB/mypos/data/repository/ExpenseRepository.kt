@@ -9,6 +9,7 @@ import com.copitoB.mypos.domain.repository.ExpenseRepository
 import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
+import com.copitoB.mypos.domain.valueobjects.toMoneyRounded
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -22,8 +23,8 @@ class SqliteExpenseRepository(
     queries.expensesQueries.transaction(true) {
       queries.expensesQueries.expenseInsert(
         type = "EXPENSE",
-        totalAmount = input.amount.toDouble(),
-        paymentMethod = input.paymentMethod,
+        totalAmount = input.amount.amount.toDouble(),
+        paymentMethod = input.paymentMethod.code,
         detail = input.description,
         registeredAt = java.time.Instant.now().toString()
       )
@@ -53,7 +54,7 @@ class SqliteExpenseRepository(
 
   override suspend fun totalExpenses(): Money {
     val result = queries.expensesQueries.expenseSum().executeAsOne()
-    return Money(java.math.BigDecimal((result.SUM ?: 0.0).toString()), Currency.Bs)
+    return (result.SUM ?: 0.0).toMoneyRounded(Currency.Bs)
   }
 
   override suspend fun listCategories(): List<ExpenseCategory> {
