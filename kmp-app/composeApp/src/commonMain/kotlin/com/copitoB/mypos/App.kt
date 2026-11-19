@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
@@ -41,7 +41,7 @@ import com.copitoB.mypos.presentation.viewmodel.SettingsViewModel
 import org.koin.core.context.GlobalContext
 
 private enum class Destination(val label: String, val icon: ImageVector) {
-  Products("Productos", Icons.Default.List),
+  Products("Productos", Icons.AutoMirrored.Filled.List),
   Cart("Carrito", Icons.Default.ShoppingCart),
   Expenses("Gastos", Icons.Default.Warning),
   Cash("Caja", Icons.Default.Home),

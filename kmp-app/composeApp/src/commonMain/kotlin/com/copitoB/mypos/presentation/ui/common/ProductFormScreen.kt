@@ -24,7 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
 
@@ -50,7 +50,7 @@ fun ProductFormScreen(
         navigationIcon = {
           IconButton(onClick = onCancel) {
             Icon(
-              imageVector = Icons.Default.ArrowBack,
+              imageVector = Icons.AutoMirrored.Filled.ArrowBack,
               contentDescription = "Volver"
             )
           }

@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.copitoB.mypos">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
         android:label="TPV Móvil Express"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:supportsRtl="true">
         <activity
-            android:name=".MainActivity"
+            android:name="com.copitoB.mypos.MainActivity"
             android:exported="true"
-            android:label="TPV Móvil Express - Hola Mundo"
+            android:label="TPV Móvil Express"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:configChanges="orientation|keyboardHidden|screenSize|uiMode|fontScale|locale">
             <intent-filter>

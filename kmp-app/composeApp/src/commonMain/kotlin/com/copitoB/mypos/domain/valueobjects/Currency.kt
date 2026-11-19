@@ -10,9 +10,9 @@ sealed class Currency(val code: String, val symbol: String) {
 
   val locales: List<Locale>
     get() = when (this) {
-      is Bs -> listOf(Locale("es", "BO"))
-      is Dollar -> listOf(Locale("en", "US"))
-      is Euro -> listOf(Locale("de", "DE"))
+      is Bs -> listOf(Locale.forLanguageTag("es-BO"))
+      is Dollar -> listOf(Locale.forLanguageTag("en-US"))
+      is Euro -> listOf(Locale.forLanguageTag("de-DE"))
     }
 
   fun format(amount: BigDecimal): String {

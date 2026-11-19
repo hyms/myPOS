@@ -1,19 +1,31 @@
 [versions]
-kotlin = "2.0.20"
-compose-multiplatform = "1.6.10"
-android-gradle-plugin = "8.6.1"
-sqldelight = "2.0.1"
-koin = "3.5.6"
-kotlinx-coroutines = "1.8.1"
-lifecycle = "2.7.0"
+kotlin = "2.4.21"
+android-gradle-plugin = "9.5.1"
+compose-multiplatform = "1.12.2"
+compose-material3 = "1.12.0-alpha03"
+compose-material-icons = "1.7.3"
+sqldelight = "2.4.1"
+koin = "4.2.2"
+kotlinx-coroutines = "1.11.0"
+lifecycle = "2.11.0"
+androidx-activity = "1.13.0"
+android-compile-sdk = "37"
+android-min-sdk = "24"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 
 [libraries]
+compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-multiplatform" }
+compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-multiplatform" }
+compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "compose-material3" }
+compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "compose-multiplatform" }
+compose-material-icons-core = { group = "org.jetbrains.compose.material", name = "material-icons-core", version.ref = "compose-material-icons" }
 sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
 sqldelight-coroutines = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-android-driver = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
@@ -23,7 +35,4 @@ koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin"
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
-activity-compose = { group = "androidx.activity", name = "activity-compose", version = "1.8.0" }
-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "compose-multiplatform" }
-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.6.4" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
