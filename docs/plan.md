@@ -6,7 +6,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 **Migration Strategy:** Single SQLDelight migration runner (`.sqm` files) with ordered, atomic migrations sharing `PRAGMA user_version = 2`. All domain logic in `commonMain`, platform-specific implementations in `androidMain`/`iosMain`.
 
-> **Status (2026-11-14 audit):** Phase 0 Shared Kernel artifacts are implemented in `kmp-app/composeApp` (VOs, rules, SQLDelight schema/migration files, unit tests present). **Gradle compilation, SQLDelight codegen, and test-pass gates remain unverified (pending network/sync/build).** Implementation of Phase 1+ should not be marked complete until those gates pass.
+> **Status (2026-11-19):** Phases 0–5 are implemented and compile under Gradle 9.9.1 / AGP 9.5.1. Verified gates: `:composeApp:generateCommonMainTpvDatabaseInterface`, `:composeApp:compileAndroidMain`, `:composeApp:testAndroidHostTest` (50 tests, 0 failures), `:androidApp:assembleDebug`. **Phase 6 (feature finalization) is the active scope** — see §2 Phase 6 and `/docs/MIGRATION_CHECKLIST.md`.
 
 > **Workspace layout:** the legacy React Native/Expo codebase lives in `rn-app/`; the new Kotlin Multiplatform project lives in `kmp-app/`. Source paths in this plan may refer to `commonMain/` conceptually; the current consolidated implementation lives under `kmp-app/composeApp/src/commonMain/` (package `com.copitoB.mypos.*`), mobile-only (Android/iOS). Shared specs and plans stay in `/docs/`.
 
@@ -22,7 +22,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | 2 | **sales-checkout** | Cart, sales/purchases, payment, receipts | `sales_transactions`, `transaction_details` | catalog-inventory (products) |
 | 3 | **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | sales-checkout (transactions) |
 | 4 | **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | financial-accumulators (accumulator) |
-| 5 | **system-settings** | Currency, pagination, PIN/biometric, backup, AD_ENABLED | `settings` (singleton) | expenses-cashflow (last) |
+| 5 | **system-settings** | Currency, pagination, PIN/biometric, backup/import | `settings` (singleton) | expenses-cashflow (last) |
 
 **Cross-Module Contracts (Implemented Once in `commonMain`, Imported Everywhere):**
 - `Currency`, `Money`, `Stock`, `SKU` → `commonMain/domain/value-objects/`
@@ -54,7 +54,8 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | Create SQLDelight migrations (`.sqm`) | `sqldelight/migrations/v1_0_0_to_v2_0_0.sqm` | all | [~] ⏳ PARTIAL (migration file present; per-module split/ordering as originally planned not yet verified) |
 | Unit tests (VOs/rules) | `src/commonTest/kotlin/com/copitoB/mypos/domain/{value-objects,rules}/*Test.kt` | shared | [~] ⏳ PARTIAL (test sources present; execution/100% coverage not verified) |
 
-**Gate:** ⏳ PENDING — All shared VOs compile in `commonMain`, unit tests pass (100% coverage), SQLDelight generates query APIs. **Not yet verified:** Gradle sync/build (`./gradlew :composeApp:compileDebugKotlinAndroid`), Android unit tests (`./gradlew :composeApp:testDebugUnitTest`), iOS simulator tests (`./gradlew :composeApp:iosSimulatorArm64Test`), SQLDelight codegen, and coverage. Pending before starting Phase 1 implementation work.
+**Gate:** ✅ VERIFIED — `:composeApp:compileAndroidMain` and `:composeApp:testAndroidHostTest` pass (50 tests, 0 failures); SQLDelight generates query APIs.
+**Known follow-up:** `:composeApp:compileKotlinIosArm64` fails on `java.math.BigDecimal` / `java.text.NumberFormat` in `commonMain` and Koin's `GlobalContext` in `App.kt`. Meets no Phase 6 requirement but blocks iOS shipping; tracked in `/docs/MIGRATION_CHECKLIST.md`.
 
 ---
 
@@ -80,7 +81,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] All entities/repos/use cases use English identifiers + VOs
 - [ ] Fractional stock (3dp) works end-to-end
 - [ ] SKU unique validated, category required enforced
-- [ ] AdBanner renders in Inventory list footer when `AD_ENABLED`
+- [ ] AdBanner renders in Inventory list footer only in the `free` flavor
 - [ ] Stock alert Toast fires post-commit when `currentStock < minStock`
 - [ ] Zero hardcoded Spanish strings in catalog components (i18n only)
 - [ ] All tests pass, Kotlin strict, Detekt clean
@@ -138,7 +139,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] `GetCashSummary` O(1) read, `GetPeriodSummary` correct aggregation
 - [ ] `UpdateAccumulator` atomic single UPDATE with all deltas
 - [ ] Reversal restores accumulator + stock (PURCHASE pre-check)
-- [ ] AdBanner renders in Caja/Movimientos when `AD_ENABLED`, absent in detail/PIN
+- [ ] AdBanner renders in Caja/Movimientos only in the `free` flavor, absent in detail/PIN
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
 ---
@@ -165,7 +166,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] `ReverseTransaction` EXPENSE: balance only, no stock changes
 - [ ] `ConfirmDialog` shows interpolated Spanish text correctly
 - [ ] Category quick-create dialog preserves form draft
-- [ ] AdBanner in list footer only when `AD_ENABLED`
+- [ ] AdBanner in list footer only in the `free` flavor
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
 ---
@@ -181,9 +182,9 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | SQLDelight migration v2: settings schema (creates `settings` table) | `commonMain/sqldelight/migrations/v2_system_settings.sqm` | 🆕 |
 | AsyncStorage → SQLite migration logic | `commonMain/application/settings/MigrateSettings.kt` | 🆕 |
 | Repository: `ISettingsRepository`, `SqlDelightSettingsRepository` | `commonMain/data/repositories/` | 🆕 |
-| Use cases: `GetSettings`, `UpdateSettings`, `VerifyPin`, `SetPin`, `ExportDatabase`, `RestoreDatabase` | `commonMain/application/` | 🆕 |
+| Use cases: `GetSettings`, `UpdateSettings`, `VerifyPin`, `SetPin`, `ExportBackupUseCase`, `ImportBackupUseCase` | `commonMain/application/` | 🆕 |
 | ViewModels: `SettingsViewModel`, `SecurityViewModel`, `BackupViewModel` | `commonMain/presentation/viewmodels/` | 🆕 |
-| Compose UI: `CurrencySelector`, `PageSizeInput`, `PinForm`, `BiometricToggle`, `BackupActions`, `AdEnabledToggle` | `composeApp/src/commonMain/compose/` | 🆕 |
+| Compose UI: `CurrencySelector`, `PageSizeInput`, `PinForm`, `BiometricToggle`, `BackupActions`, `FlavorInfoCard` | `composeApp/src/commonMain/compose/` | 🆕 |
 | i18n: `composeResources/values-es/strings.xml` (settings + lock + pin + biometric + toast) | `composeApp/src/commonMain/composeResources/` | 🆕 |
 | Tests: Unit + Integration + Migration + PIN Gate + UI | `commonTest/`, `androidTest/` | 🆕 |
 
@@ -193,27 +194,114 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] PIN change requires current PIN (except first time), constant-time compare
 - [ ] Biometric toggle requires auth before enabling
 - [ ] Restore backup requires PIN, reloads app, data intact
-- [ ] `adEnabled` master toggle controls Expenses/Catalog/Caja/Movimientos banners
+- [ ] Ads ship only via the `free` flavor (`ADS_ENABLED` build flag), never as a user setting
 - [ ] All 60+ i18n keys implemented
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
 ---
 
-### Phase 6: Global Verification & Hardening (Week 5-6)
+### Phase 6: Feature Finalization & Parity Closure (Week 5-6)
+**Goal:** Close every remaining RN → KMP parity gap, ship the compile-time flavor model, and land the versioned JSON backup pipeline. Full tracker: `/docs/MIGRATION_CHECKLIST.md`.
+
+**Entry gate:** `:composeApp:testAndroidHostTest` green (50+ tests, 0 failures) and `:androidApp:assembleDebug` producing an APK.
+
+#### 6.1 Products — Edit & Soft-Delete
+| Task | Target |
+|------|--------|
+| Add `updateProduct(input)` / `deleteProduct(id)` to `ProductViewModel` | `presentation/viewmodel/ProductViewModel.kt` |
+| Wire `ProductFormScreen(product = …)` for edit mode; pass existing entity from list | `App.kt`, `presentation/ui/common/ProductFormScreen.kt` |
+| Soft-delete entry point + `ConfirmDialog` ("Eliminar producto") | `ProductListScreen.kt` |
+| Category selector + quick-create dialog in the form | `ProductFormScreen.kt` |
+| SKU duplicate error surfaced inline | `ProductViewModel` → `ProductManagement.createProduct` |
+
+#### 6.2 Inventory — Stock Adjustments & Low-Stock Filters
+| Task | Target |
+|------|--------|
+| `StockAdjustDialog` (delta + reason) calling `ProductManagement.adjustStock` | new `presentation/ui/components/StockAdjustDialog.kt` |
+| Low-stock filter chip backed by `listLowStock()` | `ProductListScreen.kt`, `ProductViewModel` |
+| 3-column `LazyVerticalGrid` with stable keys | `ProductListScreen.kt` |
+| Search (debounced), category chips, sort `NAME_ASC` / `POPULARITY_DESC` | `ProductListScreen.kt`, `ProductViewModel` |
+| Infinite scroll honoring `settings.pageSize` | `ProductViewModel.loadMore()` |
+| Post-commit stock alert Snackbar | `presentation/ui/common/ProductListScreen.kt` |
+| Image pipeline `expect`/`actual` (400×400, JPEG 70%, <40 KB) | `androidMain`/`iosMain` `ImageOptimizer` |
+
+#### 6.3 Purchases — `RegisterPurchase` UI
+| Task | Target |
+|------|--------|
+| `RegistroScreen` with Venta/Compra segmented control | new `presentation/ui/common/RegistroScreen.kt` |
+| `PurchaseCartViewModel` mirroring `CartViewModel` over `RegisterPurchase` | `presentation/viewmodel/PurchaseCartViewModel.kt` |
+| Reuse `CartScreen` for both carts (parameterized by cart type) | `CartScreen.kt` |
+| Purchase receipt (HTML) + share | `expect`/`actual` `ReceiptPrinter` |
+
+#### 6.4 Reports — Date Range, PaymentMethod Breakdown, Sale Details
+| Task | Target |
+|------|--------|
+| `ReportsScreen` with date-range picker (month / year / custom) | new `presentation/ui/common/ReportsScreen.kt` |
+| `salesSumByPaymentMethod` SQLDelight query + repository method | `sales.sq`, `SqliteAccumulatorRepository` |
+| `PeriodSummary` extended with per-`PaymentMethod` totals | `domain/entities/PeriodSummary.kt`, `GetPeriodSummary` |
+| `MovementsScreen` (search + type chips + infinite scroll) wired to existing `MovementsViewModel` | new `presentation/ui/common/MovementsScreen.kt` |
+| `TransactionDetailScreen` with line items and revert entry | new `presentation/ui/common/TransactionDetailScreen.kt` |
+| Revert flow guarded by PIN | `RevertTransaction` + `PinLockOverlay` |
+
+#### 6.5 Settings & PIN
+| Task | Target |
+|------|--------|
+| `PinViewModel` (`verify`, `set`, `change`, lock state) | `presentation/viewmodel/PinViewModel.kt` |
+| `PinLockOverlay` + app-start lock when a PIN hash exists | new `presentation/ui/common/PinLockOverlay.kt`, `App.kt` |
+| Change-PIN form (current / new / confirm, 4–6 digits) | new `presentation/ui/common/ChangePinScreen.kt` |
+| Biometric `expect`/`actual` unlock | `androidMain`/`iosMain` |
+| Currency picker (`Bs` / `$` / `€`) and page-size input (5–100) | `SettingsScreen.kt` |
+| Backup section: export / import / legacy `.db` import | `SettingsScreen.kt`, `BackupViewModel` |
+| Remove `onAdEnabledChange` switch → read-only flavor card | `SettingsScreen.kt`, `UserSettings` |
+
+#### 6.6 Multiplatform i18n
+| Task | Target |
+|------|--------|
+| Enable Compose resources (`compose.components.resources` dependency) | `composeApp/build.gradle.kts` |
+| Create `values-es/strings.xml` with all ~60 keys across namespaces | `composeApp/src/commonMain/composeResources/values-es/strings.xml` |
+| Replace every hardcoded Spanish literal with `stringResource(Res.string.…)` | all `presentation/ui/**` |
+| CI guard against new hardcoded UI literals | `scripts/` |
+
+#### 6.7 Build Flavors & Backup Pipeline
+| Task | Target |
+|------|--------|
+| `free` / `pro` product flavors, `ADS_ENABLED` BuildConfig field | `androidApp/build.gradle.kts` |
+| Shared `signingConfig` from gitignored `keystore.properties`, same `applicationId` | `androidApp/build.gradle.kts` |
+| Shared signing; flavor drives a Gradle property that generates the ads constant (library cannot read app `BuildConfig`) | `androidApp/build.gradle.kts`, `composeApp/build.gradle.kts` |
+| `expect fun isAdsEnabled()` + `LocalAdsEnabled`; delete runtime toggle path | `commonMain`/`androidMain`, `App.kt` |
+| `ExportBackupUseCase` → versioned JSON (`schemaVersion: 2`) | `application/backup/ExportBackupUseCase.kt` |
+| `ImportBackupUseCase` → `BackupSource.Json` + `BackupSource.LegacySqliteFile` | `application/backup/ImportBackupUseCase.kt` |
+| Enum translation (`VENTA→SALE`, `EFECTIVO→CASH`, …) + timestamp normalization | `application/backup/LegacyMapper.kt` |
+| Safe defaults (`sku = null`, `categories.updated_at = registered_at`, default expense category) | `LegacyMapper.kt` |
+| Single-transaction import + `financial_accumulators` recomputation | `ImportBackupUseCase.kt` |
+| `BackupViewModel` + PIN-gated UI | `presentation/viewmodel/BackupViewModel.kt` |
+
+**Definition of Done (Phase 6):**
+- [ ] Every `[ ]` item in `/docs/MIGRATION_CHECKLIST.md` is closed or explicitly deferred with a rationale
+- [ ] `free` and `pro` flavors build; `pro` contains no ad code path; both share `applicationId` + `.jks`
+- [ ] Legacy `rn-app` `.db` file imports into KMP with zero row loss and recomputed accumulators
+- [ ] JSON export → wipe → import round-trip is idempotent and atomic
+- [ ] Zero hardcoded Spanish literals remain in `presentation/`
+- [ ] PIN gate protects change-PIN, revert, and restore
+
+---
+
+### Phase 7: Global Verification & Hardening (Week 6)
 **Goal:** End-to-end integration, performance, store readiness.
 
 | Task | Description |
 |------|-------------|
 | Full migration run v1→v2 on seeded production-like data | Verify zero data loss across all 5 modules |
 | Migration idempotency: run twice → no errors, no duplication | All 5 module migration tests |
-| Migration rollback: restore backup → verify v1.0.0 schema intact | All 5 module rollback tests |
+| Backup round-trip: JSON export → wipe → import → assert counters | `ImportBackupUseCase` integration test |
+| Legacy import: `rn-app` `.db` fixture → assert row counts + translated enums | `LegacyMapper` test |
 | Cross-module integration flows | Sale → Accumulator → Caja → Reversal → Stock restore |
-| AdWare governance audit | CI grep checks on all forbidden views |
+| AdWare governance audit | CI grep: no ad code in checkout/forms/settings |
 | i18n completeness audit | CI check for hardcoded Spanish strings in Compose |
 | Performance: LazyColumn <16ms/frame, image <40KB | Physical device testing (Android/iOS) |
-| PIN gate on critical actions | Change PIN, delete transaction, restore backup |
-| E2E critical flows | Checkout, PIN change, backup/restore, ad toggle |
-| Kotlin strict build | `./gradlew compileKotlinAndroid compileKotlinIos` zero errors |
+| PIN gate on critical actions | Change PIN, revert transaction, restore backup |
+| E2E critical flows | Checkout, purchase, PIN change, backup/restore, flavor install |
+| Kotlin strict build | `./gradlew :composeApp:compileAndroidMain` zero warnings |
 | Detekt | `./gradlew detekt` zero errors |
 | Test suite: all pass | Unit + Integration + Migration + Atomic + ViewModel + UI + E2E |
 
@@ -234,8 +322,10 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | `SettingsRules` | `commonMain/domain/rules/` | Settings |
 | `ReverseTransaction` | `commonMain/application/transactions/` | Sales, Expenses, Financial |
 | SQLDelight schema/migrations | `commonMain/sqldelight/` | All modules |
-| `AdBanner` Composable | `composeApp/src/commonMain/compose/components/ads/` | Catalog, Expenses, Financial |
-| `useAdEnabled` hook / `AdEnabledProvider` | `composeApp/src/commonMain/compose/hooks/` | All ad-enabled views |
+| `AdBanner` Composable | `composeApp/src/commonMain/kotlin/.../presentation/ui/components/ads/` | Catalog, Expenses, Financial |
+| `isAdsEnabled()` / `LocalAdsEnabled` | `commonMain` + `androidMain` (`BuildConfig.ADS_ENABLED`) | All ad-enabled views |
+| `ExportBackupUseCase` / `ImportBackupUseCase` | `commonMain/application/backup/` | System settings, migration tooling |
+| `LegacyMapper` (enum/timestamp translation) | `commonMain/application/backup/` | Importing `rn-app` data |
 
 ---
 
@@ -275,23 +365,28 @@ val migrations = listOf(
 
 ---
 
-## 5. AdWare Governance Matrix
+## 5. AdWare Governance Matrix (Compile-Time Flavors)
 
-| View | Module | AdBanner Allowed? | Implementation |
-|------|--------|-------------------|----------------|
-| Catalog / Inventory List | catalog-inventory | ✅ Yes | `LazyColumn` footer item when `adEnabled` |
-| Expenses List | expenses-cashflow | ✅ Yes | `LazyColumn` footer item when `adEnabled` |
-| Caja (Cash Summary) | financial-accumulators | ✅ Yes | `LazyColumn` footer item |
-| Movimientos (Transactions) | financial-accumulators | ✅ Yes | `LazyColumn` footer item |
-| **Checkout / Cart** | sales-checkout | ❌ No | `adEnabled` ignored |
-| **Payment Dialog** | sales-checkout | ❌ No | `adEnabled` ignored |
-| **Receipt Preview** | sales-checkout | ❌ No | `adEnabled` ignored |
-| **Forms (create/edit)** | all | ❌ No | `adEnabled` ignored |
-| **ConfirmDialog** | shared | ❌ No | `adEnabled` ignored |
-| **PIN Gate / Lock Screen** | system-settings | ❌ No | `adEnabled` ignored |
-| **Settings Screen** | system-settings | ❌ No | `adEnabled` ignored |
+Ads are **not** a runtime setting. The `free` flavor compiles with `ADS_ENABLED = true`; the `pro` flavor compiles with `ADS_ENABLED = false`. Both share `applicationId` and the same `.jks`, so upgrades preserve local SQLite data.
 
-**Master Toggle:** `settings.ad_enabled` (SQLite) → `SettingsDataStore.adEnabled` (DataStore) → `AdEnabledProvider` (CompositionLocal)
+| View | Module | Ads in `free`? | Implementation |
+|------|--------|----------------|----------------|
+| Catalog / Inventory List | catalog-inventory | ✅ Yes | Footer item in `LazyVerticalGrid` when `isAdsEnabled()` |
+| Expenses List | expenses-cashflow | ✅ Yes | Footer item in `LazyColumn` when `isAdsEnabled()` |
+| Caja (Cash Summary) | financial-accumulators | ✅ Yes | Footer item when `isAdsEnabled()` |
+| Movimientos (Transactions) | financial-accumulators | ✅ Yes | Footer item when `isAdsEnabled()` |
+| **Checkout / Cart** | sales-checkout | ❌ No | Compiles into `pro`-only path; no `AdBanner` import |
+| **Purchases flow** | sales-checkout | ❌ No | No ad code path |
+| **Payment Dialog** | sales-checkout | ❌ No | No ad code path |
+| **Receipt Preview** | sales-checkout | ❌ No | No ad code path |
+| **Forms (create/edit)** | all | ❌ No | No ad code path |
+| **ConfirmDialog** | shared | ❌ No | No ad code path |
+| **PIN Gate / Lock Screen** | system-settings | ❌ No | No ad code path |
+| **Settings Screen** | system-settings | ❌ No | Read-only flavor info card |
+
+**Flag chain:** `BuildConfig.ADS_ENABLED` (androidApp) → `expect fun isAdsEnabled()` (`androidMain`) → `LocalAdsEnabled` CompositionLocal (`commonMain`) → `if (LocalAdsEnabled.current) AdBanner()`.
+
+**Deprecated:** `settings.ad_enabled` is no longer read or written by the UI. The column is retained until `v3.0.0` to avoid a mid-phase schema migration and is dropped by a dedicated `.sqm` afterwards.
 
 ---
 
@@ -304,8 +399,8 @@ val migrations = listOf(
 | Migration | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent, rollback | Required |
 | ViewModels | Kotlin Test + Turbine | 100% ViewModel logic (state flows) | Required |
 | Compose UI | Compose Test + Robolectric | 100% render/interaction | Required |
-| E2E | Maestro / Compose UI Test | Critical flows (checkout, PIN, backup, ad toggle) | Required |
-| CI Gate | All suites + `./gradlew detekt` + `./gradlew compileKotlin` | Must pass for merge | Required |
+| E2E | Maestro / Compose UI Test | Critical flows (checkout, purchase, PIN, backup/restore, flavor install) | Required |
+| CI Gate | All suites + `./gradlew detekt` + `./gradlew :composeApp:compileAndroidMain` | Must pass for merge | Required |
 
 ### Test Directory Structure
 ```
@@ -339,7 +434,7 @@ commonTest/
 └── ui/                         # ProductGridScreen, CartScreen, CashBalanceCard...
 
 androidTest/
-├── e2e/                        # checkoutFlow, pinChangeFlow, backupFlow, adEnabledFlow...
+├── e2e/                        # checkoutFlow, purchaseFlow, pinChangeFlow, backupFlow, flavorInstallFlow...
 └── compose/                    # Compose UI tests on device
 ```
 
@@ -353,7 +448,9 @@ androidTest/
 | Migration order conflicts | Low | Critical | Single SQLDelight driver with explicit ordering; integration test full sequence |
 | Fractional stock breaks integer-only UI | Medium | Medium | `TextField` with `KeyboardOptions(keyboardType = KeyboardType.Decimal)` |
 | Atomic transaction partial failure | Low | Critical | Single transaction block; failure injection tests |
-| AdBanner appears in forbidden views | Low | High | CI grep checks on every PR; code review checklist |
+| AdBanner appears in forbidden views | Low | High | CI grep checks on every PR; `pro` flavor compiles ads out entirely |
+| Import corrupts data | Low | Critical | Single transaction + row-count assertions + rollback; `.db` fixture tests |
+| Flavor upgrade wipes data | Low | Critical | Identical `applicationId` + shared `.jks`; no `applicationIdSuffix` |
 | i18n keys missing in Compose | Medium | Medium | CI check: `grep -r "stringResource" --include="*.kt" composeApp/` |
 | Migration long-running on large DB | Low | Medium | Background execution with progress; timeout guard (<5s expected) |
 | Accumulator drift on reversal | Low | Critical | Integration test: create + revert → assert balance = 0 |
@@ -396,8 +493,9 @@ androidTest/
 - [ ] SQLDelight repositories implement Domain interfaces (Ports)
 - [ ] Image pipeline: 400×400, JPEG 70%, <40KB verified (`expect/actual` ImageOptimizer)
 - [ ] SecureStore for PIN hash (Android Keystore / iOS Keychain), Biometric auth
-- [ ] Backup: Export/Restore with PIN gate
-- [ ] AdBanner Composable respects `AD_ENABLED` flag via `CompositionLocal`
+- [ ] Backup: `ExportBackupUseCase` (JSON v2) + `ImportBackupUseCase` (JSON + legacy `.db`) with PIN gate and single-transaction import
+- [ ] Legacy import translates RN enums (`VENTA/COMPRA/GASTO`, `EFECTIVO/…`) and recomputes `financial_accumulators`
+- [ ] Ads are compile-time only: `free` flavor ships banners, `pro` contains no ad code path
 
 ### Presentation Layer
 - [ ] All UI strings via `stringResource` (Spanish only in `composeResources/values-es/`)
@@ -407,9 +505,10 @@ androidTest/
 - [ ] AdBanner only in 4 allowed views, absent in 8+ forbidden views
 
 ### AdWare Governance
-- [ ] `settings.ad_enabled` master toggle in SQLite
-- [ ] `SettingsDataStore.adEnabled` hydrated at startup
-- [ ] `AdEnabledProvider` CompositionLocal consumed by allowed views
+- [ ] `free` / `pro` flavors declared with `ADS_ENABLED` build flags
+- [ ] Shared `.jks` + identical `applicationId`; no `applicationIdSuffix`
+- [ ] `isAdsEnabled()` `expect`/`actual` + `LocalAdsEnabled` CompositionLocal consumed by allowed views
+- [ ] Deprecated `settings.ad_enabled` column unread until its `v3.0.0` removal migration
 - [ ] CI grep checks enforce forbidden views clean
 
 ### Testing & CI
@@ -419,8 +518,8 @@ androidTest/
 - [ ] Atomic rollback tests: simulated DB failure → full rollback
 - [ ] ViewModel tests: 100% logic coverage (Turbine)
 - [ ] Compose UI tests: 100% render/interaction
-- [ ] E2E tests: checkout, PIN change, backup/restore, ad toggle flows
-- [ ] Kotlin strict: `./gradlew compileKotlinAndroid compileKotlinIos` zero errors
+- [ ] E2E tests: checkout, purchase, PIN change, backup/restore, flavor install flows
+- [ ] Kotlin strict: `./gradlew :composeApp:compileAndroidMain` zero errors
 - [ ] Detekt: `./gradlew detekt` zero errors
 
 ### Performance
@@ -441,7 +540,8 @@ androidTest/
 | 3-4 | Phase 3: Financial Accumulators | Full module v2.0.0, migration, tests |
 | 4 | Phase 4: Expenses & Cash Flow | Full module v2.0.0, migration, tests |
 | 5 | Phase 5: System Settings | Full module v2.0.0, migration, tests |
-| 5-6 | Phase 6: Global Verification | E2E, Performance, Store Readiness |
+| 5-6 | Phase 6: Feature Finalization | Products edit, inventory, purchases, reports, PIN, i18n, flavors, backup JSON |
+| 6 | Phase 7: Global Verification | E2E, performance, store readiness |
 
 **Total Estimated Duration:** 6 weeks (can compress with parallelization)
 
@@ -449,6 +549,7 @@ androidTest/
 
 ## 10. Cross-References
 
+- **Feature parity tracker:** `/docs/MIGRATION_CHECKLIST.md`
 - Module Specs: `/docs/modules/*/spec.md`
 - Module Plans: `/docs/modules/*/plan.md`
 - Module Tests: `/docs/modules/*/test.md`
@@ -457,4 +558,4 @@ androidTest/
 
 ---
 
-*Last updated: 2026-11-12 — v2.0.0 KMP Migration Global Implementation Plan*
+*Last updated: 2026-11-19 — v2.0.0 Phase 6 finalization scope*

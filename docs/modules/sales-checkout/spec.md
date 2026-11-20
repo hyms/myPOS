@@ -453,13 +453,13 @@ suspend fun registerSale(input: RegisterSaleInput): RegisterSaleResult
 
 ---
 
-## 11. AdWare Governance
+## 11. AdWare Governance (Compile-Time Flavors)
 
-**Rule:** **ZERO ads allowed** on the Checkout screen (`CartScreen`, `PaymentDialog`, `ReceiptPreview`).
+**Rule:** **Zero ads allowed** on the Checkout screen (`CartScreen`, `PaymentDialog`, `ReceiptPreview`) and the Purchases flow.
 
 **Implementation:**
-- `AD_ENABLED` flag is **ignored/disabled** in this view.
-- No `AdBanner` rendered in `LazyColumn` footer or any checkout UI.
+- No `AdBanner` import exists in checkout/purchase sources; the `pro` flavor removes ad code entirely.
+- `free` banners are restricted to browse-only lists (catalog, expenses, caja, movements).
 - Prevents user distraction during payment flow.
 
 ---

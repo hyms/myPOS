@@ -521,7 +521,7 @@ ALERT IF: currentStock < minStock
 | `EmptyState` | `composeApp/.../feedback/EmptyState.kt` | Composable | No | Illustration + title + description + action button |
 | `AnimatedPressable` | `composeApp/.../ui/AnimatedPressable.kt` | Composable | No | Scale/opacity wrapper for tactile feedback (`pointerInput`) |
 | `SKUInput` | `composeApp/.../catalog/SKUInput.kt` | Composable | No | SKU input with format validation (uppercase, alphanumeric, hyphen/underscore) |
-| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | Conditional AdMob banner governed by `AD_ENABLED` |
+| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | Conditional AdMob banner; `free` flavor only |
 
 ---
 
@@ -536,15 +536,16 @@ ALERT IF: currentStock < minStock
 
 ---
 
-## 13. AdWare Governance
+## 13. AdWare Governance (Compile-Time Flavors)
 
-**Rule:** Banner ads **ARE allowed** on the Inventory screen (`ProductGridScreen`).
+**Rule:** Banner ads are compiled into the `free` flavor only. The Inventory screen (`ProductListScreen`) is an allowed surface.
 
 **Implementation:**
-- Check `AD_ENABLED` flag via `AdEnabledProvider` (CompositionLocal).
-- If `true`, render `AdBanner` in `LazyVerticalGrid` footer item, **below** products and **above** FAB.
-- Do not interrupt scroll or card tactile feedback.
-- Respect `prefersReducedMotion` for banner animations.
+- Gate on `LocalAdsEnabled.current` (backed by `BuildConfig.ADS_ENABLED` through `expect fun isAdsEnabled()`); there is no runtime toggle.
+- When enabled, render `AdBanner` as the last item of the `LazyVerticalGrid`, **below** products and **above** the FAB.
+- The `pro` flavor ships no ad code path at all.
+- Never interrupt scroll or card tactile feedback; respect reduced-motion settings for banner animation.
+- No ads in the product create/edit form or the delete `ConfirmDialog`.
 
 ---
 
@@ -571,7 +572,7 @@ ALERT IF: currentStock < minStock
 - [ ] **Bulk import**: CSV/Excel → validation → bulk `createProduct` transaction.
 - [ ] **Catalog export**: CSV/PDF with current filters (search, category, sort).
 - [ ] **Full-text search index**: FTS5 on `products(name)` for richer searches.
-- [ ] **AdMob integration**: Implement conditional `AD_ENABLED` banner in grid footer.
+- [ ] **AdMob integration**: Implement banner in grid footer for the `free` flavor only.
 - [ ] **DB migration v2**: Verified zero-data-loss migration from v1.0.0 Spanish schema.
 
 ---

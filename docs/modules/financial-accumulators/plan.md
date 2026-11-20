@@ -117,29 +117,31 @@ This plan covers the implementation of the Financial Accumulators module v2.0.0 
 
 | Component | File | Description |
 |---|---|---|
-| `CashSummaryScreen.kt` | `accumulators/CashSummaryScreen.kt` | Uses `CashBalanceCard`, `StatCard`, `BreakdownBar`, `ReportRow`, `AdBanner` |
+| `CashSummaryScreen.kt` | `accumulators/CashSummaryScreen.kt` | Uses `CashBalanceCard`, `StatCard`, `BreakdownBar`, `ReportRow`, `AdBanner` (`free` only) |
 | `CashBalanceCard.kt` | `accumulators/CashBalanceCard.kt` | Large balance with tone |
 | `StatCard.kt` | `reports/StatCard.kt` | Memoized stat |
 | `BreakdownBar.kt` | `reports/BreakdownBar.kt` | Horizontal bars |
 | `ReportRow.kt` | `reports/ReportRow.kt` | Key-value row |
-| `MovementsListScreen.kt` | `movimientos/MovementsListScreen.kt` | Uses `MovementListItem`, `TypeFilterChips`, `SearchBar`, `AdBanner` |
+| `MovementsListScreen.kt` | `movimientos/MovementsScreen.kt` | Search, `TypeFilterChips`, infinite scroll; `AdBanner` (`free` only) |
 | `MovementListItem.kt` | `movimientos/MovementListItem.kt` | Transaction row |
 | `TypeFilterChips.kt` | `movimientos/TypeFilterChips.kt` | Filter chips |
-| `AdBanner.kt` | `ads/AdBanner.kt` | **ALLOWED** in Caja/Movimientos footers |
+| `ReportsScreen.kt` | `reports/ReportsScreen.kt` | Date range + `PaymentMethod` breakdown |
+| `TransactionDetailScreen.kt` | `movimientos/TransactionDetailScreen.kt` | Line items + revert entry (PIN gated) |
+| `AdBanner.kt` | `ads/AdBanner.kt` | **ALLOWED** in Caja/Movimientos footers (`free` only) |
 
-### 5.3 AdWare Integration
-**Files to modify:**
-- `CashSummaryScreen.kt` — Add `AdBanner` to footer when `AD_ENABLED=true`
-- `MovementsListScreen.kt` — Add `AdBanner` to footer when `AD_ENABLED=true`
+### 5.3 AdWare Integration (Compile-Time Flavors)
+**Files:**
+- `CashSummaryScreen.kt` — footer `AdBanner` only when `LocalAdsEnabled.current` (`free` flavor)
+- `MovementsScreen.kt` — footer `AdBanner` only when `LocalAdsEnabled.current`
 - `TransactionDetailScreen.kt` — **NO** ads
 - `PinGateDialog.kt` / `ConfirmDialog.kt` — **NO** ads
 
-**Rule:** `AD_ENABLED` flag respected in dashboard/report views only.
+**Rule:** ads exist only in the `free` build; there is no runtime toggle. `pro` ships no ad code path.
 
 ### 5.4 i18n
 **File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
-- All 40+ keys from spec.md section 13
-- Namespace: `accumulator_`
+- All keys from spec.md section 11
+- Namespace: `accumulator_`, `movements_`, `reports_`, `receipt_`
 
 ---
 
@@ -161,7 +163,7 @@ This plan covers the implementation of the Financial Accumulators module v2.0.0 
 - Revert SALE → verify `total_sales` decrement, `net_balance` decrement, stock restored
 - Revert PURCHASE → verify `total_purchases` decrement, `net_balance` increment (pre-check)
 - Revert EXPENSE → verify `total_expenses` decrement, `net_balance` increment
-- AdBanner appears in Caja/Movimientos when `AD_ENABLED=true`, absent in detail
+- AdBanner appears in Caja/Movimientos only in the `free` flavor, absent in detail
 
 ---
 
@@ -240,7 +242,7 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 | Risk | Mitigation |
 |---|---|
 | Migration order with sales-checkout | Single migration runner with ordered migrations; test combined migration |
-| `AD_ENABLED` in wrong views | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../accumulators composeApp/.../movimientos` |
+| Ad code in wrong views | CI grep check over `accumulators/`, `movimientos/`, `reports/`; `pro` flavor compiles ads out |
 | Accumulator drift on reversal | Integration test: create + revert → assert balance = 0 |
 | Stock negative on purchase revert | Pre-check throws `StockError` before transaction opens |
 | i18n keys missing | CI check: `grep -r "accumulator_" --include="*.kt" composeApp/.../` |
@@ -255,7 +257,11 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] `GetCashSummary`/`GetPeriodSummary`/`UpdateAccumulator`/`ReverseTransaction` work correctly
 - [ ] Atomic accumulator updates on all transaction types (SALE/PURCHASE/EXPENSE)
 - [ ] Atomic reversal with stock safety for PURCHASE
-- [ ] AdBanner renders in Caja/Movimientos footers when `AD_ENABLED=true`, absent elsewhere
+- [ ] AdBanner renders in Caja/Movimientos footers only in the `free` flavor, absent elsewhere
+- [ ] Reports screen supports month, year, and custom date ranges
+- [ ] `PaymentMethod` breakdown computed and rendered
+- [ ] Movements list reachable; transaction detail shows line items
+- [ ] Revert flow is PIN-gated
 - [ ] All 40+ i18n keys implemented
 - [ ] Unit tests: 100% pass
 - [ ] Integration tests: 100% pass

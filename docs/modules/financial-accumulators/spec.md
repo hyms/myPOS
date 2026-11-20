@@ -326,7 +326,7 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 | `MovementListItem` | `composeApp/.../movimientos/MovementListItem.kt` | Composable | `key = transaction.id` | Transaction row: type badge, description, date, amount, detail count |
 | `TypeFilterChips` | `composeApp/.../movimientos/TypeFilterChips.kt` | Composable | No | Filter chips: TODOS / VENTA / COMPRA / GASTO |
 | `SearchBar` | `composeApp/.../filters/SearchBar.kt` | Composable | No | Debounced search input |
-| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | **ALLOWED** in Caja and Movimientos footers (AD_ENABLED check) |
+| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | **ALLOWED** in Caja and Movimientos footers (`free` flavor only) |
 
 ---
 
@@ -341,14 +341,15 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 
 ---
 
-## 10. AdWare Governance
+## 10. AdWare Governance (Compile-Time Flavors)
 
-**Rule:** **Banner ads ARE ALLOWED** in financial summary (Caja) and reports (Movimientos) views.
+**Rule:** Banner ads are compiled into the `free` flavor only. Caja (Cash Summary) and Movimientos (Transactions) are allowed surfaces.
 
 **Implementation:**
-- `AD_ENABLED` flag **respected** in `CashSummaryScreen` and `MovementsListScreen` → footer item renders `AdBanner` when enabled.
-- Ads shown in passive browsing views; **NOT** in transaction detail, PIN gate, or confirmation dialogs.
-- Monetizes dashboard/report views without interrupting critical flows.
+- Gate on `LocalAdsEnabled.current` (backed by `BuildConfig.ADS_ENABLED`); there is no runtime toggle.
+- `free` renders `AdBanner` as a footer item in `CashSummaryScreen` and `MovementsScreen`.
+- The `pro` flavor ships no ad code path at all.
+- **NOT** in transaction detail, PIN gate, or confirmation dialogs.
 
 ---
 
@@ -433,7 +434,7 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 
 - `sales-checkout/spec.md` — `RegisterSale`, `RegisterPurchase`, `ReverseTransaction` (SALE/PURCHASE), `sales_transactions` table, atomic accumulator updates.
 - `expenses-cashflow/spec.md` — `RegisterExpense`, `ReverseTransaction` (EXPENSE), unified `sales_transactions` type EXPENSE.
-- `system-settings/spec.md` — Currency/Money VOs, pagination settings, `AD_ENABLED` flag, PIN/biometric config.
+- `system-settings/spec.md` — Currency/Money VOs, pagination settings, `isAdsEnabled()`/`LocalAdsEnabled`, PIN/biometric config.
 - `catalog-inventory/spec.md` — Product stock adjustments during reversal (`currentStock` updates).
 
 ---

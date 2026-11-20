@@ -336,7 +336,7 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 | `ExpenseListItem` | `composeApp/.../expenses/ExpenseListItem.kt` | Composable | `key = expense.id` | Row: category badge, amount, description, date |
 | `CategorySelector` | `composeApp/.../expenses/CategorySelector.kt` | Composable | No | Dropdown with `[+]` for quick category creation |
 | `QuickCategoryDialog` | `composeApp/.../expenses/QuickCategoryDialog.kt` | Composable | No | Bottom sheet: name input → creates category → auto-selects |
-| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | **ALLOWED** in Expense list footer (AD_ENABLED check) |
+| `AdBanner` | `composeApp/.../ads/AdBanner.kt` | Composable | No | **ALLOWED** in Expense list footer (`free` flavor only) |
 | `SearchBar` | `composeApp/.../filters/SearchBar.kt` | Composable | No | Debounce 200ms |
 | `CategoryChipsRow` | `composeApp/.../filters/CategoryChipsRow.kt` | Composable | No | Clean text chips for category filter |
 
@@ -352,15 +352,14 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 
 ---
 
-## 11. AdWare Governance
+## 11. AdWare Governance (Compile-Time Flavors)
 
-**Rule:** Banner ads **ARE ALLOWED** on the Expenses list screen (`ExpenseListScreen`).
+**Rule:** Banner ads are compiled into the `free` flavor only. The Expenses list (`ExpenseListScreen`) is an allowed surface.
 
 **Implementation:**
-- Check `AD_ENABLED` flag via `AdEnabledProvider` (CompositionLocal).
-- If `true`, render `AdBanner` in `LazyColumn` footer item, **below** expenses and **above** FAB.
-- Do not interrupt scroll or card tactile feedback.
-- Respect `prefersReducedMotion` for banner animations.
+- Gate on `LocalAdsEnabled.current` (backed by `BuildConfig.ADS_ENABLED`); there is no runtime toggle.
+- When enabled, render `AdBanner` as the last item of the `LazyColumn`, **below** expenses and **above** the FAB.
+- The `pro` flavor ships no ad code path at all.
 - **NOT** allowed in `ExpenseFormScreen`, `ConfirmDialog`, or any critical flow.
 
 ---
@@ -452,7 +451,7 @@ suspend fun reverseTransaction(id: TransactionId): ReverseTransactionResult
 
 - `sales-checkout/spec.md` — Section 4 (Database Contract), 6 (Use Cases), 12 (NFRs), unified `sales_transactions` table.
 - `financial-accumulators/spec.md` — Section 4 (financial_accumulators schema), 6.3 (UpdateAccumulator), 6.4 (ReverseTransaction EXPENSE path).
-- `system-settings/spec.md` — Section 2.1 (Currency/Money), 3 (RULE-SS-05, RULE-SS-06), 10 (useCurrency, useSettingsPageSize, AD_ENABLED).
+- `system-settings/spec.md` — Section 2.1 (Currency/Money), 3 (RULE-SS-05/06/07), 10 (`Currency`, `pageSize`, `isAdsEnabled`).
 - `catalog-inventory/spec.md` — Section 6 (RULE-CI-03: fractional amounts in UI).
 
 ---

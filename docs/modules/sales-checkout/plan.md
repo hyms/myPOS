@@ -135,18 +135,18 @@ val itemCount = saleCartViewModel.itemCountFlow // StateFlow<Int>
 | `PaymentDialog.kt` | `cart/PaymentDialog.kt` | Change calculator (green/red), exact button |
 | `ReceiptPreview.kt` | `receipt/ReceiptPreview.kt` | New component for preview |
 
-### 5.3 AdWare Removal
-**Files to modify:**
-- `CartScreen.kt` — Remove `AdBanner` from footer
-- `PaymentDialog.kt` — No ads
-- `ReceiptPreview.kt` — No ads
+### 5.3 AdWare Exclusion
+**Files:**
+- `CartScreen.kt` — no `AdBanner` import at all
+- `PaymentDialog.kt` — no ad code
+- `ReceiptPreview.kt` — no ad code
 
-**Rule:** `AD_ENABLED` flag ignored in checkout screens.
+**Rule:** checkout and purchase flows never link the ad module. The `pro` flavor removes all ad code globally; the `free` flavor still excludes these screens by construction.
 
 ### 5.4 i18n
 **File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
-- All 45+ keys from spec.md section 14
-- Namespace: `checkout_`
+- All keys from spec.md section 12
+- Namespace: `checkout_`, `purchase_`, `receipt_`
 
 ---
 
@@ -232,7 +232,7 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 | `ALTER TABLE` fails | SQLite ≥ 3.25 confirmed; test on device |
 | Fractional quantities break UI | Update `KeyboardType.Decimal`, step = 0.001 |
 | Atomic transaction partial failure | Single transaction block; test failure injection |
-| AdBanner in checkout | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../cart` |
+| AdBanner in checkout | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../cart composeApp/.../receipt composeApp/.../purchases` |
 | Migration long-running | Small data volume (<1000 rows); <1s execution |
 | i18n keys missing | CI check: `grep -r "checkout_" --include="*.kt" composeApp/.../cart` |
 
@@ -245,8 +245,11 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] Composite Pattern implemented (`ICartItem` + `SimpleCartItem`)
 - [ ] RegisterSale/RegisterPurchase/RevertTransaction work atomically
 - [ ] PaymentDialog calculates change correctly (green ≥0, red <0)
-- [ ] Zero AdBanner in checkout screens
-- [ ] All 45+ i18n keys implemented
+- [ ] Registro segmented control switches Venta/Compra with isolated carts
+- [ ] `RegisterPurchase` is reachable from the UI and updates stock + accumulator
+- [ ] Receipt preview + share implemented via `expect`/`actual`
+- [ ] Zero AdBanner in checkout, purchase, and receipt screens
+- [ ] All checkout i18n keys implemented
 - [ ] Unit tests: 100% pass
 - [ ] Integration tests: 100% pass
 - [ ] Migration tests: 100% pass

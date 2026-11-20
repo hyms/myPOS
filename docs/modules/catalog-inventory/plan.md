@@ -19,7 +19,7 @@
 | `EmptyState` | `composeApp/.../feedback/EmptyState.kt` | Composable | No | 🆕 New KMP |
 | `AnimatedPressable` | `composeApp/.../ui/AnimatedPressable.kt` | Composable | No | 🆕 New KMP |
 | **SKUInput** | `composeApp/.../catalog/SKUInput.kt` | Composable | No | 🆕 New KMP |
-| **AdBanner** | `composeApp/.../ads/AdBanner.kt` | Composable | No | 🆕 New KMP |
+| **AdBanner** | `composeApp/.../ads/AdBanner.kt` | Composable | No | 🆕 `free` flavor only |
 
 ---
 
@@ -142,7 +142,7 @@
 
 | Screen | File | v2.0.0 Changes | Status |
 |---|---|---|---|
-| Catalog | `catalog/ProductGridScreen.kt` | Add `AdBanner` in footer if `AD_ENABLED`, English identifiers, `LazyVerticalGrid` | 🆕 Create |
+| Catalog | `catalog/ProductListScreen.kt` | `LazyVerticalGrid` (3 columns), footer `AdBanner` when `isAdsEnabled()`, search/sort/chips | 🆕 Create |
 | New Product | `catalog/ProductFormScreen.kt` | Add `SKUInput` after `ProductFormHeader`, fractional stock inputs (`KeyboardType.Decimal`), English identifiers | 🆕 Create |
 | Edit Product | `catalog/ProductFormScreen.kt` | Same as new (reuses screen with ViewModel mode) | 🆕 Create |
 
@@ -158,12 +158,13 @@ Additional locales:
 
 ---
 
-## 11. AdWare Governance
+## 11. AdWare Governance (Compile-Time Flavors)
 
-- [ ] Create `composeApp/.../ads/AdBanner.kt` (AdMob wrapper Composable)
-- [ ] In `ProductGridScreen`: conditional `AD_ENABLED` → render `AdBanner` in footer item
-- [ ] Respect `prefersReducedMotion` for banner animations
-- [ ] Default `AD_ENABLED = false` (opt-in at build time via `BuildConfig`)
+- [ ] Create `composeApp/.../ads/AdBanner.kt` (AdMob wrapper Composable, `androidMain`/`iosMain`)
+- [ ] In `ProductListScreen`: render `AdBanner` in the grid footer only when `LocalAdsEnabled.current`
+- [ ] `isAdsEnabled()` `expect`/`actual` backed by `BuildConfig.ADS_ENABLED` in the `free` flavor
+- [ ] `pro` flavor contains no ad code path
+- [ ] Respect reduced-motion settings for banner animations
 
 ---
 
@@ -230,10 +231,10 @@ db.execute("""
 
 | Test | File | Coverage |
 |---|---|---|
-| `ProductGridScreen` | `ProductGridScreenTest.kt` | Renders grid, search, category filter, FAB navigation |
+| `ProductListScreen` | `ProductListScreenTest.kt` | Renders grid, search, category filter, FAB navigation |
 | `ProductGridCard` | `ProductGridCardTest.kt` | Renders image/avatar, name, price, stock, "Bajo" badge |
 | `SKUInput` | `SKUInputTest.kt` | Validation, uppercase formatting, max length |
-| `AdBanner` | `AdBannerTest.kt` | Conditional render based on `AD_ENABLED` |
+| `AdBanner` | `AdBannerTest.kt` | Renders only when `isAdsEnabled()` is true |
 
 ### 12.6 E2E Scenarios (Maestro)
 **Directory:** `maestro/catalog-inventory/`
@@ -260,7 +261,7 @@ db.execute("""
 6. Image Pipeline: Verify ImageOptimizer.kt (expect/actual), ImageStorage.kt (expect/actual)
 7. ViewModels: ProductsViewModel.kt, ProductFormViewModel.kt, CategoriesViewModel.kt
 8. Compose UI Components: SKUInput.kt, AdBanner.kt, ProductGridCard.kt, etc.
-9. Compose Screens: ProductGridScreen.kt, ProductFormScreen.kt
+9. Compose Screens: ProductListScreen.kt, ProductFormScreen.kt
 10. i18n: values-es/strings.xml (45 keys)
 11. Tests: All test files (unit → integration → migration → ViewModel → UI → E2E)
 ```
@@ -276,7 +277,7 @@ db.execute("""
 | SKU uniqueness conflicts on import | Duplicate SKU errors | Pre-validate in UI + DB constraint; clear error message |
 | Migration long-running on large DB | App freeze on startup | Background execution with progress; timeout guard |
 | i18n keys missing in components | Hardcoded Spanish strings | CI check: `grep -r "stringResource" --include="*.kt" composeApp/.../catalog` |
-| AdMob not approved in store | Build rejection | `AD_ENABLED` flag default `false`, opt-in only |
+| AdMob not approved in store | Build rejection | Ads compiled only into the `free` flavor; `pro` ships ad-free |
 | Compose iOS rendering differences | Visual inconsistencies | Test on both platforms; use `expect/actual` for platform specifics |
 
 ---
@@ -284,15 +285,19 @@ db.execute("""
 ## 15. Definition of Done (Acceptance Criteria)
 
 - [ ] All tests pass: unit + integration + migration + ViewModel + UI + E2E
-- [ ] Kotlin strict build passes (`./gradlew compileKotlinAndroid compileKotlinIos`)
+- [ ] Kotlin strict build passes (`./gradlew :composeApp:compileAndroidMain`)
 - [ ] Detekt passes (`./gradlew detekt`)
 - [ ] LazyVerticalGrid render <16ms/frame on physical device (Android/iOS)
 - [ ] Optimized image <40KB verified on 10 test images
 - [ ] Soft delete hides from catalog, preserves history
+- [ ] Edit mode (create/update) wired end-to-end
+- [ ] Stock adjustment dialog updates `current_stock` atomically
+- [ ] Low-stock filter and post-commit stock alert verified
+- [ ] Search, category chips, sort, and `pageSize` pagination verified
 - [ ] Stock alert Snackbar fires when `currentStock < minStock` (fractional)
 - [ ] SKU unique validated on create/update
 - [ ] Category required blocks save if not selected
-- [ ] AdBanner renders only when `AD_ENABLED=true`
+- [ ] AdBanner renders only in the `free` flavor
 - [ ] i18n: zero hardcoded Spanish strings in catalog components
 - [ ] Migration v1→v2 tested with seeded v1.0.0 data (zero data loss)
 - [ ] Atomic rollback verified (forced mid-v2 failure rolls back catalog changes)

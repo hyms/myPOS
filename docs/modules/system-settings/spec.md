@@ -2,7 +2,7 @@
 
 ## 1. Bounded Context
 
-Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/restore, and the master `AD_ENABLED` flag for AdWare governance. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `DataStore`/`SharedPreferences`-only approach. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
+Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/import, and the build-flavor ad policy. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `DataStore`/`SharedPreferences`-only approach. Ads are **not** part of settings: they are determined at build time by the `free`/`pro` flavors. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
 
 ---
 
@@ -114,17 +114,17 @@ data class UserSettings(
     val currencyCode: CurrencyCode = CurrencyCode.BS,            // BS | USD | EUR
     val pageSize: Int = 15,                                      // default 15, min 5, max 100
     val biometricEnabled: Boolean = false,                       // false by default
-    val adEnabled: Boolean = false,                              // master AdWare toggle, default false
     val updatedAt: String = java.time.Instant.now().toString()   // ISO 8601
 )
 
 data class UpdateSettingsInput(
     val currencyCode: CurrencyCode? = null,
     val pageSize: Int? = null,
-    val biometricEnabled: Boolean? = null,
-    val adEnabled: Boolean? = null
+    val biometricEnabled: Boolean? = null
 )
 ```
+
+> **Note:** `adEnabled` was removed from `UserSettings` in Phase 6. Ads are determined by the build flavor (`free` / `pro`), not by user settings. The `settings.ad_enabled` column remains in the schema as deprecated/ignored until `v3.0.0`.
 
 ### 2.4 Session (UI State)
 
@@ -147,11 +147,12 @@ data class SessionState(
 | RULE-SS-01 | PIN change requires current PIN | `PinService.setPin(newPin)` demands current PIN hash match, except first-time setup. |
 | RULE-SS-02 | Biometric toggle requires auth | Enabling biometric invokes `BiometricManager.authenticate()` first. |
 | RULE-SS-03 | PIN gate for critical actions | Change PIN, delete transaction, restore backup → `PinGateViewModel` enforces current PIN. |
-| RULE-SS-04 | Restore backup **requires** PIN | v2.0.0 change: restoring backup now requires PIN confirmation (critical data overwrite). `ConfirmDialog`: `"Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar."` |
+| RULE-SS-04 | Restore/import **requires** PIN | Restoring or importing a backup requires PIN confirmation (critical data overwrite). `ConfirmDialog`: `"Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar."` |
 | RULE-SS-05 | Currency is visual only | `Currency`/`Money` affect formatting only. SQLite stores pure numeric amounts in base currency. |
 | RULE-SS-06 | Pagination default | `pageSize` default 15. All historical list ViewModels apply `LIMIT ? OFFSET ?` with this value. |
-| RULE-SS-07 | AD_ENABLED master toggle | `adEnabled` in `UserSettings` governs whether banner ads render in allowed views (Expenses list, Catalog, Caja, Movimientos). |
+| RULE-SS-07 | Ads are compile-time | `ADS_ENABLED` (build flavor) governs ad rendering. No user setting exists; `settings.ad_enabled` is deprecated and ignored. |
 | RULE-SS-08 | Settings singleton | Only one row exists (`id = 1`, `CHECK (id = 1)`). Upsert on update. |
+| RULE-SS-09 | Import is atomic | `ImportBackupUseCase` runs in a single SQLDelight transaction and recomputes `financial_accumulators`. |
 
 Global invariants: **INV-08** (PIN-protected critical actions), **INV-10** (strict Kotlin).
 
@@ -312,12 +313,47 @@ suspend fun setPin(currentPin: String?, newPin: String)
 2. Compute SHA-256 of `newPin`.
 3. Store hash in platform secure storage (`pin_hash`).
 
-### 6.5 ExportDatabase / RestoreDatabase
+### 6.5 ExportBackup / ImportBackup
 
-**Files:** `commonMain/application/backup/ExportDatabase.kt`, `RestoreDatabase.kt`
+**Files:** `commonMain/application/backup/ExportBackupUseCase.kt`, `ImportBackupUseCase.kt`, `LegacyMapper.kt`
 
-- `ExportDatabase`: Copy SQLite file to `documentDirectory/backups/tpv-YYYYMMDD-HHmm.db` → `ShareSheet`.
-- `RestoreDatabase`: `FilePicker` → close DB → copy over main DB → reopen DB → invalidate all ViewModels → reload app (via `ProcessPhoenix` or in-memory store reset). **Requires PIN gate (RULE-SS-04).**
+Backups are **versioned JSON documents**, not raw SQLite copies. The legacy React Native app exported a raw `.db` file, so the importer accepts both formats through a sealed source type:
+
+```kotlin
+sealed interface BackupSource {
+  data class Json(val bytes: ByteArray) : BackupSource
+  data class LegacySqliteFile(val path: String) : BackupSource
+}
+```
+
+**ExportBackupUseCase**
+
+1. Read all tables through SQLDelight (`settings`, `categories`, `products`, `sales_transactions`, `transaction_details`, `expense_categories`, `financial_accumulators`).
+2. Serialize into the versioned envelope (see §13) with `schemaVersion = 2` and `source = "kmp"`.
+3. Write `tpv-backup-YYYYMMDD-HHmm.json` to `<documents>/backups/`.
+4. Return the absolute path for the platform share sheet.
+
+**ImportBackupUseCase**
+
+1. **PIN gate** — `VerifyPin(pin)` must pass before any write (RULE-SS-04).
+2. Decode by source: JSON envelope, or `.db` file read through a read-only SQLite connection and mapped to the same DTOs.
+3. Validate `format == "tpv-backup"` and `schemaVersion <= 2`; reject newer versions with a user-facing Spanish error.
+4. **Normalize legacy values** via `LegacyMapper`:
+   - `type`: `VENTA → SALE`, `COMPRA → PURCHASE`, `GASTO → EXPENSE`
+   - `payment_method`: `EFECTIVO → CASH`, `TARJETA → CARD`, `TRANSFERENCIA → TRANSFER`, `QR → QR`
+   - Timestamps `YYYY-MM-DD HH:MM:SS` → ISO-8601 `YYYY-MM-DDTHH:MM:SSZ`
+   - Insertion order: `categories → expense_categories → products → sales_transactions → transaction_details`
+5. **Safe defaults for KMP-only fields:**
+   - `products.sku` ← `null` (legacy schema always stores `NULL`; never synthesize)
+   - `categories.updated_at` ← `registered_at` (column absent in legacy schema)
+   - expenses `category_id` ← seeded default category when legacy detail is empty
+   - `settings` ← legacy `tpv.settings.v1` AsyncStorage JSON when supplied, else `Bs / 15 / false`
+   - `ad_enabled` ← always `0` (ignored; ads are compile-time)
+6. **Single transaction:** wipe-and-insert (or id-preserving upsert) inside one SQLDelight `transaction { }`. Any failure rolls back the entire import.
+7. **Recompute `financial_accumulators`** from `sales_transactions` (sum by type where `deleted_at IS NULL`), never trusting the incoming accumulator row.
+8. Invalidate all ViewModels and return `ImportReport(inserted, updated, skipped, warnings)`.
+
+**Invariants:** imported row counts must match source counts; the import is idempotent (running it twice yields the same state); the accumulator equals the recomputed sum after every import.
 
 ---
 
@@ -368,10 +404,11 @@ suspend fun setPin(currentPin: String?, newPin: String)
 | `PageSizeInput` | `composeApp/.../settings/PageSizeInput.kt` | Composable | No | Numeric input (5–100) |
 | `PinForm` | `composeApp/.../security/PinForm.kt` | Composable | No | 4–6 digit PIN input, masked |
 | `BiometricToggle` | `composeApp/.../security/BiometricToggle.kt` | Composable | No | Switch + auth on enable |
-| `BackupActions` | `composeApp/.../settings/BackupActions.kt` | Composable | No | Export / Restore buttons |
+| `BackupActions` | `composeApp/.../settings/BackupActions.kt` | Composable | No | Export / Import buttons |
 | `ConfirmDialog` | `composeApp/.../feedback/ConfirmDialog.kt` | Composable | No | Reusable, interpolated text |
-| `AdEnabledToggle` | `composeApp/.../settings/AdEnabledToggle.kt` | Composable | No | Master AdWare switch |
+| `FlavorInfoCard` | `composeApp/.../settings/FlavorInfoCard.kt` | Composable | No | Read-only build flavor + ads status (no toggle) |
 | `LockScreen` | `composeApp/.../security/LockScreen.kt` | Screen | N/A | PIN entry + biometric |
+| `PinLockOverlay` | `composeApp/.../security/PinLockOverlay.kt` | Composable | No | Full-screen PIN/biometric gate for app start and critical actions |
 | `PinGateDialog` | `composeApp/.../security/PinGateDialog.kt` | Composable | No | Modal PIN challenge |
 
 ---
@@ -381,8 +418,9 @@ suspend fun setPin(currentPin: String?, newPin: String)
 | ViewModel | File | Responsibility |
 |---|---|---|
 | `SettingsViewModel` | `commonMain/presentation/viewmodels/SettingsViewModel.kt` | Read/write `UserSettings` singleton |
-| `SecurityViewModel` | `commonMain/presentation/viewmodels/SecurityViewModel.kt` | PIN/biometric state + actions |
-| `BackupViewModel` | `commonMain/presentation/viewmodels/BackupViewModel.kt` | Export/Restore with PIN gate |
+| `PinViewModel` | `commonMain/presentation/viewmodels/PinViewModel.kt` | PIN verification, set/change, lock state, attempt throttling |
+| `SecurityViewModel` | `commonMain/presentation/viewmodels/SecurityViewModel.kt` | Biometric availability + enable/disable actions |
+| `BackupViewModel` | `commonMain/presentation/viewmodels/BackupViewModel.kt` | Export/Import (JSON + legacy `.db`) with PIN gate and progress state |
 | `PinGateViewModel` | `commonMain/presentation/viewmodels/PinGateViewModel.kt` | Modal PIN challenge for critical actions |
 
 ---
@@ -391,24 +429,74 @@ suspend fun setPin(currentPin: String?, newPin: String)
 
 | Old (RN) | New (KMP) | File | Responsibility |
 |---|---|---|---|
-| `settingsStore` | `SettingsDataStore` | `commonMain/infrastructure/settings/SettingsDataStore.kt` | `currencyCode`, `pageSize`, `biometricEnabled`, `adEnabled` (hydrated from SQLite via `DataStore`) |
+| `settingsStore` | `SettingsDataStore` | `commonMain/infrastructure/settings/SettingsDataStore.kt` | `currencyCode`, `pageSize`, `biometricEnabled` (hydrated from SQLite) |
 | `sessionStore` | `SessionDataStore` | `commonMain/infrastructure/settings/SessionDataStore.kt` | `unlocked: Boolean` |
 | `invalidationStore` | `InvalidationDataStore` | `commonMain/infrastructure/settings/InvalidationDataStore.kt` | Manual invalidation versions (TanStack Query style) |
 
 ---
 
-## 12. AdWare Governance
+## 12. AdWare Governance (Compile-Time Flavors)
 
-**Rule:** The master toggle `adEnabled` (in `UserSettings` → `settings.ad_enabled`) controls whether banner ads render in **allowed views only**.
+**Rule:** Ads are a **build-time** concern, not a user setting. The runtime `adEnabled` switch is removed from `SettingsScreen`.
 
-- **Allowed:** Expenses list, Catalog/Inventory list, Caja (Cash Summary), Movimientos (Transactions) — footer banner.
-- **Disallowed:** All forms, ConfirmDialogs, PIN gate, Lock screen, Settings screen.
-- **Implementation:** `AdEnabledProvider` CompositionLocal reads `SettingsDataStore.adEnabled`. Components check this flag before rendering `AdBanner`.
-- **Default:** `false` (opt-in).
+- **Flavors:** `free` → `ADS_ENABLED = true`; `pro` → `ADS_ENABLED = false`. Declared in `androidApp/build.gradle.kts`.
+- **Signing:** both flavors share the same `.jks` and the same `applicationId` (`com.copitoB.mypos`), so upgrading `free → pro` preserves the local SQLite database. `applicationIdSuffix` is forbidden.
+- **Propagation:** `BuildConfig.ADS_ENABLED` (app flavor) → shared Gradle property → generated constant read by the `androidMain` `actual` of `expect fun isAdsEnabled(): Boolean` (`commonMain`) → `LocalAdsEnabled` CompositionLocal. The `composeApp` library must not reference `androidApp`'s `BuildConfig` directly.
+- **Allowed:** Expenses list, Catalog/Inventory list, Caja, Movimientos — footer banner, `free` flavor only.
+- **Disallowed:** all forms, `ConfirmDialog`, PIN gate, Lock screen, Settings screen. The `pro` flavor ships **no ad code path** at all.
+- **Settings UI:** replaced by a read-only `FlavorInfoCard` showing the installed flavor and whether ads are compiled in.
+- **Legacy column:** `settings.ad_enabled` is deprecated, never read or written, and dropped in a `v3.0.0` `.sqm`.
 
 ---
 
-## 13. Applicable NFRs
+## 13. Backup Format Contract (JSON v2)
+
+**Envelope**
+
+```json
+{
+  "format": "tpv-backup",
+  "schemaVersion": 2,
+  "appVersion": "2.0.0",
+  "exportedAt": "2026-11-19T10:00:00Z",
+  "source": "kmp",
+  "data": {
+    "settings": { "currencyCode": "Bs", "pageSize": 15, "biometricEnabled": false },
+    "categories": [],
+    "expenseCategories": [],
+    "products": [],
+    "transactions": [],
+    "transactionDetails": [],
+    "accumulators": { "totalSales": 0, "totalPurchases": 0, "totalExpenses": 0, "netBalance": 0 }
+  }
+}
+```
+
+| Field | Rule |
+|---|---|
+| `format` | Must equal `"tpv-backup"`; anything else is rejected |
+| `schemaVersion` | `2` for KMP exports; imports accept `1`/`2`; newer versions rejected |
+| `source` | `"kmp"` or `"rn"` (informational; drives logging only) |
+| `exportedAt` | ISO-8601 UTC |
+| `data.accumulators` | Written for completeness but **never trusted** on import — recomputed from `transactions` |
+
+**Legacy `.db` import mapping (`rn-app` → KMP)**
+
+| Legacy | KMP | Transformation |
+|---|---|---|
+| `products.sku` (`NULL`) | `products.sku` | `null` |
+| `categories` (no `updated_at`) | `categories.updated_at` | `= registered_at` |
+| `type = VENTA / COMPRA / GASTO` | `SALE / PURCHASE / EXPENSE` | enum map |
+| `payment_method = EFECTIVO / TARJETA / TRANSFERENCIA / QR` | `CASH / CARD / TRANSFER / QR` | enum map |
+| `CURRENT_TIMESTAMP` (`YYYY-MM-DD HH:MM:SS`) | ISO-8601 (`T`…`Z`) | normalizer |
+| `tpv.settings.v1` (AsyncStorage JSON) | `settings` row | supplied with the import or defaults `Bs / 15 / false` |
+| expense without category | `expense_categories` default row | seeded default category |
+
+**Atomicity:** one SQLDelight `transaction { }`. Failure → full rollback + `ImportReport` error. Success → ViewModel invalidation + `ImportReport(inserted, updated, skipped, warnings)`.
+
+---
+
+## 14. Applicable NFRs
 
 - **NFR-01:** Offline-first SQLDelight (JSI SQLite driver, transaction blocks).
 - **NFR-06:** Dark mode strict + design tokens at runtime (`MaterialTheme` + custom tokens).
@@ -418,7 +506,7 @@ suspend fun setPin(currentPin: String?, newPin: String)
 
 ---
 
-## 14. Extension Points (v2.0.0 Roadmap)
+## 15. Extension Points (v2.0.0 Roadmap)
 
 - [ ] **Auto-lock after inactivity**: Configurable timeout (1/5/15/30 min).
 - [ ] **PIN recovery**: Security question fallback.
@@ -428,7 +516,7 @@ suspend fun setPin(currentPin: String?, newPin: String)
 
 ---
 
-## 15. i18n Keys (Spanish UI Dictionary — `composeResources/values-es/strings.xml`)
+## 16. i18n Keys (Spanish UI Dictionary — `composeResources/values-es/strings.xml`)
 
 ```xml
 <!-- Settings Screen -->
@@ -436,7 +524,7 @@ suspend fun setPin(currentPin: String?, newPin: String)
 <string name="settings_section_general">General</string>
 <string name="settings_section_security">Seguridad</string>
 <string name="settings_section_backup">Copia de seguridad</string>
-<string name="settings_section_ads">Publicidad</string>
+<string name="settings_section_about">Aplicación</string>
 <string name="settings_currency_label">Moneda</string>
 <string name="settings_currency_option_bs">Bolivianos (Bs)</string>
 <string name="settings_currency_option_usd">Dólares ($)</string>
@@ -458,8 +546,9 @@ suspend fun setPin(currentPin: String?, newPin: String)
 <string name="settings_backup_restore_confirm_message">Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar.</string>
 <string name="settings_backup_restore_success">Copia restaurada. La app se reiniciará.</string>
 <string name="settings_backup_restore_error">Error al restaurar</string>
-<string name="settings_ads_enabled_label">Permitir anuncios</string>
-<string name="settings_ads_enabled_helper">Muestra banners solo en la lista de gastos</string>
+<string name="settings_flavor_free">Versión gratuita (con anuncios)</string>
+<string name="settings_flavor_pro">Versión completa (sin anuncios)</string>
+<string name="settings_flavor_description">La versión se determina al instalar la app; no se puede cambiar desde aquí.</string>
 
 <!-- Lock Screen -->
 <string name="lock_title">Ingrese su PIN</string>
@@ -494,14 +583,15 @@ suspend fun setPin(currentPin: String?, newPin: String)
 
 ---
 
-## 16. Cross-References
+## 17. Cross-References
 
-- `expenses-cashflow/spec.md` — Section 12 (AdWare Governance), `AdEnabledProvider` CompositionLocal.
+- `expenses-cashflow/spec.md` — Section 11 (AdWare Governance), `isAdsEnabled()` / `LocalAdsEnabled`.
 - `sales-checkout/spec.md` — Section 4 (Database Contract), uses `pageSize` from settings.
 - `financial-accumulators/spec.md` — Section 4 (financial_accumulators), uses `Currency` for formatting.
 - `catalog-inventory/spec.md` — Section 6 (RULE-CI-03), uses `Money` for fractional amounts.
-- `system-settings/spec.md` — This document (source of truth for `Currency`, `Money`, `UserSettings`).
+- `system-settings/spec.md` — This document (source of truth for `Currency`, `Money`, `UserSettings`, backup format).
+- `/docs/MIGRATION_CHECKLIST.md` — Import parity and safe-default rules.
 
 ---
 
-*Last updated: 2026-11-12 — v2.0.0 KMP Specification*
+*Last updated: 2026-11-19 — v2.0.0 KMP Specification (Phase 6)*

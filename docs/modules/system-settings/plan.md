@@ -7,7 +7,7 @@
 This plan covers the implementation of the System Settings module v2.0.0 KMP, including:
 - Domain layer: English entities (`UserSettings`, `Currency`, `Money`), Value Objects, rules
 - Data layer: Repository interface, SQLite migration from DataStore, singleton pattern
-- Application layer: `GetSettings`, `UpdateSettings`, `VerifyPin`, `SetPin`, `ExportDatabase`, `RestoreDatabase`
+- Application layer: `GetSettings`, `UpdateSettings`, `VerifyPin`, `SetPin`, `ExportBackupUseCase`, `ImportBackupUseCase`
 - Presentation layer: ViewModels, Compose UI components, AdWare governance toggle
 - Testing: Unit, integration, migration, PIN gate, cash integrity
 
@@ -111,11 +111,13 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - Computes SHA-256 of `newPin`
 - Stores hash in platform secure storage (`pin_hash`)
 
-### 4.5 ExportDatabase / RestoreDatabase
-**Files:** `backup/ExportDatabase.kt`, `backup/RestoreDatabase.kt`
-- Export: `FileSystem.copy` → `ShareSheet`
-- Restore: `FilePicker` → close DB → copy → reopen → invalidate DataStores → reload app
-- **Restore requires PIN gate** (RULE-SS-04)
+### 4.5 ExportBackup / ImportBackup
+**Files:** `backup/ExportBackupUseCase.kt`, `backup/ImportBackupUseCase.kt`, `backup/LegacyMapper.kt`, `backup/BackupModels.kt`
+
+- **Export:** read all tables → serialize versioned JSON envelope (`format: "tpv-backup"`, `schemaVersion: 2`) → write `tpv-backup-YYYYMMDD-HHmm.json` → platform share sheet.
+- **Import:** PIN gate (`VerifyPin`) → accept `BackupSource.Json` **or** `BackupSource.LegacySqliteFile` (the RN `.db` format) → normalize enums and timestamps via `LegacyMapper` → apply safe defaults (`sku = null`, `categories.updated_at = registered_at`, default expense category, settings fallback `Bs/15/false`) → single SQLDelight `transaction { }` wipe-and-insert → recompute `financial_accumulators` from `sales_transactions` → invalidate all ViewModels → return `ImportReport`.
+- **Atomicity:** any failure rolls back the import; the accumulator is never trusted from the file.
+- **Restore requires PIN gate** (RULE-SS-04). Contract details: `spec.md` §13.
 
 ---
 
@@ -124,7 +126,7 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 ### 5.1 DataStores (`commonMain/infrastructure/settings/`)
 | DataStore | File | Description |
 |---|---|---|
-| `SettingsDataStore` | `SettingsDataStore.kt` | Hydrated from SQLite: `currencyCode`, `pageSize`, `biometricEnabled`, `adEnabled` |
+| `SettingsDataStore` | `SettingsDataStore.kt` | Hydrated from SQLite: `currencyCode`, `pageSize`, `biometricEnabled` |
 | `SessionDataStore` | `SessionDataStore.kt` | `unlocked: Boolean` |
 | `InvalidationDataStore` | `InvalidationDataStore.kt` | Manual invalidation versions |
 
@@ -132,8 +134,9 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 | ViewModel | File | Description |
 |---|---|---|
 | `SettingsViewModel` | `SettingsViewModel.kt` | Read/write singleton settings |
-| `SecurityViewModel` | `SecurityViewModel.kt` | PIN/biometric actions |
-| `BackupViewModel` | `BackupViewModel.kt` | Export/Restore with PIN gate |
+| `PinViewModel` | `PinViewModel.kt` | Verify/set/change PIN, lock state, failed-attempt throttling |
+| `SecurityViewModel` | `SecurityViewModel.kt` | Biometric availability and toggle actions |
+| `BackupViewModel` | `BackupViewModel.kt` | Export/Import (JSON + legacy `.db`) with PIN gate |
 | `PinGateViewModel` | `PinGateViewModel.kt` | Modal PIN challenge |
 
 ### 5.3 Compose UI Components (`composeApp/src/commonMain/compose/`)
@@ -146,27 +149,27 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 | `PageSizeInput.kt` | `settings/PageSizeInput.kt` | **New**: numeric input 5–100 |
 | `PinForm.kt` | `security/PinForm.kt` | **New**: 4-6 digit masked input |
 | `BiometricToggle.kt` | `security/BiometricToggle.kt` | **New**: switch + auth on enable |
-| `BackupActions.kt` | `settings/BackupActions.kt` | **New**: export/restore buttons |
+| `BackupActions.kt` | `settings/BackupActions.kt` | **New**: export/import buttons |
 | `ConfirmDialog.kt` | `feedback/ConfirmDialog.kt` | Existing: reusable |
-| `AdEnabledToggle.kt` | `settings/AdEnabledToggle.kt` | **New**: master AdWare switch |
+| `FlavorInfoCard.kt` | `settings/FlavorInfoCard.kt` | **New**: read-only flavor/ads status (no toggle) |
 | `LockScreen.kt` | `security/LockScreen.kt` | PIN entry + biometric |
+| `PinLockOverlay.kt` | `security/PinLockOverlay.kt` | **New**: app-start and critical-action gate |
 | `PinGateDialog.kt` | `security/PinGateDialog.kt` | Modal PIN challenge |
 
-### 5.4 AdWare Integration
-**Files to modify:**
-- `ExpenseListScreen.kt` — Check `AdEnabledProvider` before rendering `AdBanner`
-- `ProductGridScreen.kt` — Check `AdEnabledProvider` before rendering `AdBanner`
-- `CashSummaryScreen.kt` — Check `AdEnabledProvider` before rendering `AdBanner`
-- `MovementsListScreen.kt` — Check `AdEnabledProvider` before rendering `AdBanner`
-- `composeApp/.../ads/AdBanner.kt` — Only renders when enabled
+### 5.4 AdWare Integration (Build Flavors)
+**Files to configure:**
+- `androidApp/build.gradle.kts` — `free` / `pro` flavors with `ADS_ENABLED`; shared `signingConfig`; identical `applicationId` (no suffix)
+- `commonMain` — `expect fun isAdsEnabled(): Boolean` + `LocalAdsEnabled` CompositionLocal provided at `App()`
+- `androidMain` — actual reads `BuildConfig.ADS_ENABLED`
+- `ExpenseListScreen.kt`, `ProductListScreen.kt`, `CashSummaryScreen.kt`, `MovementsScreen.kt` — footer `AdBanner` only when `isAdsEnabled()`
+- `SettingsScreen.kt` — replace toggle with `FlavorInfoCard`
 
-**Rule:** `adEnabled` respected in Expenses list, Catalog, Caja, Movimientos; ignored in forms, ConfirmDialog, PIN gate, Lock, Settings.
+**Rule:** ads exist only in the `free` build; `pro` contains no ad code path. No runtime toggle, no `settings.ad_enabled` reads.
 
 ### 5.5 i18n
 **File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
-- All 60+ keys from spec.md section 15
-- Namespace: `settings_`
-- Additional `lock_`, `pin_gate_`, `pin_form_`, `biometric_`, `toast_` namespaces
+- All keys from `spec.md` §16
+- Namespaces: `settings_`, `lock_`, `pin_gate_`, `pin_form_`, `biometric_`, `toast_`
 
 ---
 
@@ -174,7 +177,7 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 
 ### 6.1 Data Integrity Checks
 - Row count: `settings` table has exactly 1 row (`id = 1`)
-- Columns: `currency_code`, `page_size`, `biometric_enabled`, `ad_enabled`, `updated_at`
+- Columns: `currency_code`, `page_size`, `biometric_enabled`, `updated_at` (`ad_enabled` retained but deprecated/ignored)
 - Values migrated from DataStore match (currency, pageSize, biometricEnabled)
 - PIN hash unchanged in platform secure storage
 - `user_version = 2`
@@ -183,9 +186,10 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - Change currency → `Currency` formatter updates globally
 - Change pageSize → list ViewModels use new `LIMIT` value
 - Toggle biometric → requires auth, persists
-- Toggle adEnabled → allowed views show/hide banner
-- Export DB → valid `.db` file shared
-- Restore DB → requires PIN, reloads app, data intact
+- `free` build shows banners in allowed views; `pro` build contains no ad code path
+- Export backup → valid JSON v2 file shared
+- Import backup → requires PIN, atomic, accumulators recomputed
+- Import legacy `.db` → enums translated, row counts match, app state invalidated
 
 ---
 
@@ -204,8 +208,9 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - `UpdateSettingsTest.kt` — Atomic update, validation, returns updated entity
 - `VerifyPinTest.kt` — Correct PIN true, incorrect PIN false, constant-time
 - `SetPinTest.kt` — First-time set, change with current PIN, rejects wrong current PIN
-- `ExportDatabaseTest.kt` — File copied, shared via ShareSheet
-- `RestoreDatabaseTest.kt` — Requires PIN, copies file, invalidates DataStores
+- `ExportBackupTest.kt` — Serializes all tables into the JSON v2 envelope
+- `ImportBackupTest.kt` — JSON round-trip is atomic, idempotent, accumulators recomputed
+- `LegacyDbImportTest.kt` — `rn-app` `.db` fixture: enum translation, `sku = null`, timestamp normalization
 
 ### 7.3 Migration Tests
 **Directory:** `commonTest/migration/system-settings/`
@@ -220,8 +225,9 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 ### 7.5 ViewModel Tests (Turbine)
 **Directory:** `commonTest/viewmodels/system-settings/`
 - `SettingsViewModelTest.kt` — Read/write singleton, triggers re-render on change
-- `SecurityViewModelTest.kt` — PIN/biometric actions
-- `BackupViewModelTest.kt` — Export/Restore flow
+- `PinViewModelTest.kt` — Verify/set/change, wrong-current rejection, lock state
+- `SecurityViewModelTest.kt` — Biometric availability and toggle actions
+- `BackupViewModelTest.kt` — Export/Import flow, PIN gate, failure rollback
 - `PinGateViewModelTest.kt` — Modal PIN challenge
 
 ### 7.6 Compose UI Tests (Robolectric)
@@ -230,15 +236,16 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - `PageSizeInputTest.kt` — Validates 5-100, rejects out of bounds
 - `PinFormTest.kt` — Masked input, length validation, mismatch error
 - `BiometricToggleTest.kt` — Toggle triggers auth, updates DataStore on success
-- `AdEnabledToggleTest.kt` — Toggle updates `adEnabled`, persists
+- `FlavorInfoCardTest.kt` — Renders read-only flavor label; no interactive ad control exists
 
 ### 7.7 E2E Tests (Maestro)
 **Directory:** `maestro/system-settings/`
 - `settingsFlow.yaml` — Open settings → change currency → verify global format
 - `pinChangeFlow.yaml` — Change PIN → verify old PIN rejected, new PIN works
 - `biometricFlow.yaml` — Enable biometric → auth → toggle persists
-- `backupFlow.yaml` — Export → verify file → Restore → verify data intact
-- `adEnabledFlow.yaml` — Toggle adEnabled → verify allowed views banner visibility
+- `backupFlow.yaml` — Export → verify file → Import → verify data intact
+- `legacyImportFlow.yaml` — Import `rn-app` `.db` → verify translated rows
+- `flavorInstallFlow.yaml` — Install `free`, then `pro` over it → local data preserved
 - `migrationIdempotency.yaml` — Run migration twice → no errors, single row
 
 ---
@@ -271,7 +278,10 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 | DataStore migration race | `GetSettings` checks table empty → migrates → upserts; idempotent |
 | `CHECK (id = 1)` insert conflict | `INSERT OR IGNORE` + `UPDATE` pattern in repository |
 | PIN hash timing attack | Constant-time comparison in `VerifyPin` |
-| AdBanner in disallowed views | CI grep check: `grep -r "AdBanner" --include="*.kt" composeApp/.../settings composeApp/.../security composeApp/.../feedback` |
+| AdBanner in disallowed views | CI grep check over `settings/`, `security/`, `feedback/`, `cart/`, `purchases/`; `pro` flavor compiles ads out |
+| Flavor upgrade wipes data | Identical `applicationId` + shared `.jks`; no `applicationIdSuffix`; E2E install test |
+| Backup import corrupts data | Single transaction + row-count assertions + rollback test |
+| Legacy `.db` mis-mapped | Fixture-based test asserting enums, timestamps, `sku = null` |
 | i18n keys missing | CI check: `grep -r "settings_" --include="*.kt" composeApp/.../settings` |
 | Currency formatter mismatch | Unit test asserts `format()` matches `NumberFormat` for each locale |
 
@@ -287,9 +297,11 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] `UpdateSettings` works atomically with validation
 - [ ] PIN change requires current PIN (except first time)
 - [ ] Biometric toggle requires auth before enabling
-- [ ] Restore backup requires PIN confirmation
-- [ ] `adEnabled` toggle controls allowed views banner only
-- [ ] All 60+ i18n keys implemented
+- [ ] Restore/import requires PIN confirmation and is fully atomic
+- [ ] Ads are compile-time only (`free` / `pro`), with a read-only flavor card in Settings
+- [ ] Export produces a JSON v2 envelope; import accepts JSON and legacy `rn-app` `.db`
+- [ ] Import translates enums/timestamps and recomputes `financial_accumulators`
+- [ ] All i18n keys implemented
 - [ ] Unit tests: 100% pass
 - [ ] Integration tests: 100% pass
 - [ ] Migration tests: 100% pass

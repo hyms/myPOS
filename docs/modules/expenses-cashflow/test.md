@@ -1,5 +1,7 @@
 # Expenses & Cash Flow — Test Plan
 
+> **Status: legacy Jest suite (RN reference).** This document describes the original React Native test matrix. The KMP target suite lives in `kmp-app/composeApp/src/commonTest` and runs via `./gradlew :composeApp:testAndroidHostTest`. Porting these cases to Kotlin is tracked in `/docs/MIGRATION_CHECKLIST.md` §7.3.7.
+
 ## 1. Unit Tests (TDD)
 | Test | File | Coverage |
 |---|---|---|

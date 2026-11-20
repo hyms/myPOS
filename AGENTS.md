@@ -73,26 +73,27 @@ This document defines the architectural governance, coding standards, and cross-
 
 | Category | Technology | Version / Config |
 |---|---|---|
-| **Framework** | Kotlin Multiplatform 1.9+ | Managed, Kotlin strict |
-| **Router** | Compose Multiplatform | File-based navigation |
-| **UI Styling** | Compose Material3 + Material You | Design tokens in `kmp-app/composeApp/src/commonMain/resources/` |
-| **Lists** | `LazyVerticalGrid` | `columns={3}` (catalog), `{1}` (expenses) |
-| **Database** | SQLDelight + SQLite JSI | `openDatabaseSync`, `withTransactionSync` |
-| **State** | Koin | Granular ViewModels, manual invalidation |
-| **Auth** | `SecureStore` (PIN hash), `Biometric` API | |
-| **Images** | `ImageManipulator` (400×400, JPEG 70%) + `FileSystem` + `Compose Image` | 400×400, JPEG 70%, <40KB |
-| **Print/Share** | `Print` + `Share` APIs | HTML receipts |
-| **Backup** | `DocumentPicker` + `FileSystem` | |
-| **Dates** | `kotlinx-datetime` | |
-| **Toasts** | `compose-toast` | |
-| **Package Manager** | `gradle` | |
+| **Framework** | Kotlin Multiplatform 2.4+ | Gradle 9.9.1 · AGP 9.5.1 · JVM 21 · Kotlin strict |
+| **Router** | Compose Multiplatform navigation | Single activity, destination back stack |
+| **UI Styling** | Compose Material3 + Material You | Design tokens in `kmp-app/composeApp/src/commonMain/kotlin/.../presentation/theme/` |
+| **Lists** | `LazyVerticalGrid` | `columns = 3` (catalog), `columns = 1` (history lists) |
+| **Database** | SQLDelight 2.4.1 | `.sq` schema + ordered `.sqm` migrations, `transaction { }` |
+| **State** | Koin 4.2.2 + `StateFlow` | `koinViewModel`, granular ViewModels |
+| **Auth** | Platform secure storage (PIN hash) + Biometric | `expect`/`actual` in `androidMain` / `iosMain` |
+| **Images** | Platform image optimizer (`expect`/`actual`) | 400×400, JPEG 70%, <40 KB |
+| **Print/Share** | Platform print + share (`expect`/`actual`) | HTML receipts |
+| **Backup** | `ExportBackupUseCase` / `ImportBackupUseCase` | Versioned JSON v2 + legacy `rn-app` `.db` import |
+| **Dates** | `kotlinx-datetime` | ISO-8601 |
+| **Toasts** | Compose Snackbar | Material3 |
+| **Distribution** | Gradle flavors `free` / `pro` | `ADS_ENABLED` build flag, shared `.jks` |
+| **Package Manager** | Gradle | `gradlew` from `kmp-app/` |
 
 ---
 
 ## 5. Database & Persistence Rules
 - Single database file: `tpv.db` (managed by SQLDelight)
-- **All writes** wrapped in `db.withTransactionSync(() => { ... })` — atomic, auto-rollback
-- **Reads** direct via `db.getAllSync` / `db.getFirstSync` — zero-latency
+- **All writes** wrapped in a SQLDelight `transaction { ... }` block — atomic, auto-rollback
+- **Reads** direct through generated SQLDelight queries — zero-latency
 - `PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`
 
 ### Schema Conventions
@@ -108,10 +109,10 @@ This document defines the architectural governance, coding standards, and cross-
 
 ### Migration Protocol
 - Versioned via `PRAGMA user_version`
-- **Single source of truth:** `kmp-app/src/data/database/migrations.ts` runner
+- **Single source of truth:** `kmp-app/composeApp/src/commonMain/sqldelight/schema.sq` + ordered `.sqm` files under `migrations/`
 - **Ordering (v2.0.0):** `catalog-inventory` → `sales-checkout` → `financial-accumulators` → `expenses-cashflow` → `system-settings`
 - All share `user_version = 2`
-- Atomic: each migration runs in `withTransactionSync`
+- Atomic: each migration runs inside its own `transaction { }`
 
 ---
 
@@ -132,36 +133,45 @@ This document defines the architectural governance, coding standards, and cross-
 
 ## 7. Module Boundaries & Responsibilities
 
-| Module | Bounded Context | Key Tables | AdWare |
+| Module | Bounded Context | Key Tables | Ad Surface |
 |---|---|---|---|
-| **catalog-inventory** | Products, categories, stock, images | `products`, `categories` | **Allowed** (Inventory list footer) |
-| **sales-checkout** | Cart, sales/purchases, payment, receipts | `sales_transactions`, `transaction_details` | **Forbidden** (checkout flow) |
-| **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | **Allowed** (Expenses list footer) |
-| **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | **Allowed** (Caja, Movimientos footers) |
-| **system-settings** | Currency, pagination, PIN/biometric, backup, AD_ENABLED | `settings` (singleton) | **Master toggle** (`adEnabled`) |
+| **catalog-inventory** | Products, categories, stock, images | `products`, `categories` | `free` flavor: Inventory list footer |
+| **sales-checkout** | Cart, sales/purchases, payment, receipts | `sales_transactions`, `transaction_details` | **None** (checkout + purchases) |
+| **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | `free` flavor: Expenses list footer |
+| **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | `free` flavor: Caja + Movimientos footers |
+| **system-settings** | Currency, pagination, PIN/biometric, backup/import, build flavor | `settings` (singleton) | Read-only `FlavorInfoCard` |
 
 ### Cross-Module Contracts
 - `catalog-inventory` → `sales-checkout`: Product data (price, stock, SKU)
 - `sales-checkout` → `financial-accumulators`: Atomic `UpdateAccumulator` calls
 - `expenses-cashflow` → `financial-accumulators`: Atomic `UpdateAccumulator` calls
-- `system-settings` → **All**: `Currency`, `Money`, `pageSize`, `adEnabled`, PIN gate
+- `system-settings` → **All**: `Currency`, `Money`, `pageSize`, PIN gate, `LocalAdsEnabled`
 
 ---
 
-## 8. AdWare Governance (`AD_ENABLED` Flag)
+## 8. AdWare Governance (Compile-Time Flavors)
 
-| View | Allowed? | Implementation |
+**Ads are a build-time property, never a runtime setting.** There is no ads toggle in the Settings screen and no `ad_enabled` read path.
+
+| View | `free` flavor | Implementation |
 |---|---|---|
-| Catalog / Inventory list | ✅ Yes | `ListFooterComponent` in `LazyVerticalGrid` |
-| Expenses list | ✅ Yes | `ListFooterComponent` in `LazyVerticalGrid` |
-| Caja (Cash Summary) | ✅ Yes | `ListFooterComponent` |
-| Movimientos (Transactions) | ✅ Yes | `ListFooterComponent` |
-| **Checkout / Payment / Receipt** | ❌ No | `AD_ENABLED` ignored |
-| **Forms (create/edit)** | ❌ No | `AD_ENABLED` ignored |
-| **ConfirmDialog / PIN Gate / Lock** | ❌ No | `AD_ENABLED` ignored |
-| **Settings screen** | ❌ No | `AD_ENABLED` ignored |
+| Catalog / Inventory list | ✅ Banner | Footer item in `LazyVerticalGrid` when `isAdsEnabled()` |
+| Expenses list | ✅ Banner | Footer item in `LazyColumn` when `isAdsEnabled()` |
+| Caja (Cash Summary) | ✅ Banner | Footer item |
+| Movimientos (Transactions) | ✅ Banner | Footer item |
+| **Checkout / Payment / Receipt** | ❌ No | No ad code path |
+| **Purchases flow** | ❌ No | No ad code path |
+| **Forms (create/edit)** | ❌ No | No ad code path |
+| **ConfirmDialog / PIN Gate / Lock** | ❌ No | No ad code path |
+| **Settings screen** | ❌ No | Read-only flavor card |
 
-**Master toggle:** `settings.ad_enabled` (SQLite) → `CompositionLocal` → `useAdEnabled()` composable
+**Flavor contract** (`androidApp/build.gradle.kts`):
+- `free` → `buildConfigField("boolean", "ADS_ENABLED", "true")`
+- `pro` → `buildConfigField("boolean", "ADS_ENABLED", "false")`
+- **Both flavors share the same `applicationId` and the same `.jks`.** `applicationIdSuffix` is forbidden, otherwise a `free → pro` upgrade would create a second app and orphan the user's SQLite data.
+- Flag chain: `BuildConfig.ADS_ENABLED` → `expect fun isAdsEnabled()` → `LocalAdsEnabled` CompositionLocal.
+- `composeApp` (library) cannot read `androidApp`'s `BuildConfig`; the flavor drives a shared Gradle property that generates one constant consumed by the `androidMain` `actual`.
+- `settings.ad_enabled` is deprecated: never read or written, retained until `v3.0.0` to avoid a mid-phase migration, then dropped by a dedicated `.sqm`.
 
 ---
 
@@ -171,14 +181,16 @@ This document defines the architectural governance, coding standards, and cross-
 |---|---|---|
 | **INV-01** | Non-negative financial math (totals, stock, money) | Domain VO constructors, `validatePageSize`, `Stock.subtract` |
 | **INV-02** | Deleted entities never hard-deleted | Soft delete only (`deleted_at`), queries filter `IS NULL` |
-| **INV-03** | All multi-table writes atomic | `db.withTransactionSync` in every use case |
+| **INV-03** | All multi-table writes atomic | SQLDelight `transaction { }` in every write use case |
 | **INV-04** | Single payment method per transaction | `PaymentMethod` VO, no split payments |
 | **INV-05** | Category required for products | `category_id NOT NULL`, validated in repo + form |
 | **INV-06** | Singleton tables have exactly 1 row (`id=1`) | `CHECK (id = 1)` + `INSERT OR IGNORE` |
-| **INV-07** | Stock alerts fire post-commit only | `useStockAlert` composable after successful transaction |
-| **INV-08** | Critical actions require PIN | `usePinGate` composable: change PIN, delete transaction, restore backup |
-| **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `ImageOptimizer` + `ImageStorage` |
-| **INV-10** | Strict Kotlin everywhere | `kmp-app/build.gradle.kts`: `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs |
+| **INV-07** | Stock alerts fire post-commit only | Snackbar triggered after the transaction returns successfully |
+| **INV-08** | Critical actions require PIN | `PinViewModel` / `PinLockOverlay`: change PIN, delete transaction, restore/import backup |
+| **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `expect`/`actual` `ImageOptimizer` + `ImageStorage` |
+| **INV-10** | Strict Kotlin everywhere | `kmp-app/composeApp/build.gradle.kts`: explicit API, `@JvmInline value class` & `data class` for VOs |
+| **INV-11** | Backup import is atomic and idempotent | `ImportBackupUseCase` runs in one `transaction { }`; re-running yields identical state; `financial_accumulators` is always recomputed, never trusted |
+| **INV-12** | Ads are build-time only | `free`/`pro` flavors with `ADS_ENABLED`; no runtime toggle, no `ad_enabled` read path |
 
 ---
 
@@ -243,10 +255,10 @@ import com.mypos.kmp.app.ui.screens.CartScreen
 |---|---|---|
 | **Unit (Domain)** | Kotlin Test | 100% functions/branches on VOs, Rules, Entities |
 | **Integration (Data)** | Kotlin Test + SQLDelight | 100% repo methods, use cases, atomic flows |
-| **Migration** | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent |
+| **Migration** | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent, backup round-trip |
 | **Composables** | Compose Testing Library | 100% composable logic |
-| **E2E** | Detox / Maestro | Critical user flows (checkout, PIN, backup) |
-| **CI Gate** | All suites pass + `./gradlew check` + `./gradlew detekt` | Required for merge |
+| **E2E** | Maestro | Critical user flows (checkout, purchase, PIN, backup) |
+| **CI Gate** | `./gradlew :composeApp:testAndroidHostTest` + `./gradlew detekt` + `assembleFreeDebug` + `assembleProDebug` | Required for merge |
 
 ---
 
@@ -254,11 +266,11 @@ import com.mypos.kmp.app.ui.screens.CartScreen
 1. **Read specs first** — `/docs/modules/*/spec.md` before any implementation
 2. **Follow layer boundaries** — never import Infrastructure in Domain
 3. **Use VOs** — `Money`, `Stock`, `SKU`, `Currency` in domain/application
-4. **Atomic transactions** — every write use case uses `withTransactionSync`
+4. **Atomic transactions** — every write use case uses a SQLDelight `transaction { }` block
 5. **English identifiers** — rename if you see Spanish in code/DB
-6. **i18n keys** — add to `kmp-app/composeResources/values-es/strings.xml` for new UI text
-7. **Run tests** — `cd kmp-app && ./gradlew testDebugUnitTest` (unit + integration) before marking complete
-8. **Update docs** — if schema/contracts change, update `spec.md` + `plan.md` + `test.md`
+6. **i18n keys** — add to `kmp-app/composeApp/src/commonMain/composeResources/values-es/strings.xml` for new UI text
+7. **Run tests** — `cd kmp-app && ./gradlew :composeApp:testAndroidHostTest` (unit + integration) before marking complete
+8. **Update docs** — if schema/contracts change, update `spec.md` + `plan.md` + `test.md`, and tick `/docs/MIGRATION_CHECKLIST.md` when closing a parity gap
 
 ---
 

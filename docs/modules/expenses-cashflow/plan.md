@@ -117,25 +117,25 @@ This plan covers the implementation of the Expenses & Cash Flow module v2.0.0 KM
 |---|---|---|
 | `ConfirmDialog.kt` | `feedback/ConfirmDialog.kt` | Reusable, interpolated text |
 | `EmptyState.kt` | `feedback/EmptyState.kt` | Reusable |
-| `ExpenseListScreen.kt` | `expenses/ExpenseListScreen.kt` | `LazyColumn` with footer `AdBanner` when `AD_ENABLED` |
+| `ExpenseListScreen.kt` | `expenses/ExpenseListScreen.kt` | `LazyColumn` with footer `AdBanner` in the `free` flavor |
 | `ExpenseListItem.kt` | `expenses/ExpenseListItem.kt` | Memoized row (category badge, amount, description, date) |
 | `CategorySelector.kt` | `expenses/CategorySelector.kt` | Dropdown + `[+]` for `QuickCategoryDialog` |
 | `QuickCategoryDialog.kt` | `expenses/QuickCategoryDialog.kt` | Bottom sheet, creates category, invalidates cache, auto-selects |
-| `AdBanner.kt` | `ads/AdBanner.kt` | **ALLOWED** in list footer (`AD_ENABLED` check) |
+| `AdBanner.kt` | `ads/AdBanner.kt` | **ALLOWED** in list footer (`free` flavor only) |
 | `SearchBar.kt` | `filters/SearchBar.kt` | Reusable, debounce 200ms |
 | `CategoryChipsRow.kt` | `filters/CategoryChipsRow.kt` | Reusable, clean text chips |
 
-### 5.3 AdWare Integration
-**Files to modify:**
-- `ExpenseListScreen.kt` — Add `AdBanner` in `LazyColumn` footer when `AD_ENABLED`
+### 5.3 AdWare Integration (Compile-Time Flavors)
+**Files:**
+- `ExpenseListScreen.kt` — footer `AdBanner` only when `LocalAdsEnabled.current` (i.e. `free` flavor)
 - `ExpenseFormScreen.kt` — **No ads** (critical flow)
 
-**Rule:** `AD_ENABLED` flag respected in list; ignored in form, ConfirmDialog, PIN gate.
+**Rule:** ads exist only in the `free` build; there is no runtime toggle. `pro` ships no ad code path.
 
 ### 5.4 i18n
 **File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
-- All 45+ keys from spec.md section 14
-- Namespace: `expenses_`
+- All keys from spec.md section 12
+- Namespace: `expenses_`, `expense_category_`
 
 ---
 
@@ -240,7 +240,7 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] `ReverseTransaction` handles EXPENSE correctly (balance only, no stock)
 - [ ] ConfirmDialog shows interpolated Spanish text correctly
 - [ ] Category selector with quick-create dialog preserves form draft
-- [ ] AdBanner appears in list footer only when `AD_ENABLED`
+- [ ] AdBanner appears in list footer only in the `free` flavor
 - [ ] All 45+ i18n keys implemented
 - [ ] Unit tests: 100% pass
 - [ ] Integration tests: 100% pass

@@ -4,9 +4,12 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/OWNER/REPO/ci.yml?branch=main&logo=github)](https://github.com/OWNER/REPO/actions)
 [![Test Coverage](https://img.shields.io/codecov/c/github/OWNER/REPO?logo=codecov)](https://codecov.io/gh/OWNER/REPO)
-[![Tech Stack](https://img.shields.io/badge/TypeScript-Strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Database](https://img.shields.io/badge/SQLite-JSI%20Sync-003B57?logo=sqlite&logoColor=white)](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+[![Tech Stack](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/docs/multiplatform.html)
+[![UI](https://img.shields.io/badge/Compose-Multiplatform-4285F4?logo=jetpackcompose&logoColor=white)](https://www.jetbrains.com/compose-multiplatform/)
+[![Database](https://img.shields.io/badge/SQLDelight-SQLite-003B57?logo=sqlite&logoColor=white)](https://sqldelight.github.io/sqldelight/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+> **Status:** `kmp-app/` is the active v2.0.0 implementation. `rn-app/` is retained as the legacy behavior reference; feature parity is tracked in `docs/MIGRATION_CHECKLIST.md`.
 
 ---
 
@@ -22,8 +25,8 @@
 └── README.md      # This file
 ```
 
-- **`rn-app/`** — current production app. All Expo/Node commands run from this directory.
-- **`kmp-app/`** — target v2.0.0 app. Gradle commands run from this directory.
+- **`rn-app/`** — legacy production app, kept as the behavioral reference. Expo/Node commands run from this directory.
+- **`kmp-app/`** — active v2.0.0 app. Gradle commands run from this directory.
 - **`docs/`** and **`scripts/`** — shared across both apps; paths stay root-relative.
 
 ---
@@ -121,13 +124,13 @@ graph TD
 | **sales-checkout** | Cart, sales/purchases, payment, receipts | `sales_transactions`, `transaction_details` | ❌ Forbidden (checkout flow) |
 | **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | ✅ Expenses list footer |
 | **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | ✅ Caja, Movimientos footers |
-| **system-settings** | Currency, pagination, PIN/biometric, backup, AD_ENABLED | `settings` (singleton) | 🎛️ Master toggle (`adEnabled`) |
+| **system-settings** | Currency, pagination, PIN/biometric, backup/import, build flavor | `settings` (singleton) | 🏷️ `free` / `pro` flavor |
 
 ### Cross-Module Contracts
 - `catalog-inventory` → `sales-checkout`: Product data (price, stock, SKU)
 - `sales-checkout` → `financial-accumulators`: Atomic `UpdateAccumulator` calls
 - `expenses-cashflow` → `financial-accumulators`: Atomic `UpdateAccumulator` calls
-- `system-settings` → **All**: `Currency`, `Money`, `pageSize`, `adEnabled`, PIN gate
+- `system-settings` → **All**: `Currency`, `Money`, `pageSize`, PIN gate, `LocalAdsEnabled`
 
 ---
 
@@ -340,7 +343,8 @@ src/
 
 | File | Description |
 |---|---|
-| `AGENTS.md` | Master guidelines for AI agents (this file's v2.0.0 version) |
+| `AGENTS.md` | Master guidelines for AI agents (v2.0.0) |
+| `docs/MIGRATION_CHECKLIST.md` | RN → KMP feature parity tracker |
 | `docs/modules/catalog-inventory/spec.md` | Catalog & Inventory specification |
 | `docs/modules/sales-checkout/spec.md` | Sales & Checkout specification |
 | `docs/modules/expenses-cashflow/spec.md` | Expenses & Cash Flow specification |
@@ -355,19 +359,20 @@ Each module has `/spec.md` (contracts), `/plan.md` (implementation), `/test.md` 
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Kotlin Multiplatform 1.9+ (managed) |
-| **Router** | Compose Multiplatform |
+| **Framework** | Kotlin Multiplatform 2.4.21 (Gradle 9.9.1 · AGP 9.5.1 · JVM 21) |
+| **Router** | Compose Multiplatform navigation |
 | **UI Styling** | Compose Material3 + Material You (design tokens) |
 | **Lists** | `LazyVerticalGrid` / `LazyColumn` |
-| **Database** | SQLDelight + SQLite JSI |
-| **State** | Koin ViewModels + StateFlow |
-| **Auth** | `SecureStore` (PIN hash), `Biometric` API |
-| **Images** | `ImageManipulator` (400×400, JPEG 70%) + `FileSystem` + `Compose Image` |
-| **Print/Share** | `Print` + `Share` APIs |
-| **Backup** | `DocumentPicker` + `FileSystem` |
+| **Database** | SQLDelight 2.4.1 (`.sq` + `.sqm`, `transaction { }`) |
+| **State** | Koin 4.2.2 ViewModels + StateFlow |
+| **Auth** | Platform secure storage (PIN hash) + Biometric (`expect`/`actual`) |
+| **Images** | Platform optimizer (`expect`/`actual`) · 400×400, JPEG 70%, <40 KB |
+| **Print/Share** | Platform print + share (`expect`/`actual`) |
+| **Backup** | `ExportBackupUseCase` / `ImportBackupUseCase` (JSON v2 + legacy `.db`) |
 | **Dates** | `kotlinx-datetime` |
-| **Toasts** | `compose-toast` |
-| **Package Manager** | `gradle` |
+| **Toasts** | Compose Snackbar |
+| **Distribution** | Gradle flavors `free` / `pro` (`ADS_ENABLED`, shared `.jks`) |
+| **Package Manager** | Gradle |
 
 ---
 
@@ -377,14 +382,16 @@ Each module has `/spec.md` (contracts), `/plan.md` (implementation), `/test.md` 
 |---|---|
 | **INV-01** | Non-negative financial math (Money, Stock, totals) |
 | **INV-02** | Soft delete only (`deleted_at`), never hard delete |
-| **INV-03** | All multi-table writes atomic via `db.withTransactionSync` |
+| **INV-03** | All multi-table writes atomic via SQLDelight `transaction { }` |
 | **INV-04** | Single `PaymentMethod` per transaction (no split payments) |
 | **INV-05** | Category required for products (`category_id NOT NULL`) |
 | **INV-06** | Singleton tables exactly 1 row (`id=1`, `CHECK`) |
 | **INV-07** | Stock alerts fire **post-commit** only |
-| **INV-08** | Critical actions require PIN (`usePinGate`) |
+| **INV-08** | Critical actions require PIN (`PinViewModel` / `PinLockOverlay`) |
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, target <40KB |
-| **INV-10** | Strict Kotlin: `strictNullSafety = true`, `@JvmInline value class` & `data class` for VOs, `explicitApi()` |
+| **INV-10** | Strict Kotlin: explicit API, `@JvmInline value class` & `data class` for VOs |
+| **INV-11** | Backup import atomic + idempotent; accumulators always recomputed |
+| **INV-12** | Ads are build-time only (`free` / `pro` flavors) |
 
 ---
 
