@@ -27,6 +27,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_cancel
+import com.copitoB.mypos.generated.resources.action_save
+import com.copitoB.mypos.generated.resources.content_desc_back
+import com.copitoB.mypos.generated.resources.label_current_stock
+import com.copitoB.mypos.generated.resources.label_min_stock
+import com.copitoB.mypos.generated.resources.label_name
+import com.copitoB.mypos.generated.resources.label_purchase_price
+import com.copitoB.mypos.generated.resources.label_selling_price
+import com.copitoB.mypos.generated.resources.label_sku
+import com.copitoB.mypos.generated.resources.screen_edit_product
+import com.copitoB.mypos.generated.resources.screen_new_product
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +59,12 @@ fun ProductFormScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text(if (product == null) "Nuevo Producto" else "Editar Producto") },
+        title = { Text(stringResource(if (product == null) Res.string.screen_new_product else Res.string.screen_edit_product)) },
         navigationIcon = {
           IconButton(onClick = onCancel) {
             Icon(
               imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-              contentDescription = "Volver"
+              contentDescription = stringResource(Res.string.content_desc_back)
             )
           }
         }
@@ -64,37 +77,37 @@ fun ProductFormScreen(
       TextField(
         value = name,
         onValueChange = { name = it },
-        label = { Text("Nombre") },
+        label = { Text(stringResource(Res.string.label_name)) },
         modifier = Modifier.fillMaxWidth()
       )
       TextField(
         value = sku,
         onValueChange = { sku = it },
-        label = { Text("SKU") },
+        label = { Text(stringResource(Res.string.label_sku)) },
         modifier = Modifier.fillMaxWidth()
       )
       TextField(
         value = sellingPrice,
         onValueChange = { sellingPrice = it },
-        label = { Text("Precio de Venta") },
+        label = { Text(stringResource(Res.string.label_selling_price)) },
         modifier = Modifier.fillMaxWidth()
       )
       TextField(
         value = purchasePrice,
         onValueChange = { purchasePrice = it },
-        label = { Text("Precio de Compra") },
+        label = { Text(stringResource(Res.string.label_purchase_price)) },
         modifier = Modifier.fillMaxWidth()
       )
       TextField(
         value = currentStock,
         onValueChange = { currentStock = it },
-        label = { Text("Stock Actual") },
+        label = { Text(stringResource(Res.string.label_current_stock)) },
         modifier = Modifier.fillMaxWidth()
       )
       TextField(
         value = minStock,
         onValueChange = { minStock = it },
-        label = { Text("Stock Mínimo") },
+        label = { Text(stringResource(Res.string.label_min_stock)) },
         modifier = Modifier.fillMaxWidth()
       )
 
@@ -114,10 +127,10 @@ fun ProductFormScreen(
             imageUri = null
           ))
         }) {
-          Text("Guardar")
+          Text(stringResource(Res.string.action_save))
         }
         TextButton(onClick = onCancel) {
-          Text("Cancelar")
+          Text(stringResource(Res.string.action_cancel))
         }
       }
     }

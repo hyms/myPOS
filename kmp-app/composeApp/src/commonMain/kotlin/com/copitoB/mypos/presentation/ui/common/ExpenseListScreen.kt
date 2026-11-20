@@ -33,6 +33,17 @@ import androidx.compose.ui.unit.dp
 import com.copitoB.mypos.domain.entities.Expense
 import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_cancel
+import com.copitoB.mypos.generated.resources.action_refresh
+import com.copitoB.mypos.generated.resources.action_save
+import com.copitoB.mypos.generated.resources.content_desc_add_expense
+import com.copitoB.mypos.generated.resources.dialog_new_expense
+import com.copitoB.mypos.generated.resources.expense_date
+import com.copitoB.mypos.generated.resources.label_amount
+import com.copitoB.mypos.generated.resources.label_description
+import com.copitoB.mypos.generated.resources.screen_expenses
+import org.jetbrains.compose.resources.stringResource
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -48,15 +59,15 @@ fun ExpenseListScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Gastos") },
+        title = { Text(stringResource(Res.string.screen_expenses)) },
         actions = {
-          TextButton(onClick = onRefresh) { Text("Actualizar") }
+          TextButton(onClick = onRefresh) { Text(stringResource(Res.string.action_refresh)) }
         }
       )
     },
     floatingActionButton = {
       FloatingActionButton(onClick = { showDialog = true }) {
-        Icon(imageVector = Icons.Default.Add, contentDescription = "Agregar gasto")
+        Icon(imageVector = Icons.Default.Add, contentDescription = stringResource(Res.string.content_desc_add_expense))
       }
     }
   ) { innerPadding ->
@@ -76,7 +87,7 @@ fun ExpenseListScreen(
             Column(modifier = Modifier.weight(1f)) {
               Text(text = expense.description, style = MaterialTheme.typography.titleMedium)
               Text(
-                text = expense.registeredAt?.take(10) ?: "",
+                text = stringResource(Res.string.expense_date, expense.registeredAt?.take(10) ?: ""),
                 style = MaterialTheme.typography.bodySmall
               )
             }
@@ -110,19 +121,19 @@ private fun AddExpenseDialog(
 
   AlertDialog(
     onDismissRequest = onDismiss,
-    title = { Text("Nuevo gasto") },
+    title = { Text(stringResource(Res.string.dialog_new_expense)) },
     text = {
       Column {
         OutlinedTextField(
           value = amountText,
           onValueChange = { amountText = it },
-          label = { Text("Monto") },
+          label = { Text(stringResource(Res.string.label_amount)) },
           modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
           value = description,
           onValueChange = { description = it },
-          label = { Text("Descripción") },
+          label = { Text(stringResource(Res.string.label_description)) },
           modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         )
       }
@@ -132,11 +143,11 @@ private fun AddExpenseDialog(
         onClick = { if (canConfirm && amount != null) onConfirm(amount, description) },
         enabled = canConfirm
       ) {
-        Text("Guardar")
+        Text(stringResource(Res.string.action_save))
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss) { Text("Cancelar") }
+      TextButton(onClick = onDismiss) { Text(stringResource(Res.string.action_cancel)) }
     }
   )
 }

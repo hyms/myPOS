@@ -15,38 +15,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.copitoB.mypos.domain.entities.UserSettings
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_refresh
+import com.copitoB.mypos.generated.resources.label_biometric
+import com.copitoB.mypos.generated.resources.loading
+import com.copitoB.mypos.generated.resources.screen_settings
+import com.copitoB.mypos.generated.resources.settings_currency
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(
   settings: UserSettings?,
-  onAdEnabledChange: (Boolean) -> Unit,
   onBiometricChange: (Boolean) -> Unit,
   onRefresh: () -> Unit
 ) {
   Column(
     modifier = Modifier.fillMaxSize().padding(16.dp)
   ) {
-    Text(text = "Ajustes", style = MaterialTheme.typography.headlineMedium)
+    Text(text = stringResource(Res.string.screen_settings), style = MaterialTheme.typography.headlineMedium)
 
     if (settings == null) {
       Text(
-        text = "Cargando...",
+        text = stringResource(Res.string.loading),
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.padding(top = 16.dp)
       )
     } else {
       Text(
-        text = "Moneda: ${settings.currencyCode}",
+        text = stringResource(Res.string.settings_currency, settings.currencyCode),
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.padding(top = 16.dp)
       )
       ToggleRow(
-        label = "Mostrar anuncios",
-        checked = settings.adEnabled,
-        onCheckedChange = onAdEnabledChange
-      )
-      ToggleRow(
-        label = "Biometría",
+        label = stringResource(Res.string.label_biometric),
         checked = settings.biometricEnabled,
         onCheckedChange = onBiometricChange
       )
@@ -56,7 +57,7 @@ fun SettingsScreen(
       onClick = onRefresh,
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
     ) {
-      Text("Actualizar")
+      Text(stringResource(Res.string.action_refresh))
     }
   }
 }

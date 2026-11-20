@@ -1,5 +1,6 @@
 package com.copitoB.mypos.presentation.ui.model
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import com.copitoB.mypos.domain.entities.Expense
 import com.copitoB.mypos.domain.entities.FinancialSummary
@@ -8,6 +9,12 @@ import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.UserSettings
 import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.payment_card
+import com.copitoB.mypos.generated.resources.payment_cash
+import com.copitoB.mypos.generated.resources.payment_qr
+import com.copitoB.mypos.generated.resources.payment_transfer
+import org.jetbrains.compose.resources.stringResource
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -76,7 +83,6 @@ data class CashSummaryUi(
 data class SettingsUiState(
   val currencyCode: String,
   val pageSizeText: String,
-  val adEnabled: Boolean,
   val biometricEnabled: Boolean,
   val error: String? = null
 )
@@ -99,6 +105,7 @@ fun Product.toRowUi(currency: Currency): ProductRowUi = ProductRowUi(
   isLowStock = isBelowMinStock()
 )
 
+@Composable
 fun Expense.toRowUi(currency: Currency): ExpenseRowUi = ExpenseRowUi(
   id = id ?: 0L,
   amountLabel = currency.format(amount.amount),
@@ -127,14 +134,14 @@ fun ICartItem.toLineUi(currency: Currency): CartLineUi = CartLineUi(
 fun UserSettings.toUi(): SettingsUiState = SettingsUiState(
   currencyCode = currencyCode,
   pageSizeText = pageSize.toString(),
-  adEnabled = adEnabled,
   biometricEnabled = biometricEnabled,
   error = null
 )
 
+@Composable
 fun PaymentMethod.label(): String = when (this) {
-  PaymentMethod.CASH -> "Efectivo"
-  PaymentMethod.CARD -> "Tarjeta"
-  PaymentMethod.TRANSFER -> "Transferencia"
-  PaymentMethod.QR -> "QR"
+  PaymentMethod.CASH -> stringResource(Res.string.payment_cash)
+  PaymentMethod.CARD -> stringResource(Res.string.payment_card)
+  PaymentMethod.TRANSFER -> stringResource(Res.string.payment_transfer)
+  PaymentMethod.QR -> stringResource(Res.string.payment_qr)
 }

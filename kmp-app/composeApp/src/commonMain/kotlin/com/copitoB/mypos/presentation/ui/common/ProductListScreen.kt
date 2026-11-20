@@ -30,6 +30,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import com.copitoB.mypos.domain.entities.Product
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_delete
+import com.copitoB.mypos.generated.resources.content_desc_add_product
+import com.copitoB.mypos.generated.resources.product_sku
+import com.copitoB.mypos.generated.resources.product_stock
+import com.copitoB.mypos.generated.resources.screen_products
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,12 +49,12 @@ fun ProductListScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text("Productos") },
+        title = { Text(stringResource(Res.string.screen_products)) },
         actions = {
           IconButton(onClick = onAddProduct) {
             Icon(
               imageVector = Icons.Default.Add,
-              contentDescription = "Agregar producto"
+              contentDescription = stringResource(Res.string.content_desc_add_product)
             )
           }
         }
@@ -57,7 +64,7 @@ fun ProductListScreen(
       androidx.compose.material3.FloatingActionButton(onClick = onAddProduct) {
         Icon(
           imageVector = Icons.Default.Add,
-          contentDescription = "Agregar producto"
+          contentDescription = stringResource(Res.string.content_desc_add_product)
         )
       }
     }
@@ -93,16 +100,16 @@ fun ProductCard(
     ) {
       Column(modifier = Modifier.fillMaxWidth()) {
         Text(text = product.name, style = MaterialTheme.typography.titleMedium)
-        Text(text = "SKU: ${product.sku?.value ?: "N/A"}", style = MaterialTheme.typography.bodySmall)
+        Text(text = stringResource(Res.string.product_sku, product.sku?.value ?: "N/A"), style = MaterialTheme.typography.bodySmall)
         Text(
-          text = "Stock: ${product.currentStock} (mín: ${product.minStock})",
+          text = stringResource(Res.string.product_stock, product.currentStock, product.minStock),
           style = MaterialTheme.typography.bodySmall,
           color = if (product.isBelowMinStock()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
         )
       }
       Row {
         TextButton(onClick = onDelete) {
-          Text(text = "Eliminar")
+          Text(text = stringResource(Res.string.action_delete))
         }
       }
     }

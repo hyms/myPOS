@@ -16,14 +16,22 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocal
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.nav_cart
+import com.copitoB.mypos.generated.resources.nav_cash
+import com.copitoB.mypos.generated.resources.nav_expenses
+import com.copitoB.mypos.generated.resources.nav_products
+import com.copitoB.mypos.generated.resources.nav_settings
 import com.copitoB.mypos.domain.entities.CartItemFactory
 import com.copitoB.mypos.domain.entities.UpdateSettingsInput
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
@@ -38,14 +46,18 @@ import com.copitoB.mypos.presentation.viewmodel.CashSummaryViewModel
 import com.copitoB.mypos.presentation.viewmodel.ExpenseViewModel
 import com.copitoB.mypos.presentation.viewmodel.ProductViewModel
 import com.copitoB.mypos.presentation.viewmodel.SettingsViewModel
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.GlobalContext
 
-private enum class Destination(val label: String, val icon: ImageVector) {
-  Products("Productos", Icons.AutoMirrored.Filled.List),
-  Cart("Carrito", Icons.Default.ShoppingCart),
-  Expenses("Gastos", Icons.Default.Warning),
-  Cash("Caja", Icons.Default.Home),
-  Settings("Ajustes", Icons.Default.Settings)
+val LocalAdsEnabled: CompositionLocal<Boolean> = staticCompositionLocalOf { false }
+
+private enum class Destination(val label: StringResource, val icon: ImageVector) {
+  Products(Res.string.nav_products, Icons.AutoMirrored.Filled.List),
+  Cart(Res.string.nav_cart, Icons.Default.ShoppingCart),
+  Expenses(Res.string.nav_expenses, Icons.Default.Warning),
+  Cash(Res.string.nav_cash, Icons.Default.Home),
+  Settings(Res.string.nav_settings, Icons.Default.Settings)
 }
 
 @Composable
@@ -139,9 +151,6 @@ fun App() {
 
               Destination.Settings -> SettingsScreen(
                 settings = settings,
-                onAdEnabledChange = { enabled ->
-                  settingsViewModel.updateSettings(UpdateSettingsInput(adEnabled = enabled))
-                },
                 onBiometricChange = { enabled ->
                   settingsViewModel.updateSettings(UpdateSettingsInput(biometricEnabled = enabled))
                 },
@@ -166,8 +175,8 @@ fun App() {
                   Destination.Settings -> settingsViewModel.loadSettings()
                 }
               },
-              icon = { Icon(imageVector = dest.icon, contentDescription = dest.label) },
-              label = { Text(dest.label) }
+              icon = { Icon(imageVector = dest.icon, contentDescription = stringResource(dest.label)) },
+              label = { Text(stringResource(dest.label)) }
             )
           }
         }

@@ -54,10 +54,3 @@ class SettingsViewModel(
     }
   }
 }
-
-class AdEnabledProvider(
-  private val settingsViewModel: SettingsViewModel
-) {
-  val isAdEnabled: Boolean
-    get() = settingsViewModel.settings.value?.adEnabled == true
-}

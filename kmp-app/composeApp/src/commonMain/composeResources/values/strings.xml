@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navegación -->
+    <string name="nav_products">Productos</string>
+    <string name="nav_cart">Carrito</string>
+    <string name="nav_expenses">Gastos</string>
+    <string name="nav_cash">Caja</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <!-- Acciones comunes -->
+    <string name="action_add">Agregar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_refresh">Actualizar</string>
+    <string name="action_clear">Limpiar</string>
+    <string name="action_checkout">Pagar</string>
+    <string name="action_back">Volver</string>
+
+    <!-- Lista de productos -->
+    <string name="screen_products">Productos</string>
+    <string name="product_sku">SKU: %1$s</string>
+    <string name="product_stock">Stock: %1$s (mín: %2$s)</string>
+    <string name="product_low_stock">Stock bajo</string>
+    <string name="content_desc_add_product">Agregar producto</string>
+    <string name="content_desc_delete_product">Eliminar producto</string>
+
+    <!-- Formulario de producto -->
+    <string name="screen_new_product">Nuevo Producto</string>
+    <string name="screen_edit_product">Editar Producto</string>
+    <string name="label_name">Nombre</string>
+    <string name="label_sku">SKU</string>
+    <string name="label_selling_price">Precio de Venta</string>
+    <string name="label_purchase_price">Precio de Compra</string>
+    <string name="label_current_stock">Stock Actual</string>
+    <string name="label_min_stock">Stock Mínimo</string>
+    <string name="content_desc_back">Volver</string>
+
+    <!-- Carrito -->
+    <string name="screen_cart">Carrito de Compras</string>
+    <string name="cart_qty_price">Cant: %1$s x %2$s</string>
+    <string name="cart_subtotal_item">Subtotal: %1$s</string>
+    <string name="cart_subtotal">Subtotal: %1$s</string>
+    <string name="label_discount">Descuento</string>
+    <string name="label_cash_received">Efectivo recibido</string>
+    <string name="content_desc_remove_item">Eliminar item</string>
+
+    <!-- Gastos -->
+    <string name="screen_expenses">Gastos</string>
+    <string name="content_desc_add_expense">Agregar gasto</string>
+    <string name="dialog_new_expense">Nuevo gasto</string>
+    <string name="label_amount">Monto</string>
+    <string name="label_description">Descripción</string>
+    <string name="expense_date">%1$s</string>
+
+    <!-- Caja -->
+    <string name="screen_cash">Caja</string>
+    <string name="summary_sales">Ventas</string>
+    <string name="summary_purchases">Compras</string>
+    <string name="summary_expenses">Gastos</string>
+    <string name="summary_net">Neto</string>
+    <string name="loading">Cargando…</string>
+
+    <!-- Ajustes -->
+    <string name="screen_settings">Ajustes</string>
+    <string name="settings_currency">Moneda: %1$s</string>
+    <string name="label_biometric">Biometría</string>
+
+    <!-- Métodos de pago -->
+    <string name="payment_cash">Efectivo</string>
+    <string name="payment_card">Tarjeta</string>
+    <string name="payment_transfer">Transferencia</string>
+    <string name="payment_qr">QR</string>
+
+    <!-- Validación / errores -->
+    <string name="error_required">Requerido</string>
+    <string name="error_invalid_number">Número inválido</string>
+    <string name="error_sku_exists">El SKU ya existe</string>
+    <string name="error_insufficient_stock">Stock insuficiente</string>
+    <string name="error_invalid_amount">Monto inválido</string>
+</resources>

@@ -26,6 +26,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import com.copitoB.mypos.domain.entities.ICartItem
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_checkout
+import com.copitoB.mypos.generated.resources.action_clear
+import com.copitoB.mypos.generated.resources.cart_qty_price
+import com.copitoB.mypos.generated.resources.cart_subtotal
+import com.copitoB.mypos.generated.resources.cart_subtotal_item
+import com.copitoB.mypos.generated.resources.content_desc_remove_item
+import com.copitoB.mypos.generated.resources.label_cash_received
+import com.copitoB.mypos.generated.resources.label_discount
+import com.copitoB.mypos.generated.resources.screen_cart
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun CartScreen(
@@ -43,7 +54,7 @@ fun CartScreen(
     modifier = Modifier.fillMaxSize().padding(16.dp)
   ) {
     Text(
-      text = "Carrito de Compras",
+      text = stringResource(Res.string.screen_cart),
       style = MaterialTheme.typography.headlineMedium
     )
 
@@ -61,13 +72,13 @@ fun CartScreen(
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(text = item.productName, style = MaterialTheme.typography.titleMedium)
-              Text(text = "Qty: ${item.quantity} x ${item.unitPrice}", style = MaterialTheme.typography.bodySmall)
-              Text(text = "Subtotal: ${item.subtotal}", style = MaterialTheme.typography.bodySmall)
+              Text(text = stringResource(Res.string.cart_qty_price, item.quantity, item.unitPrice), style = MaterialTheme.typography.bodySmall)
+              Text(text = stringResource(Res.string.cart_subtotal_item, item.subtotal), style = MaterialTheme.typography.bodySmall)
             }
             IconButton(onClick = { onRemoveItem(items.indexOf(item)) }) {
               Icon(
                 imageVector = Icons.Default.Delete,
-                contentDescription = "Eliminar item"
+                contentDescription = stringResource(Res.string.content_desc_remove_item)
               )
             }
           }
@@ -76,21 +87,21 @@ fun CartScreen(
     }
 
     Text(
-      text = "Subtotal: $subtotal",
+      text = stringResource(Res.string.cart_subtotal, subtotal),
       style = MaterialTheme.typography.titleLarge
     )
 
     TextField(
       value = discount.toString(),
       onValueChange = { discount = it.toDoubleOrNull() ?: 0.0 },
-      label = { Text("Descuento") },
+      label = { Text(stringResource(Res.string.label_discount)) },
       modifier = Modifier.fillMaxWidth()
     )
 
     TextField(
       value = received,
       onValueChange = { received = it },
-      label = { Text("Efectivo recibido") },
+      label = { Text(stringResource(Res.string.label_cash_received)) },
       modifier = Modifier.fillMaxWidth()
     )
 
@@ -99,10 +110,10 @@ fun CartScreen(
       horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
     ) {
       Button(onClick = onClear) {
-        Text(text = "Limpiar")
+        Text(text = stringResource(Res.string.action_clear))
       }
       Button(onClick = onCheckout) {
-        Text(text = "Pagar")
+        Text(text = stringResource(Res.string.action_checkout))
       }
     }
   }

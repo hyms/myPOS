@@ -14,6 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.copitoB.mypos.domain.entities.FinancialSummary
 import com.copitoB.mypos.domain.valueobjects.Money
+import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_refresh
+import com.copitoB.mypos.generated.resources.loading
+import com.copitoB.mypos.generated.resources.screen_cash
+import com.copitoB.mypos.generated.resources.summary_expenses
+import com.copitoB.mypos.generated.resources.summary_net
+import com.copitoB.mypos.generated.resources.summary_purchases
+import com.copitoB.mypos.generated.resources.summary_sales
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun CashSummaryScreen(
@@ -23,20 +32,20 @@ fun CashSummaryScreen(
   Column(
     modifier = Modifier.fillMaxSize().padding(16.dp)
   ) {
-    Text(text = "Caja", style = MaterialTheme.typography.headlineMedium)
+    Text(text = stringResource(Res.string.screen_cash), style = MaterialTheme.typography.headlineMedium)
 
     if (summary == null) {
       Text(
-        text = "Cargando...",
+        text = stringResource(Res.string.loading),
         style = MaterialTheme.typography.bodyLarge,
         modifier = Modifier.padding(top = 16.dp)
       )
     } else {
-      SummaryRow("Ventas", summary.totalSales)
-      SummaryRow("Compras", summary.totalPurchases)
-      SummaryRow("Gastos", summary.totalExpenses)
+      SummaryRow(stringResource(Res.string.summary_sales), summary.totalSales)
+      SummaryRow(stringResource(Res.string.summary_purchases), summary.totalPurchases)
+      SummaryRow(stringResource(Res.string.summary_expenses), summary.totalExpenses)
       SummaryRow(
-        label = "Neto",
+        label = stringResource(Res.string.summary_net),
         amount = summary.netBalance,
         negative = summary.netBalanceIsNegative
       )
@@ -46,7 +55,7 @@ fun CashSummaryScreen(
       onClick = onRefresh,
       modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
     ) {
-      Text("Actualizar")
+      Text(stringResource(Res.string.action_refresh))
     }
   }
 }

@@ -34,6 +34,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.material.icons.core)
+            implementation(libs.compose.components.resources)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
             implementation(libs.koin.core)
@@ -61,5 +62,12 @@ sqldelight {
             packageName = "com.copitoB.mypos.data.repository"
             srcDirs("src/commonMain/sqldelight")
         }
+    }
+}
+
+compose {
+    resources {
+        packageOfResClass = "com.copitoB.mypos.generated.resources"
+        generateResClass = always
     }
 }
