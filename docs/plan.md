@@ -81,7 +81,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] All entities/repos/use cases use English identifiers + VOs
 - [ ] Fractional stock (3dp) works end-to-end
 - [ ] SKU unique validated, category required enforced
-- [ ] AdBanner renders in Inventory list footer only in the `free` flavor
+- [ ] AdBanner renders in Inventory list footer only when `AppConfig.ADS_ENABLED`
 - [ ] Stock alert Toast fires post-commit when `currentStock < minStock`
 - [ ] Zero hardcoded Spanish strings in catalog components (i18n only)
 - [ ] All tests pass, Kotlin strict, Detekt clean
@@ -139,7 +139,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] `GetCashSummary` O(1) read, `GetPeriodSummary` correct aggregation
 - [ ] `UpdateAccumulator` atomic single UPDATE with all deltas
 - [ ] Reversal restores accumulator + stock (PURCHASE pre-check)
-- [ ] AdBanner renders in Caja/Movimientos only in the `free` flavor, absent in detail/PIN
+- [ ] AdBanner renders in Caja/Movimientos only when `AppConfig.ADS_ENABLED`, absent in detail/PIN
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
 ---
@@ -166,7 +166,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] `ReverseTransaction` EXPENSE: balance only, no stock changes
 - [ ] `ConfirmDialog` shows interpolated Spanish text correctly
 - [ ] Category quick-create dialog preserves form draft
-- [ ] AdBanner in list footer only in the `free` flavor
+- [ ] AdBanner in list footer only when `AppConfig.ADS_ENABLED`
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
 ---
@@ -194,7 +194,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 - [ ] PIN change requires current PIN (except first time), constant-time compare
 - [ ] Biometric toggle requires auth before enabling
 - [ ] Restore backup requires PIN, reloads app, data intact
-- [ ] Ads ship only via the `free` flavor (`ADS_ENABLED` build flag), never as a user setting
+- [ ] Ads ship only via `AppConfig.ADS_ENABLED` (`false` during development), never as a user setting
 - [ ] All 60+ i18n keys implemented
 - [ ] All tests pass, Kotlin strict, Detekt clean
 
@@ -265,9 +265,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 #### 6.7 Build Flavors & Backup Pipeline
 | Task | Target |
 |------|--------|
-| `free` / `pro` product flavors, `ADS_ENABLED` BuildConfig field | `androidApp/build.gradle.kts` |
-| Shared `signingConfig` from gitignored `keystore.properties`, same `applicationId` | `androidApp/build.gradle.kts` |
-| Shared signing; flavor drives a Gradle property that generates the ads constant (library cannot read app `BuildConfig`) | `androidApp/build.gradle.kts`, `composeApp/build.gradle.kts` |
+| Single build `com.copitoB.mypos`; `AppConfig` singleton in `commonMain` (`ADS_ENABLED: Boolean` `false` during development + theme config) | `commonMain` |
 | `expect fun isAdsEnabled()` + `LocalAdsEnabled`; delete runtime toggle path | `commonMain`/`androidMain`, `App.kt` |
 | `ExportBackupUseCase` → versioned JSON (`schemaVersion: 2`) | `application/backup/ExportBackupUseCase.kt` |
 | `ImportBackupUseCase` → `BackupSource.Json` + `BackupSource.LegacySqliteFile` | `application/backup/ImportBackupUseCase.kt` |
@@ -278,7 +276,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 
 **Definition of Done (Phase 6):**
 - [ ] Every `[ ]` item in `/docs/MIGRATION_CHECKLIST.md` is closed or explicitly deferred with a rationale
-- [ ] `free` and `pro` flavors build; `pro` contains no ad code path; both share `applicationId` + `.jks`
+- [ ] Single build `com.copitoB.mypos`; `AppConfig.ADS_ENABLED` controls ads; zero runtime UI toggle
 - [ ] Legacy `rn-app` `.db` file imports into KMP with zero row loss and recomputed accumulators
 - [ ] JSON export → wipe → import round-trip is idempotent and atomic
 - [ ] Zero hardcoded Spanish literals remain in `presentation/`
@@ -323,7 +321,7 @@ This document consolidates the implementation roadmaps for all five bounded cont
 | `ReverseTransaction` | `commonMain/application/transactions/` | Sales, Expenses, Financial |
 | SQLDelight schema/migrations | `commonMain/sqldelight/` | All modules |
 | `AdBanner` Composable | `composeApp/src/commonMain/kotlin/.../presentation/ui/components/ads/` | Catalog, Expenses, Financial |
-| `isAdsEnabled()` / `LocalAdsEnabled` | `commonMain` + `androidMain` (`BuildConfig.ADS_ENABLED`) | All ad-enabled views |
+| `isAdsEnabled()` / `LocalAdsEnabled` | `commonMain` + `androidMain` (`AppConfig.ADS_ENABLED`) | All ad-enabled views |
 | `ExportBackupUseCase` / `ImportBackupUseCase` | `commonMain/application/backup/` | System settings, migration tooling |
 | `LegacyMapper` (enum/timestamp translation) | `commonMain/application/backup/` | Importing `rn-app` data |
 
@@ -367,15 +365,15 @@ val migrations = listOf(
 
 ## 5. AdWare Governance Matrix (Compile-Time Flavors)
 
-Ads are **not** a runtime setting. The `free` flavor compiles with `ADS_ENABLED = true`; the `pro` flavor compiles with `ADS_ENABLED = false`. Both share `applicationId` and the same `.jks`, so upgrades preserve local SQLite data.
+Ads are **not** a runtime setting. Ads are controlled by the compile-time `AppConfig` singleton (`ADS_ENABLED: Boolean`, `false` during development) in the single build `com.copitoB.mypos`.
 
-| View | Module | Ads in `free`? | Implementation |
-|------|--------|----------------|----------------|
-| Catalog / Inventory List | catalog-inventory | ✅ Yes | Footer item in `LazyVerticalGrid` when `isAdsEnabled()` |
-| Expenses List | expenses-cashflow | ✅ Yes | Footer item in `LazyColumn` when `isAdsEnabled()` |
-| Caja (Cash Summary) | financial-accumulators | ✅ Yes | Footer item when `isAdsEnabled()` |
-| Movimientos (Transactions) | financial-accumulators | ✅ Yes | Footer item when `isAdsEnabled()` |
-| **Checkout / Cart** | sales-checkout | ❌ No | Compiles into `pro`-only path; no `AdBanner` import |
+| View | Module | Ads when `AppConfig.ADS_ENABLED`? | Implementation |
+|------|--------|-----------------------------------|----------------|
+| Catalog / Inventory List | catalog-inventory | ✅ Yes | Footer item in `LazyVerticalGrid` when `LocalAdsEnabled.current` |
+| Expenses List | expenses-cashflow | ✅ Yes | Footer item in `LazyColumn` when `LocalAdsEnabled.current` |
+| Caja (Cash Summary) | financial-accumulators | ✅ Yes | Footer item when `LocalAdsEnabled.current` |
+| Movimientos (Transactions) | financial-accumulators | ✅ Yes | Footer item when `LocalAdsEnabled.current` |
+| **Checkout / Cart** | sales-checkout | ❌ No | No ad code path |
 | **Purchases flow** | sales-checkout | ❌ No | No ad code path |
 | **Payment Dialog** | sales-checkout | ❌ No | No ad code path |
 | **Receipt Preview** | sales-checkout | ❌ No | No ad code path |
@@ -384,7 +382,7 @@ Ads are **not** a runtime setting. The `free` flavor compiles with `ADS_ENABLED 
 | **PIN Gate / Lock Screen** | system-settings | ❌ No | No ad code path |
 | **Settings Screen** | system-settings | ❌ No | Read-only flavor info card |
 
-**Flag chain:** `BuildConfig.ADS_ENABLED` (androidApp) → `expect fun isAdsEnabled()` (`androidMain`) → `LocalAdsEnabled` CompositionLocal (`commonMain`) → `if (LocalAdsEnabled.current) AdBanner()`.
+**Flag chain:** `AppConfig.ADS_ENABLED` (`commonMain`) → `expect fun isAdsEnabled()` (`androidMain`) → `LocalAdsEnabled` CompositionLocal (`commonMain`) → `if (LocalAdsEnabled.current) AdBanner()`.
 
 **Deprecated:** `settings.ad_enabled` is no longer read or written by the UI. The column is retained until `v3.0.0` to avoid a mid-phase schema migration and is dropped by a dedicated `.sqm` afterwards.
 
@@ -399,7 +397,7 @@ Ads are **not** a runtime setting. The `free` flavor compiles with `ADS_ENABLED 
 | Migration | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent, rollback | Required |
 | ViewModels | Kotlin Test + Turbine | 100% ViewModel logic (state flows) | Required |
 | Compose UI | Compose Test + Robolectric | 100% render/interaction | Required |
-| E2E | Maestro / Compose UI Test | Critical flows (checkout, purchase, PIN, backup/restore, flavor install) | Required |
+| E2E | Maestro / Compose UI Test | Critical flows (checkout, purchase, PIN, backup/restore, single-build install) | Required |
 | CI Gate | All suites + `./gradlew detekt` + `./gradlew :composeApp:compileAndroidMain` | Must pass for merge | Required |
 
 ### Test Directory Structure
@@ -448,9 +446,9 @@ androidTest/
 | Migration order conflicts | Low | Critical | Single SQLDelight driver with explicit ordering; integration test full sequence |
 | Fractional stock breaks integer-only UI | Medium | Medium | `TextField` with `KeyboardOptions(keyboardType = KeyboardType.Decimal)` |
 | Atomic transaction partial failure | Low | Critical | Single transaction block; failure injection tests |
-| AdBanner appears in forbidden views | Low | High | CI grep checks on every PR; `pro` flavor compiles ads out entirely |
+| AdBanner appears in forbidden views | Low | High | CI grep checks on every PR; single build has no ad code in forbidden views |
 | Import corrupts data | Low | Critical | Single transaction + row-count assertions + rollback; `.db` fixture tests |
-| Flavor upgrade wipes data | Low | Critical | Identical `applicationId` + shared `.jks`; no `applicationIdSuffix` |
+| Flavor upgrade wipes data | Low | Critical | Single build `com.copitoB.mypos`; reinstalls preserve local data |
 | i18n keys missing in Compose | Medium | Medium | CI check: `grep -r "stringResource" --include="*.kt" composeApp/` |
 | Migration long-running on large DB | Low | Medium | Background execution with progress; timeout guard (<5s expected) |
 | Accumulator drift on reversal | Low | Critical | Integration test: create + revert → assert balance = 0 |
@@ -495,7 +493,7 @@ androidTest/
 - [ ] SecureStore for PIN hash (Android Keystore / iOS Keychain), Biometric auth
 - [ ] Backup: `ExportBackupUseCase` (JSON v2) + `ImportBackupUseCase` (JSON + legacy `.db`) with PIN gate and single-transaction import
 - [ ] Legacy import translates RN enums (`VENTA/COMPRA/GASTO`, `EFECTIVO/…`) and recomputes `financial_accumulators`
-- [ ] Ads are compile-time only: `free` flavor ships banners, `pro` contains no ad code path
+- [ ] Ads are compile-time only: `AppConfig.ADS_ENABLED` (`false` during development) controls banners
 
 ### Presentation Layer
 - [ ] All UI strings via `stringResource` (Spanish only in `composeResources/values-es/`)
@@ -505,8 +503,8 @@ androidTest/
 - [ ] AdBanner only in 4 allowed views, absent in 8+ forbidden views
 
 ### AdWare Governance
-- [ ] `free` / `pro` flavors declared with `ADS_ENABLED` build flags
-- [ ] Shared `.jks` + identical `applicationId`; no `applicationIdSuffix`
+- [ ] Single build `com.copitoB.mypos`; `AppConfig.ADS_ENABLED` controls ads
+- [ ] Single build `com.copitoB.mypos`; shared `.jks`; no `applicationIdSuffix`; `ADS_ENABLED` default `false` in development
 - [ ] `isAdsEnabled()` `expect`/`actual` + `LocalAdsEnabled` CompositionLocal consumed by allowed views
 - [ ] Deprecated `settings.ad_enabled` column unread until its `v3.0.0` removal migration
 - [ ] CI grep checks enforce forbidden views clean

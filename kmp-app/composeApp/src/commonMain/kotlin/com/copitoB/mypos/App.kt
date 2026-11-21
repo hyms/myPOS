@@ -10,14 +10,13 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocal
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +31,7 @@ import com.copitoB.mypos.generated.resources.nav_cash
 import com.copitoB.mypos.generated.resources.nav_expenses
 import com.copitoB.mypos.generated.resources.nav_products
 import com.copitoB.mypos.generated.resources.nav_settings
+import com.copitoB.mypos.config.AppConfig
 import com.copitoB.mypos.domain.entities.CartItemFactory
 import com.copitoB.mypos.domain.entities.UpdateSettingsInput
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
@@ -41,6 +41,7 @@ import com.copitoB.mypos.presentation.ui.common.ExpenseListScreen
 import com.copitoB.mypos.presentation.ui.common.ProductFormScreen
 import com.copitoB.mypos.presentation.ui.common.ProductListScreen
 import com.copitoB.mypos.presentation.ui.common.SettingsScreen
+import com.copitoB.mypos.presentation.theme.AppTheme
 import com.copitoB.mypos.presentation.viewmodel.CartViewModel
 import com.copitoB.mypos.presentation.viewmodel.CashSummaryViewModel
 import com.copitoB.mypos.presentation.viewmodel.ExpenseViewModel
@@ -49,8 +50,6 @@ import com.copitoB.mypos.presentation.viewmodel.SettingsViewModel
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.GlobalContext
-
-val LocalAdsEnabled: CompositionLocal<Boolean> = staticCompositionLocalOf { false }
 
 private enum class Destination(val label: StringResource, val icon: ImageVector) {
   Products(Res.string.nav_products, Icons.AutoMirrored.Filled.List),
@@ -85,9 +84,9 @@ fun App() {
     productViewModel.loadProducts()
   }
 
-  MaterialTheme {
+  AppTheme {
     Surface(modifier = Modifier.fillMaxSize()) {
-      Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
           if (showProductForm) {
             ProductFormScreen(

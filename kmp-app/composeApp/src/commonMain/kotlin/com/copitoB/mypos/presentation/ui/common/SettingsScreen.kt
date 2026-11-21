@@ -51,6 +51,7 @@ fun SettingsScreen(
         checked = settings.biometricEnabled,
         onCheckedChange = onBiometricChange
       )
+      FlavorInfoCard()
     }
 
     Button(

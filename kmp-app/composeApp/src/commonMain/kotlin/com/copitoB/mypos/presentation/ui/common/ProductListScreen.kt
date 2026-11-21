@@ -34,6 +34,7 @@ import com.copitoB.mypos.generated.resources.Res
 import com.copitoB.mypos.generated.resources.action_delete
 import com.copitoB.mypos.generated.resources.content_desc_add_product
 import com.copitoB.mypos.generated.resources.product_sku
+import com.copitoB.mypos.generated.resources.product_sku_missing
 import com.copitoB.mypos.generated.resources.product_stock
 import com.copitoB.mypos.generated.resources.screen_products
 import org.jetbrains.compose.resources.stringResource
@@ -100,7 +101,7 @@ fun ProductCard(
     ) {
       Column(modifier = Modifier.fillMaxWidth()) {
         Text(text = product.name, style = MaterialTheme.typography.titleMedium)
-        Text(text = stringResource(Res.string.product_sku, product.sku?.value ?: "N/A"), style = MaterialTheme.typography.bodySmall)
+        Text(text = stringResource(Res.string.product_sku, product.sku?.value ?: stringResource(Res.string.product_sku_missing)), style = MaterialTheme.typography.bodySmall)
         Text(
           text = stringResource(Res.string.product_stock, product.currentStock, product.minStock),
           style = MaterialTheme.typography.bodySmall,

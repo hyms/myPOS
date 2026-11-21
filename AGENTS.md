@@ -85,7 +85,7 @@ This document defines the architectural governance, coding standards, and cross-
 | **Backup** | `ExportBackupUseCase` / `ImportBackupUseCase` | Versioned JSON v2 + legacy `rn-app` `.db` import |
 | **Dates** | `kotlinx-datetime` | ISO-8601 |
 | **Toasts** | Compose Snackbar | Material3 |
-| **Distribution** | Gradle flavors `free` / `pro` | `ADS_ENABLED` build flag, shared `.jks` |
+| **Distribution** | Single build `com.copitoB.mypos` | Compile-time `AppConfig` singleton (`ADS_ENABLED: Boolean`, `false` during development) |
 | **Package Manager** | Gradle | `gradlew` from `kmp-app/` |
 
 ---
@@ -135,11 +135,11 @@ This document defines the architectural governance, coding standards, and cross-
 
 | Module | Bounded Context | Key Tables | Ad Surface |
 |---|---|---|---|
-| **catalog-inventory** | Products, categories, stock, images | `products`, `categories` | `free` flavor: Inventory list footer |
+| **catalog-inventory** | Products, categories, stock, images | `products`, `categories` | `AppConfig.ADS_ENABLED`: Inventory list footer |
 | **sales-checkout** | Cart, sales/purchases, payment, receipts | `sales_transactions`, `transaction_details` | **None** (checkout + purchases) |
-| **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | `free` flavor: Expenses list footer |
-| **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | `free` flavor: Caja + Movimientos footers |
-| **system-settings** | Currency, pagination, PIN/biometric, backup/import, build flavor | `settings` (singleton) | Read-only `FlavorInfoCard` |
+| **expenses-cashflow** | Expenses, expense categories | `sales_transactions` (type=EXPENSE), `expense_categories` | `AppConfig.ADS_ENABLED`: Expenses list footer |
+| **financial-accumulators** | Cash accumulator, reports, reversal | `financial_accumulators`, `sales_transactions` | `AppConfig.ADS_ENABLED`: Caja + Movimientos footers |
+| **system-settings** | Currency, pagination, PIN/biometric, backup/import, AppConfig | `settings` (singleton) | Read-only `FlavorInfoCard` |
 
 ### Cross-Module Contracts
 - `catalog-inventory` → `sales-checkout`: Product data (price, stock, SKU)
@@ -149,28 +149,26 @@ This document defines the architectural governance, coding standards, and cross-
 
 ---
 
-## 8. AdWare Governance (Compile-Time Flavors)
+## 8. AdWare Governance (Single Build — AppConfig)
 
-**Ads are a build-time property, never a runtime setting.** There is no ads toggle in the Settings screen and no `ad_enabled` read path.
+**Ads are a compile-time property, never a runtime setting.** There is no ads toggle in the Settings screen and no `ad_enabled` read path. The app is built as a single build (`com.copitoB.mypos`) driven by a compile-time `AppConfig` singleton in `commonMain` holding `ADS_ENABLED: Boolean` (`false` during development) and theme configuration.
 
-| View | `free` flavor | Implementation |
+| View | Ads when `AppConfig.ADS_ENABLED` | Implementation |
 |---|---|---|
-| Catalog / Inventory list | ✅ Banner | Footer item in `LazyVerticalGrid` when `isAdsEnabled()` |
-| Expenses list | ✅ Banner | Footer item in `LazyColumn` when `isAdsEnabled()` |
-| Caja (Cash Summary) | ✅ Banner | Footer item |
-| Movimientos (Transactions) | ✅ Banner | Footer item |
+| Catalog / Inventory list | ✅ Banner | Footer item in `LazyVerticalGrid` when `LocalAdsEnabled.current` |
+| Expenses list | ✅ Banner | Footer item in `LazyColumn` when `LocalAdsEnabled.current` |
+| Caja (Cash Summary) | ✅ Banner | Footer item when `LocalAdsEnabled.current` |
+| Movimientos (Transactions) | ✅ Banner | Footer item when `LocalAdsEnabled.current` |
 | **Checkout / Payment / Receipt** | ❌ No | No ad code path |
 | **Purchases flow** | ❌ No | No ad code path |
 | **Forms (create/edit)** | ❌ No | No ad code path |
 | **ConfirmDialog / PIN Gate / Lock** | ❌ No | No ad code path |
-| **Settings screen** | ❌ No | Read-only flavor card |
+| **Settings screen** | ❌ No | Read-only `FlavorInfoCard` |
 
-**Flavor contract** (`androidApp/build.gradle.kts`):
-- `free` → `buildConfigField("boolean", "ADS_ENABLED", "true")`
-- `pro` → `buildConfigField("boolean", "ADS_ENABLED", "false")`
-- **Both flavors share the same `applicationId` and the same `.jks`.** `applicationIdSuffix` is forbidden, otherwise a `free → pro` upgrade would create a second app and orphan the user's SQLite data.
-- Flag chain: `BuildConfig.ADS_ENABLED` → `expect fun isAdsEnabled()` → `LocalAdsEnabled` CompositionLocal.
-- `composeApp` (library) cannot read `androidApp`'s `BuildConfig`; the flavor drives a shared Gradle property that generates one constant consumed by the `androidMain` `actual`.
+**Ad config contract:**
+- Single build `com.copitoB.mypos`; no `free`/`pro` flavors, no `applicationIdSuffix`.
+- `AppConfig` singleton in `commonMain` exposes `ADS_ENABLED: Boolean` (default `false` during development) plus theme configuration (seed color, `PaletteStyle`).
+- Flag chain: `AppConfig.ADS_ENABLED` → `expect fun isAdsEnabled(): Boolean` → `LocalAdsEnabled` CompositionLocal at the app root.
 - `settings.ad_enabled` is deprecated: never read or written, retained until `v3.0.0` to avoid a mid-phase migration, then dropped by a dedicated `.sqm`.
 
 ---
@@ -190,7 +188,7 @@ This document defines the architectural governance, coding standards, and cross-
 | **INV-09** | Image pipeline: 400×400, JPEG 70%, <40KB | `expect`/`actual` `ImageOptimizer` + `ImageStorage` |
 | **INV-10** | Strict Kotlin everywhere | `kmp-app/composeApp/build.gradle.kts`: explicit API, `@JvmInline value class` & `data class` for VOs |
 | **INV-11** | Backup import is atomic and idempotent | `ImportBackupUseCase` runs in one `transaction { }`; re-running yields identical state; `financial_accumulators` is always recomputed, never trusted |
-| **INV-12** | Ads are build-time only | `free`/`pro` flavors with `ADS_ENABLED`; no runtime toggle, no `ad_enabled` read path |
+| **INV-12** | Ads are build-time only | Single build `com.copitoB.mypos`; `AppConfig.ADS_ENABLED` + `LocalAdsEnabled`; zero runtime UI toggle, no `ad_enabled` read path |
 
 ---
 
@@ -258,7 +256,7 @@ import com.mypos.kmp.app.ui.screens.CartScreen
 | **Migration** | Kotlin Test + SQLDelight | v1→v2 zero-data-loss, idempotent, backup round-trip |
 | **Composables** | Compose Testing Library | 100% composable logic |
 | **E2E** | Maestro | Critical user flows (checkout, purchase, PIN, backup) |
-| **CI Gate** | `./gradlew :composeApp:testAndroidHostTest` + `./gradlew detekt` + `assembleFreeDebug` + `assembleProDebug` | Required for merge |
+| **CI Gate** | `./gradlew :composeApp:testAndroidHostTest` + `./gradlew detekt` + `./gradlew :androidApp:assembleDebug` | Required for merge |
 
 ---
 
@@ -271,6 +269,7 @@ import com.mypos.kmp.app.ui.screens.CartScreen
 6. **i18n keys** — add to `kmp-app/composeApp/src/commonMain/composeResources/values-es/strings.xml` for new UI text
 7. **Run tests** — `cd kmp-app && ./gradlew :composeApp:testAndroidHostTest` (unit + integration) before marking complete
 8. **Update docs** — if schema/contracts change, update `spec.md` + `plan.md` + `test.md`, and tick `/docs/MIGRATION_CHECKLIST.md` when closing a parity gap
+9. **Token & Context Protocol** — Query `codebaseMemory` first for symbol/doc lookups; treat `docs/MIGRATION_CHECKLIST.md` as the single source of truth for `rn-app/` parity; keep responses under `/caverman` density.
 
 ---
 

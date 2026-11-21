@@ -156,15 +156,14 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 | `PinLockOverlay.kt` | `security/PinLockOverlay.kt` | **New**: app-start and critical-action gate |
 | `PinGateDialog.kt` | `security/PinGateDialog.kt` | Modal PIN challenge |
 
-### 5.4 AdWare Integration (Build Flavors)
+### 5.4 AdWare Integration (AppConfig)
 **Files to configure:**
-- `androidApp/build.gradle.kts` — `free` / `pro` flavors with `ADS_ENABLED`; shared `signingConfig`; identical `applicationId` (no suffix)
-- `commonMain` — `expect fun isAdsEnabled(): Boolean` + `LocalAdsEnabled` CompositionLocal provided at `App()`
-- `androidMain` — actual reads `BuildConfig.ADS_ENABLED`
-- `ExpenseListScreen.kt`, `ProductListScreen.kt`, `CashSummaryScreen.kt`, `MovementsScreen.kt` — footer `AdBanner` only when `isAdsEnabled()`
+- `commonMain` — `AppConfig` singleton (`ADS_ENABLED: Boolean` `false` during development + theme config) + `expect fun isAdsEnabled(): Boolean` + `LocalAdsEnabled` CompositionLocal provided at `App()`
+- `androidMain` — actual reads `AppConfig.ADS_ENABLED`
+- `ExpenseListScreen.kt`, `ProductListScreen.kt`, `CashSummaryScreen.kt`, `MovementsScreen.kt` — footer `AdBanner` only when `LocalAdsEnabled.current`
 - `SettingsScreen.kt` — replace toggle with `FlavorInfoCard`
 
-**Rule:** ads exist only in the `free` build; `pro` contains no ad code path. No runtime toggle, no `settings.ad_enabled` reads.
+**Rule:** ads exist only when `AppConfig.ADS_ENABLED`; `false` during development. No runtime toggle, no `settings.ad_enabled` reads.
 
 ### 5.5 i18n
 **File:** `composeApp/src/commonMain/composeResources/values-es/strings.xml`
@@ -186,7 +185,7 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - Change currency → `Currency` formatter updates globally
 - Change pageSize → list ViewModels use new `LIMIT` value
 - Toggle biometric → requires auth, persists
-- `free` build shows banners in allowed views; `pro` build contains no ad code path
+- Banners show in allowed views only when `AppConfig.ADS_ENABLED`; no ad code in forbidden views
 - Export backup → valid JSON v2 file shared
 - Import backup → requires PIN, atomic, accumulators recomputed
 - Import legacy `.db` → enums translated, row counts match, app state invalidated
@@ -245,7 +244,7 @@ This plan covers the implementation of the System Settings module v2.0.0 KMP, in
 - `biometricFlow.yaml` — Enable biometric → auth → toggle persists
 - `backupFlow.yaml` — Export → verify file → Import → verify data intact
 - `legacyImportFlow.yaml` — Import `rn-app` `.db` → verify translated rows
-- `flavorInstallFlow.yaml` — Install `free`, then `pro` over it → local data preserved
+- `singleBuildInstallFlow.yaml` — Install `com.copitoB.mypos` → local data preserved across reinstalls
 - `migrationIdempotency.yaml` — Run migration twice → no errors, single row
 
 ---
@@ -278,8 +277,8 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 | DataStore migration race | `GetSettings` checks table empty → migrates → upserts; idempotent |
 | `CHECK (id = 1)` insert conflict | `INSERT OR IGNORE` + `UPDATE` pattern in repository |
 | PIN hash timing attack | Constant-time comparison in `VerifyPin` |
-| AdBanner in disallowed views | CI grep check over `settings/`, `security/`, `feedback/`, `cart/`, `purchases/`; `pro` flavor compiles ads out |
-| Flavor upgrade wipes data | Identical `applicationId` + shared `.jks`; no `applicationIdSuffix`; E2E install test |
+| AdBanner in disallowed views | CI grep check over `settings/`, `security/`, `feedback/`, `cart/`, `purchases/`; no ad code path in single build |
+| Flavor upgrade wipes data | Single build `com.copitoB.mypos`; reinstalls preserve local data |
 | Backup import corrupts data | Single transaction + row-count assertions + rollback test |
 | Legacy `.db` mis-mapped | Fixture-based test asserting enums, timestamps, `sku = null` |
 | i18n keys missing | CI check: `grep -r "settings_" --include="*.kt" composeApp/.../settings` |
@@ -298,7 +297,7 @@ Phase 1 (Migration) → Phase 2 (Domain) → Phase 3 (Data) → Phase 4 (Applica
 - [ ] PIN change requires current PIN (except first time)
 - [ ] Biometric toggle requires auth before enabling
 - [ ] Restore/import requires PIN confirmation and is fully atomic
-- [ ] Ads are compile-time only (`free` / `pro`), with a read-only flavor card in Settings
+- [ ] Ads are compile-time only via `AppConfig.ADS_ENABLED` (`false` during development), zero runtime UI toggle, read-only flavor card in Settings
 - [ ] Export produces a JSON v2 envelope; import accepts JSON and legacy `rn-app` `.db`
 - [ ] Import translates enums/timestamps and recomputes `financial_accumulators`
 - [ ] All i18n keys implemented

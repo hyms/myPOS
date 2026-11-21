@@ -2,7 +2,7 @@
 
 ## 1. Bounded Context
 
-Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/import, and the build-flavor ad policy. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `DataStore`/`SharedPreferences`-only approach. Ads are **not** part of settings: they are determined at build time by the `free`/`pro` flavors. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
+Responsible for global application configuration: currency (i18n), pagination defaults, security (PIN/biometric), backup/import. Persists a **singleton settings record** (`id = 1`) in SQLite with English column names, replacing the v1.0.0 `DataStore`/`SharedPreferences`-only approach. Ads are **not** part of settings: they are driven at compile time by the `AppConfig` singleton (`ADS_ENABLED: Boolean`, `false` during development) in the single build `com.copitoB.mypos`. All code/DB/identifiers in **English**; only visible UI strings remain in Spanish via i18n keys.
 
 ---
 
@@ -124,7 +124,7 @@ data class UpdateSettingsInput(
 )
 ```
 
-> **Note:** `adEnabled` was removed from `UserSettings` in Phase 6. Ads are determined by the build flavor (`free` / `pro`), not by user settings. The `settings.ad_enabled` column remains in the schema as deprecated/ignored until `v3.0.0`.
+> **Note:** `adEnabled` was removed from `UserSettings` in Phase 6. Ads are driven by the compile-time `AppConfig.ADS_ENABLED` (`false` during development), not by user settings. The `settings.ad_enabled` column remains in the schema as deprecated/ignored until `v3.0.0`.
 
 ### 2.4 Session (UI State)
 
@@ -150,7 +150,7 @@ data class SessionState(
 | RULE-SS-04 | Restore/import **requires** PIN | Restoring or importing a backup requires PIN confirmation (critical data overwrite). `ConfirmDialog`: `"Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar."` |
 | RULE-SS-05 | Currency is visual only | `Currency`/`Money` affect formatting only. SQLite stores pure numeric amounts in base currency. |
 | RULE-SS-06 | Pagination default | `pageSize` default 15. All historical list ViewModels apply `LIMIT ? OFFSET ?` with this value. |
-| RULE-SS-07 | Ads are compile-time | `ADS_ENABLED` (build flavor) governs ad rendering. No user setting exists; `settings.ad_enabled` is deprecated and ignored. |
+| RULE-SS-07 | Ads are compile-time | `AppConfig.ADS_ENABLED` (`false` during development) governs ad rendering via `LocalAdsEnabled`. No user setting exists; `settings.ad_enabled` is deprecated and ignored. |
 | RULE-SS-08 | Settings singleton | Only one row exists (`id = 1`, `CHECK (id = 1)`). Upsert on update. |
 | RULE-SS-09 | Import is atomic | `ImportBackupUseCase` runs in a single SQLDelight transaction and recomputes `financial_accumulators`. |
 
@@ -177,6 +177,7 @@ CREATE TABLE settings (
 
 INSERT OR IGNORE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
 VALUES (1, 'BS', 15, 0, 0, strftime('%s', 'now') * 1000);
+-- ad_enabled is deprecated/ignored; ads are governed by AppConfig.ADS_ENABLED (compile-time), not this column.
 ```
 
 ### 4.2 Column Mapping: v1.0.0 (Spanish/DataStore) → v2.0.0 (English/SQLite)
@@ -214,6 +215,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Step 2: Seed singleton row (id = 1) with defaults
 INSERT OR IGNORE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
 VALUES (1, 'BS', 15, 0, 0, strftime('%s', 'now') * 1000);
+-- ad_enabled is deprecated/ignored; ads are governed by AppConfig.ADS_ENABLED (compile-time), not this column.
 
 -- Step 3: Migrate DataStore/SharedPreferences values to SQLite (application-layer, not SQL)
 -- Handled by GetSettings use case on first run: read DataStore keys,
@@ -435,16 +437,15 @@ sealed interface BackupSource {
 
 ---
 
-## 12. AdWare Governance (Compile-Time Flavors)
+## 12. AdWare Governance (Single Build — AppConfig)
 
-**Rule:** Ads are a **build-time** concern, not a user setting. The runtime `adEnabled` switch is removed from `SettingsScreen`.
+**Rule:** Ads are a **compile-time** concern, not a user setting. The runtime `adEnabled` switch is removed from `SettingsScreen`.
 
-- **Flavors:** `free` → `ADS_ENABLED = true`; `pro` → `ADS_ENABLED = false`. Declared in `androidApp/build.gradle.kts`.
-- **Signing:** both flavors share the same `.jks` and the same `applicationId` (`com.copitoB.mypos`), so upgrading `free → pro` preserves the local SQLite database. `applicationIdSuffix` is forbidden.
-- **Propagation:** `BuildConfig.ADS_ENABLED` (app flavor) → shared Gradle property → generated constant read by the `androidMain` `actual` of `expect fun isAdsEnabled(): Boolean` (`commonMain`) → `LocalAdsEnabled` CompositionLocal. The `composeApp` library must not reference `androidApp`'s `BuildConfig` directly.
-- **Allowed:** Expenses list, Catalog/Inventory list, Caja, Movimientos — footer banner, `free` flavor only.
-- **Disallowed:** all forms, `ConfirmDialog`, PIN gate, Lock screen, Settings screen. The `pro` flavor ships **no ad code path** at all.
-- **Settings UI:** replaced by a read-only `FlavorInfoCard` showing the installed flavor and whether ads are compiled in.
+- **Build:** Single build `com.copitoB.mypos`; no `free`/`pro` flavors, no `applicationIdSuffix`. `AppConfig` singleton in `commonMain` holds `ADS_ENABLED: Boolean` (`false` during development) plus theme configuration.
+- **Propagation:** `AppConfig.ADS_ENABLED` → `expect fun isAdsEnabled(): Boolean` → `LocalAdsEnabled` CompositionLocal at the app root. The `composeApp` library does not reference platform `BuildConfig`.
+- **Allowed:** Expenses list, Catalog/Inventory list, Caja, Movimientos — footer banner when `LocalAdsEnabled.current`.
+- **Disallowed:** all forms, `ConfirmDialog`, PIN gate, Lock screen, Settings screen. No ad code path anywhere in these.
+- **Settings UI:** replaced by a read-only `FlavorInfoCard` showing whether ads are compiled in.
 - **Legacy column:** `settings.ad_enabled` is deprecated, never read or written, and dropped in a `v3.0.0` `.sqm`.
 
 ---
@@ -499,7 +500,7 @@ sealed interface BackupSource {
 ## 14. Applicable NFRs
 
 - **NFR-01:** Offline-first SQLDelight (JSI SQLite driver, transaction blocks).
-- **NFR-06:** Dark mode strict + design tokens at runtime (`MaterialTheme` + custom tokens).
+- **NFR-06:** Dark mode strict + design tokens at runtime (`MaterialKolor` driven by `AppConfig` seed color `Burnt Ember` + `PaletteStyle`).
 - **NFR-08:** UI strings in Spanish via `stringResource`; code/DB/identifiers in English.
 - **NFR-09:** Strict Kotlin (`explicit-api`, `-Xlint`).
 - **NFR-10:** Tests: 100% pass unit + integration + migration + PIN gate + cash integrity.
@@ -546,9 +547,9 @@ sealed interface BackupSource {
 <string name="settings_backup_restore_confirm_message">Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar.</string>
 <string name="settings_backup_restore_success">Copia restaurada. La app se reiniciará.</string>
 <string name="settings_backup_restore_error">Error al restaurar</string>
-<string name="settings_flavor_free">Versión gratuita (con anuncios)</string>
-<string name="settings_flavor_pro">Versión completa (sin anuncios)</string>
-<string name="settings_flavor_description">La versión se determina al instalar la app; no se puede cambiar desde aquí.</string>
+<string name="settings_build_id">Compilación única: com.copitoB.mypos</string>
+<string name="settings_ads_mode">Anuncios: AppConfig.ADS_ENABLED (tiempo de compilación)</string>
+<string name="settings_ads_note">Sin interruptor en tiempo de ejecución.</string>
 
 <!-- Lock Screen -->
 <string name="lock_title">Ingrese su PIN</string>

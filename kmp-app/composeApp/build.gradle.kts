@@ -41,6 +41,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.activity.compose)
+            implementation(libs.material.kolor.material3)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

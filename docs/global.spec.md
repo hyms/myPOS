@@ -40,7 +40,7 @@ TPV Móvil Express v2.0 is an offline-first, high-performance mobile application
 | **Language** | Kotlin Multiplatform | 2.4.21 · Android + `iosArm64` / `iosSimulatorArm64` targets |
 | **Build System** | Gradle + Android Gradle Plugin | Gradle 9.9.1 · AGP 9.5.1 · JVM 21 · `compileSdk` 37 |
 | **Module Split** | `androidApp` (`com.android.application`) + `composeApp` (`com.android.kotlin.multiplatform.library`) | AGP 9 New DSL; `com.android.application` is never combined with the KMP plugin |
-| **UI Toolkit** | Compose Multiplatform + Material3 (Material You) | 1.12.2 · dark-first design tokens |
+| **UI Toolkit** | Compose Multiplatform + Material3 (Material You) | 1.12.2 · dark-first design tokens · `MaterialKolor` (`com.materialkolor:material-kolor`) theme driven by `AppConfig` seed color (`Burnt Ember`) + `PaletteStyle` |
 | **Navigation** | Compose Multiplatform navigation | Single activity, destination-based back stack |
 | **Lists** | `LazyVerticalGrid` / `LazyColumn` | 3-column catalog, single-column history, stable keys |
 | **Database** | SQLDelight | 2.4.1 · `schema.sq` + ordered `.sqm` migrations · Android SQLite driver |
@@ -53,7 +53,7 @@ TPV Móvil Express v2.0 is an offline-first, high-performance mobile application
 | **Backup** | FileSystem `expect`/`actual` + DocumentPicker equivalent | JSON v2 export; legacy `.db` import |
 | **Dates** | kotlinx-datetime | ISO-8601 timestamps |
 | **Testing** | `kotlin.test` + Koin test + coroutines-test + Compose UI test | `./gradlew :composeApp:testAndroidHostTest` |
-| **Distribution** | Gradle product flavors `free` / `pro` | Shared `.jks`, identical `applicationId` |
+| **Distribution** | Single build `com.copitoB.mypos` | Compile-time `AppConfig` singleton in `commonMain` (`ADS_ENABLED: Boolean`, `false` during development); no flavors |
 
 ---
 
@@ -99,22 +99,16 @@ TPV Móvil Express v2.0 is an offline-first, high-performance mobile application
 
 ## 5. Monetization & Adware Governance
 
-**Model:** Compile-time product flavors. There is **no runtime ads switch** and no `ad_enabled` UI control.
-
-| Flavor | `ADS_ENABLED` | Purpose |
-|---|---|---|
-| `free` | `true` | Ad-supported build distributed at no cost |
-| `pro` | `false` | Paid build with all ad surfaces removed at compile time |
+**Ads are a compile-time property, never a runtime setting.** There is no runtime ads switch and no `ad_enabled` UI control. The app is built as a single build (`com.copitoB.mypos`) driven by a compile-time `AppConfig` singleton in `commonMain` holding `ADS_ENABLED: Boolean` (`false` during development) and theme configuration.
 
 **Build rules:**
-- Both flavors declare the **same `applicationId`** (`com.copitoB.mypos`) and are signed with the **same `.jks` keystore**. Installing `pro` over `free` is therefore an in-place update and preserves the local `tpv.db` (SQLite data survives).
-- `applicationIdSuffix` is **forbidden** for these flavors: it would create a second app identity and orphan the user's data.
-- The flag is exposed once as `BuildConfig.ADS_ENABLED` on Android and consumed through an `expect fun isAdsEnabled(): Boolean` + `LocalAdsEnabled` CompositionLocal at the app root. iOS resolves the same `expect` to `false` until store tiers exist.
-- **Cross-module propagation:** the library module (`composeApp`) cannot read `androidApp`'s `BuildConfig`. The `free`/`pro` flavors in `androidApp` therefore drive a shared Gradle property that generates a single constant (`AdsBuildConfig.ADS_ENABLED`) consumed by the `androidMain` `actual`. No flavor logic is duplicated in `commonMain`.
-- Ad code is isolated in `androidMain`/`iosMain`; `commonMain` only sees the boolean.
+- Single build declares `applicationId` `com.copitoB.mypos`, signed with the shared `.jks` keystore. `applicationIdSuffix` is forbidden.
+- `ADS_ENABLED` defaults to `false` during development.
+- The flag is consumed through `expect fun isAdsEnabled(): Boolean` + `LocalAdsEnabled` CompositionLocal at the app root; iOS resolves the same `expect` to `false`.
+- Ad code is isolated in platform source sets; `commonMain` only sees the boolean.
 - The legacy `settings.ad_enabled` column is **deprecated and ignored**. It is retained until `v3.0.0` so the Phase 6 upgrade needs no mid-phase schema migration, and is removed by a dedicated `.sqm` afterwards.
 
-**Allowed ad surfaces (footer of the browse list, `free` flavor only):**
+**Allowed ad surfaces (footer of the browse list when `LocalAdsEnabled.current`):**
 - Catalog / Inventory list
 - Expenses list
 - Caja (Cash Summary)
@@ -184,18 +178,15 @@ TPV Móvil Express v2.0 is an offline-first, high-performance mobile application
 ./gradlew :composeApp:generateCommonMainTpvDatabaseInterface   # SQLDelight codegen
 ./gradlew :composeApp:compileAndroidMain                        # Android compile
 ./gradlew :composeApp:testAndroidHostTest                       # Unit + integration tests
-./gradlew :androidApp:assembleFreeDebug                         # Ad-supported debug APK
-./gradlew :androidApp:assembleProDebug                          # Ad-free debug APK
+./gradlew :androidApp:assembleDebug                             # Single build debug APK
 ./gradlew detekt                                                # Static analysis
 ```
 
 ### Release Pipeline
 1. Release keystore lives **outside version control** (`keystore/mypos-release.jks`); credentials are supplied through the gitignored `keystore.properties` or CI environment variables.
-2. `signingConfig` is shared by both flavors, and neither flavor declares an `applicationIdSuffix`.
-3. Build both artifacts per release:
+2. `signingConfig` uses the shared `.jks`; no `applicationIdSuffix`.
+3. Build the single release artifact:
    ```bash
-   ./gradlew :androidApp:bundleFreeRelease
-   ./gradlew :androidApp:bundleProRelease
+   ./gradlew :androidApp:bundleRelease
    ```
-   *Output:* `androidApp/build/outputs/bundle/{free,pro}Release/androidApp-{free,pro}-release.aab`
-4. Because both flavors share `applicationId` + signing key, a user moving `free → pro` retains all local SQLite data.
+   *Output:* `androidApp/build/outputs/bundle/release/androidApp-release.aab`

@@ -79,4 +79,13 @@
     <string name="error_sku_exists">El SKU ya existe</string>
     <string name="error_insufficient_stock">Stock insuficiente</string>
     <string name="error_invalid_amount">Monto inválido</string>
+
+    <!-- Ajustes / sabor de compilación -->
+    <string name="settings_flavor_title">Información de compilación</string>
+    <string name="settings_build_id">Compilación única: %1$s</string>
+    <string name="settings_ads_mode">Anuncios: AppConfig.ADS_ENABLED = %1$s</string>
+    <string name="settings_ads_note">Sin interruptor en tiempo de ejecución.</string>
+
+    <!-- Productos / comunes -->
+    <string name="product_sku_missing">N/A</string>
 </resources>
