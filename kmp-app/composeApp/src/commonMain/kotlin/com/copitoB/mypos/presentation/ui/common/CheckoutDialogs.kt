@@ -1,8 +1,10 @@
 package com.copitoB.mypos.presentation.ui.common
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -154,14 +156,14 @@ fun PaymentDialog(
       Column {
         Text(stringResource(Res.string.checkout_payment_method), style = MaterialTheme.typography.labelLarge)
         Row(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
           horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
           com.copitoB.mypos.domain.valueobjects.PaymentMethod.entries.forEach { method ->
             androidx.compose.material3.FilterChip(
               selected = paymentMethod == method,
               onClick = { paymentMethod = method },
-              label = { Text(method.code) }
+              label = { Text(paymentMethodLabel(method)) }
             )
           }
         }

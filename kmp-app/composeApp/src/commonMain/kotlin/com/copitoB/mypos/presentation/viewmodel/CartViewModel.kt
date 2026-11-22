@@ -3,6 +3,7 @@ package com.copitoB.mypos.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.copitoB.mypos.application.sales.RegisterSale
+import com.copitoB.mypos.domain.entities.CartItemFactory
 import com.copitoB.mypos.domain.entities.ICartItem
 import com.copitoB.mypos.domain.errors.StockError
 import com.copitoB.mypos.domain.valueobjects.ChangeAmount
@@ -39,9 +40,30 @@ class CartViewModel(
   private val _discount = MutableStateFlow(0.0)
   val discount: StateFlow<Double> = _discount.asStateFlow()
 
-  fun addItem(item: ICartItem) {
-    _items.update { it + item }
-    _error.value = null
+  fun addItem(item: ICartItem, maxQuantity: Double? = null): Boolean {
+    var accepted = true
+    _items.update { current ->
+      val index = current.indexOfFirst { it.productId == item.productId }
+      if (index < 0) {
+        current + item
+      } else {
+        val existing = current[index]
+        val merged = existing.quantity + item.quantity
+        if (maxQuantity != null && merged > maxQuantity) {
+          accepted = false
+          _error.value = "stock_error"
+          current
+        } else {
+          current.mapIndexed { i, old ->
+            if (i == index) {
+              CartItemFactory.create(old.productId, old.productName, merged, old.unitPrice)
+            } else old
+          }
+        }
+      }
+    }
+    if (accepted) _error.value = null
+    return accepted
   }
 
   fun replaceItem(index: Int, item: ICartItem) {
@@ -77,7 +99,7 @@ class CartViewModel(
         _change.value = ChangeAmount(received = received, total = total)
       }
     } catch (_: Exception) {
-      _error.value = "Invalid amount"
+      _error.value = "invalid_amount"
     }
   }
 

@@ -72,6 +72,34 @@ class PurchaseCartViewModelTest {
   }
 
   @Test
+  fun `adding the same purchase product twice merges quantity`() = runTest(dispatcher) {
+    seedProduct()
+    val vm = PurchaseCartViewModel(
+      RegisterPurchase(saleRepo, productRepo, UpdateAccumulator(accumulatorRepo))
+    )
+
+    vm.addItem(CartItemFactory.create(productId = 1L, productName = "Item", quantity = 1.0, unitPrice = 6.0))
+    vm.addItem(CartItemFactory.create(productId = 1L, productName = "Item", quantity = 2.0, unitPrice = 6.0))
+
+    assertEquals(1, vm.items.value.size)
+    assertEquals(3.0, vm.items.value.first().quantity)
+    assertEquals(null, vm.error.value)
+  }
+
+  @Test
+  fun `purchase addItem with maxQuantity rejects overflow`() = runTest(dispatcher) {
+    seedProduct()
+    val vm = PurchaseCartViewModel(
+      RegisterPurchase(saleRepo, productRepo, UpdateAccumulator(accumulatorRepo))
+    )
+
+    assertTrue(vm.addItem(CartItemFactory.create(productId = 1L, productName = "Item", quantity = 1.0, unitPrice = 6.0), maxQuantity = 2.0))
+    assertFalse(vm.addItem(CartItemFactory.create(productId = 1L, productName = "Item", quantity = 2.0, unitPrice = 6.0), maxQuantity = 2.0))
+    assertEquals(1.0, vm.items.value.first().quantity)
+    assertEquals("stock_error", vm.error.value)
+  }
+
+  @Test
   fun `checkout increments stock and clears cart`() = runTest(dispatcher) {
     seedProduct()
     accumulatorRepo.updateAccumulator(Money.zero(Currency.Bs), Money.zero(Currency.Bs), Money.zero(Currency.Bs))
@@ -85,7 +113,7 @@ class PurchaseCartViewModelTest {
     advanceUntilIdle()
     if (!succeeded) throw AssertionError("checkout failed; error=${vm.error.value}")
     assertTrue(vm.items.value.isEmpty())
-    assertEquals(7.0, productRepo.findById(1L)!!.currentStock.value.toDouble())
+    assertEquals(5.0, productRepo.findById(1L)!!.currentStock.value.toDouble())
     assertEquals(1, saleRepo.list("PURCHASE", 10, 0).size)
     assertEquals(3.0, saleRepo.listDetails(1L).sumOf { it.quantity })
   }

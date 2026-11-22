@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,7 +45,6 @@ import com.copitoB.mypos.generated.resources.Res
 import com.copitoB.mypos.generated.resources.action_cancel
 import com.copitoB.mypos.generated.resources.action_refresh
 import com.copitoB.mypos.generated.resources.action_save
-import com.copitoB.mypos.generated.resources.content_desc_add_expense
 import com.copitoB.mypos.generated.resources.content_desc_create_expense_category
 import com.copitoB.mypos.generated.resources.dialog_new_expense
 import com.copitoB.mypos.generated.resources.expense_all_months
@@ -111,7 +111,14 @@ fun ExpenseListScreen(
     }
   }
 
-  Column(modifier = Modifier.fillMaxSize()) {
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text(stringResource(Res.string.screen_expenses)) }
+      )
+    }
+  ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
       if (months.size > 1 || selectedMonth != null) {
         Row(
           modifier = Modifier
@@ -147,7 +154,7 @@ fun ExpenseListScreen(
       } else {
         LazyColumn(
           modifier = Modifier.weight(1f).fillMaxWidth(),
-          contentPadding = PaddingValues(12.dp)
+          contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 88.dp)
         ) {
           items(expenses, key = { it.id ?: 0L }, contentType = { "expense" }) { expense ->
             Card(
@@ -185,8 +192,9 @@ fun ExpenseListScreen(
             }
           }
         }
-      }
+        }
     }
+  }
 
   if (showDialog) {
     AddExpenseDialog(

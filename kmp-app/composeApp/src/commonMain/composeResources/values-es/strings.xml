@@ -12,6 +12,9 @@
     <string name="action_add">Agregar</string>
     <string name="action_edit">Editar</string>
     <string name="action_delete">Eliminar</string>
+    <string name="action_remove_item">Quitar</string>
+    <string name="content_desc_options">Opciones del producto</string>
+    <string name="cart_empty_hint">Selecciona un producto del catálogo para agregarlo al carrito.</string>
     <string name="action_save">Guardar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_refresh">Actualizar</string>
@@ -32,6 +35,7 @@
     <string name="screen_edit_product">Editar Producto</string>
     <string name="label_name">Nombre</string>
     <string name="label_sku">SKU</string>
+    <string name="label_sku_autofill">Generar</string>
     <string name="label_selling_price">Precio de Venta</string>
     <string name="label_purchase_price">Precio de Compra</string>
     <string name="label_current_stock">Stock Actual</string>
@@ -99,6 +103,9 @@
     <string name="error_sku_exists">El SKU ya existe</string>
     <string name="error_insufficient_stock">Stock insuficiente</string>
     <string name="error_invalid_amount">Monto inválido</string>
+    <string name="error_generic">Ocurrió un error inesperado</string>
+    <string name="backup_error_export">No se pudo exportar la copia</string>
+    <string name="backup_error_import">No se pudo importar la copia</string>
 
     <!-- Ajustes / sabor de compilación -->
     <string name="settings_flavor_title">Información de compilación</string>
@@ -176,6 +183,10 @@
     <string name="catalog_modal_category_placeholder">Ej. Bebidas</string>
     <string name="catalog_form_category_label">Categoría</string>
     <string name="catalog_form_category_required">Categoría obligatoria</string>
+    <string name="catalog_form_photo">Foto del producto</string>
+    <string name="catalog_form_photo_change">Cambiar foto</string>
+    <string name="catalog_form_photo_remove">Quitar foto</string>
+    <string name="content_desc_product_photo">Foto del producto</string>
     <string name="content_desc_edit_product">Editar producto</string>
     <string name="content_desc_adjust_stock">Ajustar stock</string>
     <string name="catalog_toast_product_saved">Producto guardado</string>

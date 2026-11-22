@@ -67,4 +67,13 @@ class ProductManagement(
   suspend fun getLowStockProducts(): List<Product> {
     return productRepository.listLowStock()
   }
+
+  suspend fun generateUniqueSku(prefix: String = "PRD"): String {
+    var counter = 1
+    while (true) {
+      val candidate = "$prefix-${counter.toString().padStart(4, '0')}"
+      if (productRepository.findBySku(candidate) == null) return candidate
+      counter++
+    }
+  }
 }

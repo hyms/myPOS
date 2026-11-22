@@ -226,4 +226,6 @@ class ProductViewModel(
       }
     }
   }
+
+  suspend fun generateSku(): String = productManagement.generateUniqueSku()
 }

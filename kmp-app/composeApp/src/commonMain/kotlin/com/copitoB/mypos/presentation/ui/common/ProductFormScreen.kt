@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,16 +30,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.copitoB.mypos.domain.entities.Category
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
 import com.copitoB.mypos.generated.resources.Res
 import com.copitoB.mypos.generated.resources.action_cancel
 import com.copitoB.mypos.generated.resources.action_save
+import com.copitoB.mypos.generated.resources.catalog_form_photo
+import com.copitoB.mypos.generated.resources.catalog_form_photo_change
+import com.copitoB.mypos.generated.resources.catalog_form_photo_remove
 import com.copitoB.mypos.generated.resources.catalog_category_all
 import com.copitoB.mypos.generated.resources.catalog_form_category_label
 import com.copitoB.mypos.generated.resources.catalog_form_category_required
@@ -51,6 +61,7 @@ import com.copitoB.mypos.generated.resources.label_name
 import com.copitoB.mypos.generated.resources.label_purchase_price
 import com.copitoB.mypos.generated.resources.label_selling_price
 import com.copitoB.mypos.generated.resources.label_sku
+import com.copitoB.mypos.generated.resources.label_sku_autofill
 import com.copitoB.mypos.generated.resources.screen_edit_product
 import com.copitoB.mypos.generated.resources.screen_new_product
 import org.jetbrains.compose.resources.stringResource
@@ -62,17 +73,21 @@ fun ProductFormScreen(
   categories: List<Category> = emptyList(),
   onSave: (ProductInput) -> Unit,
   onCancel: () -> Unit,
-  onCreateCategory: (String) -> Unit = {}
+  onCreateCategory: (String) -> Unit = {},
+  onSuggestSku: suspend () -> String = { "" }
 ) {
   var name by remember { mutableStateOf(product?.name ?: "") }
   var sku by remember { mutableStateOf(product?.sku?.value ?: "") }
   var sellingPrice by remember { mutableStateOf(product?.sellingPrice?.amount?.toString() ?: "") }
   var purchasePrice by remember { mutableStateOf(product?.purchasePrice?.amount?.toString() ?: "") }
-  var currentStock by remember { mutableStateOf(product?.currentStock?.value?.toString() ?: "") }
-  var minStock by remember { mutableStateOf(product?.minStock?.value?.toString() ?: "") }
+  var currentStock by remember { mutableStateOf(product?.currentStock?.toDisplayString() ?: "") }
+  var minStock by remember { mutableStateOf(product?.minStock?.toDisplayString() ?: "") }
   var categoryId by remember { mutableStateOf(product?.categoryId) }
   var categoryError by remember { mutableStateOf(false) }
   var showCategoryDialog by remember { mutableStateOf(false) }
+  var imageUri by remember { mutableStateOf(product?.imageUri) }
+  val imageLauncher = rememberImagePicker { picked -> imageUri = picked }
+  val scope = rememberCoroutineScope()
 
   Scaffold(
     topBar = {
@@ -94,7 +109,28 @@ fun ProductFormScreen(
         .fillMaxSize()
         .padding(innerPadding)
         .padding(horizontal = 16.dp)
+        .verticalScroll(rememberScrollState())
+        .imePadding()
     ) {
+      Text(
+        text = stringResource(Res.string.catalog_form_photo),
+        style = MaterialTheme.typography.labelLarge
+      )
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        ProductPhotoPreview(path = imageUri, modifier = Modifier.size(96.dp))
+        TextButton(onClick = { imageLauncher() }) {
+          Text(stringResource(Res.string.catalog_form_photo_change))
+        }
+        if (imageUri != null) {
+          TextButton(onClick = { imageUri = null }) {
+            Text(stringResource(Res.string.catalog_form_photo_remove))
+          }
+        }
+      }
       TextField(
         value = name,
         onValueChange = { name = it },
@@ -107,6 +143,9 @@ fun ProductFormScreen(
         label = { Text(stringResource(Res.string.label_sku)) },
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
       )
+      TextButton(onClick = { scope.launch { sku = onSuggestSku() } }) {
+        Text(stringResource(Res.string.label_sku_autofill))
+      }
       TextField(
         value = sellingPrice,
         onValueChange = { sellingPrice = it },
@@ -167,7 +206,7 @@ fun ProductFormScreen(
                 purchasePrice = purchasePrice,
                 currentStock = currentStock,
                 minStock = minStock,
-                imageUri = product?.imageUri
+                imageUri = imageUri
               )
             )
           }

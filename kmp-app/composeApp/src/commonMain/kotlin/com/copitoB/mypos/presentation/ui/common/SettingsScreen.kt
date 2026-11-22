@@ -38,6 +38,7 @@ import com.copitoB.mypos.generated.resources.settings_page_size
 import com.copitoB.mypos.generated.resources.settings_pin_change
 import com.copitoB.mypos.generated.resources.settings_pin_set
 import com.copitoB.mypos.generated.resources.settings_pin_title
+import com.copitoB.mypos.presentation.ui.model.errorMessage
 import com.copitoB.mypos.presentation.ui.security.ChangePinDialog
 import com.copitoB.mypos.presentation.ui.security.PinGateDialog
 import com.copitoB.mypos.presentation.viewmodel.BackupViewModel
@@ -152,7 +153,11 @@ fun SettingsScreen(
         }
       }
       backupError?.let {
-        Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text(
+          text = errorMessage(it) ?: it,
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodySmall
+        )
       }
 
       FlavorInfoCard()
@@ -172,7 +177,7 @@ fun SettingsScreen(
       currentPin = currentPin,
       newPin = newPin,
       confirmPin = confirmPin,
-      error = changePinError ?: pinError,
+      error = errorMessage(changePinError ?: pinError),
       onCurrentChange = { currentPin = it; changePinError = null },
       onNewChange = { newPin = it; changePinError = null },
       onConfirmChange = { confirmPin = it; changePinError = null },
@@ -202,7 +207,7 @@ fun SettingsScreen(
       title = stringResource(Res.string.backup_import_confirm),
       pin = importPin,
       onPinChange = { importPin = it },
-      error = pinError,
+      error = errorMessage(pinError),
       onConfirm = {
         pinViewModel.unlock(importPin) { ok ->
           if (ok) {

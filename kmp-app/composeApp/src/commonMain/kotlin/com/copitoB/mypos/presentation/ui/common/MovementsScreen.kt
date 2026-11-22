@@ -1,5 +1,6 @@
 package com.copitoB.mypos.presentation.ui.common
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,7 +61,10 @@ fun MovementsScreen(
   ) { innerPadding ->
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
       Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .horizontalScroll(rememberScrollState())
+          .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         listOf(
@@ -80,13 +85,13 @@ fun MovementsScreen(
         onValueChange = onSearchChange,
         label = { Text(stringResource(Res.string.accumulator_movements_search)) },
         singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
       )
       if (total > 0) {
         Text(
           text = stringResource(Res.string.accumulator_movements_total, total),
           style = MaterialTheme.typography.bodySmall,
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
       }
 
@@ -99,7 +104,7 @@ fun MovementsScreen(
       } else {
         LazyColumn(
           modifier = Modifier.weight(1f).fillMaxWidth(),
-          contentPadding = PaddingValues(12.dp)
+          contentPadding = PaddingValues(16.dp)
         ) {
           items(movements, key = { it.id ?: 0L }, contentType = { "movement" }) { movement ->
             Card(
@@ -113,7 +118,7 @@ fun MovementsScreen(
               ) {
                 Column(modifier = Modifier.weight(1f)) {
                   Text(
-                    text = movement.detail ?: movement.type,
+                    text = movement.detail ?: transactionTypeLabel(movement.type),
                     style = MaterialTheme.typography.titleMedium
                   )
                   Text(

@@ -1,6 +1,7 @@
 package com.copitoB.mypos.presentation.ui.common
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,9 +21,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,10 +67,7 @@ import com.copitoB.mypos.generated.resources.catalog_sort_popularity
 import com.copitoB.mypos.generated.resources.catalog_stock_adjust_new_value
 import com.copitoB.mypos.generated.resources.catalog_stock_adjust_reason
 import com.copitoB.mypos.generated.resources.catalog_stock_adjust_title
-import com.copitoB.mypos.generated.resources.content_desc_add_product
-import com.copitoB.mypos.generated.resources.content_desc_adjust_stock
-import com.copitoB.mypos.generated.resources.content_desc_delete_product
-import com.copitoB.mypos.generated.resources.content_desc_edit_product
+import com.copitoB.mypos.generated.resources.content_desc_options
 import com.copitoB.mypos.generated.resources.product_low_stock
 import com.copitoB.mypos.generated.resources.product_sku
 import com.copitoB.mypos.generated.resources.product_sku_missing
@@ -97,7 +93,6 @@ fun ProductListScreen(
   onLowStockChange: (Boolean) -> Unit,
   onLoadNextPage: () -> Unit,
   onProductClick: (Product) -> Unit,
-  onAddProduct: () -> Unit,
   onEdit: (Product) -> Unit,
   onDelete: (Long) -> Unit,
   onAdjustStock: (Long, String, String) -> Unit
@@ -108,15 +103,7 @@ fun ProductListScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text(stringResource(Res.string.screen_products)) },
-        actions = {
-          IconButton(onClick = onAddProduct) {
-            Icon(
-              imageVector = androidx.compose.material.icons.Icons.Filled.Add,
-              contentDescription = stringResource(Res.string.content_desc_add_product)
-            )
-          }
-        }
+        title = { Text(stringResource(Res.string.screen_products)) }
       )
     }
   ) { innerPadding ->
@@ -149,9 +136,9 @@ fun ProductListScreen(
       }
 
       LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp),
+        contentPadding = PaddingValues(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
@@ -184,7 +171,7 @@ fun ProductListScreen(
 
   pendingAdjust?.let { product ->
     StockAdjustDialog(
-      currentStock = product.currentStock.value.toPlainString(),
+      currentStock = product.currentStock.toDisplayString(),
       onConfirm = { newStock, reason ->
         onAdjustStock(product.id!!, newStock, reason)
         pendingAdjust = null
@@ -287,51 +274,71 @@ fun ProductCard(
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
   ) {
     Column(modifier = Modifier.padding(8.dp)) {
-      Text(text = product.name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-      Text(
-        text = stringResource(
-          Res.string.product_sku,
-          product.sku?.value ?: stringResource(Res.string.product_sku_missing)
-        ),
-        style = MaterialTheme.typography.bodySmall
+      ProductPhotoPreview(
+        path = product.imageUri,
+        modifier = Modifier.fillMaxWidth().aspectRatio(1f)
       )
-      Text(
-        text = stringResource(
-          Res.string.product_stock,
-          product.currentStock.value.toPlainString(),
-          product.minStock.value.toPlainString()
-        ),
-        style = MaterialTheme.typography.bodySmall,
-        color = if (product.isBelowMinStock()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-      )
-      if (product.isBelowMinStock()) {
-        Text(
-          text = stringResource(Res.string.product_low_stock),
-          style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.error
-        )
-      }
-      Spacer(modifier = Modifier.padding(2.dp))
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End
-      ) {
-        IconButton(onClick = onEdit) {
-          Icon(
-            androidx.compose.material.icons.Icons.Filled.Edit,
-            contentDescription = stringResource(Res.string.content_desc_edit_product)
-          )
+      Spacer(modifier = Modifier.padding(4.dp))
+      var menu by remember(product.id) { mutableStateOf(false) }
+      Box {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Column(modifier = Modifier.weight(1f)) {
+            Text(text = product.name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+            Text(
+              text = stringResource(
+                Res.string.product_sku,
+                product.sku?.value ?: stringResource(Res.string.product_sku_missing)
+              ),
+              style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+              text = stringResource(
+                Res.string.product_stock,
+                product.currentStock.toDisplayString(),
+                product.minStock.toDisplayString()
+              ),
+              style = MaterialTheme.typography.bodySmall,
+              color = if (product.isBelowMinStock()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            )
+            if (product.isBelowMinStock()) {
+              Text(
+                text = stringResource(Res.string.product_low_stock),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+              )
+            }
+          }
+          IconButton(onClick = { menu = true }) {
+            Icon(
+              Icons.Default.MoreVert,
+              contentDescription = stringResource(Res.string.content_desc_options)
+            )
+          }
         }
-        IconButton(onClick = onAdjustStock) {
-          Icon(
-            androidx.compose.material.icons.Icons.Filled.Edit,
-            contentDescription = stringResource(Res.string.content_desc_adjust_stock)
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+          DropdownMenuItem(
+            text = { Text(stringResource(Res.string.action_edit)) },
+            onClick = {
+              menu = false
+              onEdit()
+            }
           )
-        }
-        IconButton(onClick = onDelete) {
-          Icon(
-            androidx.compose.material.icons.Icons.Filled.Delete,
-            contentDescription = stringResource(Res.string.content_desc_delete_product)
+          DropdownMenuItem(
+            text = { Text(stringResource(Res.string.catalog_stock_adjust_title)) },
+            onClick = {
+              menu = false
+              onAdjustStock()
+            }
+          )
+          DropdownMenuItem(
+            text = { Text(stringResource(Res.string.action_delete)) },
+            onClick = {
+              menu = false
+              onDelete()
+            }
           )
         }
       }

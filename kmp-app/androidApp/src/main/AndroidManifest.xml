@@ -10,6 +10,7 @@
             android:exported="true"
             android:label="TPV Móvil Express"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|keyboardHidden|screenSize|uiMode|fontScale|locale">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

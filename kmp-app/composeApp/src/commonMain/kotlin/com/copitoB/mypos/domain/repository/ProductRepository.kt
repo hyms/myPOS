@@ -21,6 +21,6 @@ interface ProductRepository {
   suspend fun listLowStock(): List<Product>
   suspend fun update(id: Long, input: ProductInput): Product
   suspend fun softDelete(id: Long)
-  suspend fun adjustStock(productId: Long, delta: Stock, reason: String)
+  suspend fun adjustStock(productId: Long, newStock: Stock, reason: String)
   fun watchAll(): Flow<List<Product>>
 }

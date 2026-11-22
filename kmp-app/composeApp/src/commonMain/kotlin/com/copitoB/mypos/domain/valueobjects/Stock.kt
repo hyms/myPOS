@@ -31,4 +31,7 @@ data class Stock(val value: BigDecimal) {
   fun isZero(): Boolean = value.signum() == 0
 
   override fun toString(): String = value.setScale(3, RoundingMode.HALF_UP).toString()
+
+  fun toDisplayString(): String =
+    if (value.signum() == 0) "0" else value.stripTrailingZeros().toPlainString()
 }

@@ -5,18 +5,30 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.PointOfSale
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,6 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import com.copitoB.mypos.config.AppConfig
 import com.copitoB.mypos.domain.entities.CartItemFactory
 import com.copitoB.mypos.domain.entities.Product
@@ -46,14 +61,13 @@ import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import com.copitoB.mypos.generated.resources.Res
+import com.copitoB.mypos.generated.resources.action_add
 import com.copitoB.mypos.generated.resources.action_close
-import com.copitoB.mypos.generated.resources.content_desc_add_expense
 import com.copitoB.mypos.generated.resources.catalog_stock_adjusted
 import com.copitoB.mypos.generated.resources.catalog_toast_product_deleted
 import com.copitoB.mypos.generated.resources.catalog_toast_product_saved
 import com.copitoB.mypos.generated.resources.checkout_toast_purchase_created
 import com.copitoB.mypos.generated.resources.checkout_toast_sale_created
-import com.copitoB.mypos.generated.resources.error_insufficient_stock
 import com.copitoB.mypos.generated.resources.nav_cart
 import com.copitoB.mypos.generated.resources.nav_cash
 import com.copitoB.mypos.generated.resources.nav_movements
@@ -73,6 +87,7 @@ import com.copitoB.mypos.presentation.ui.common.ProductListScreen
 import com.copitoB.mypos.presentation.ui.common.RegistroScreen
 import com.copitoB.mypos.presentation.ui.common.SettingsScreen
 import com.copitoB.mypos.presentation.ui.security.PinLockOverlay
+import com.copitoB.mypos.presentation.ui.model.rememberErrorMessage
 import com.copitoB.mypos.presentation.theme.AppTheme
 import com.copitoB.mypos.presentation.viewmodel.BackupViewModel
 import com.copitoB.mypos.presentation.viewmodel.CartViewModel
@@ -91,13 +106,21 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.GlobalContext
 
-private enum class Destination(val label: StringResource, val icon: ImageVector) {
-  Products(Res.string.nav_products, Icons.AutoMirrored.Filled.List),
-  Cart(Res.string.nav_cart, Icons.Default.ShoppingCart),
-  Movements(Res.string.nav_movements, Icons.Default.List),
-  Expenses(Res.string.nav_expenses, Icons.Default.Warning),
-  Cash(Res.string.nav_cash, Icons.Default.Home),
-  Settings(Res.string.nav_settings, Icons.Default.Settings)
+private enum class Destination(
+  val label: StringResource,
+  val selectedIcon: ImageVector,
+  val icon: ImageVector
+) {
+  Products(Res.string.nav_products, Icons.Filled.Inventory2, Icons.Outlined.Inventory2),
+  Cart(Res.string.nav_cart, Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart),
+  Movements(
+    Res.string.nav_movements,
+    Icons.AutoMirrored.Filled.ReceiptLong,
+    Icons.AutoMirrored.Outlined.ReceiptLong
+  ),
+  Expenses(Res.string.nav_expenses, Icons.Filled.Payments, Icons.Outlined.Payments),
+  Cash(Res.string.nav_cash, Icons.Filled.PointOfSale, Icons.Outlined.PointOfSale),
+  Settings(Res.string.nav_settings, Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 @Composable
@@ -175,6 +198,7 @@ fun App() {
   val pinError by pinViewModel.error.collectAsState()
 
   val snackbarHostState = remember { SnackbarHostState() }
+  val errorText = rememberErrorMessage()
   val appScope = rememberCoroutineScope()
   val haptics = LocalHapticFeedback.current
   val feedback = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
@@ -187,7 +211,6 @@ fun App() {
     )
   }
 
-  val insufficientStockMessage = stringResource(Res.string.error_insufficient_stock)
   val saleCreatedMessage = stringResource(Res.string.checkout_toast_sale_created)
   val purchaseCreatedMessage = stringResource(Res.string.checkout_toast_purchase_created)
   val productSavedMessage = stringResource(Res.string.catalog_toast_product_saved)
@@ -214,19 +237,15 @@ fun App() {
   LaunchedEffect(productError) {
     val e = productError
     if (e != null) {
-      snackbarHostState.showSnackbar(e)
+      errorText(e)?.let { snackbarHostState.showSnackbar(it) }
       productViewModel.consumeError()
     }
   }
 
   LaunchedEffect(cartError, purchaseCartError) {
     val e = cartError ?: purchaseCartError
-    if (e == "stock_error") {
-      snackbarHostState.showSnackbar(insufficientStockMessage)
-      cartViewModel.consumeError()
-      purchaseCartViewModel.consumeError()
-    } else if (e != null) {
-      snackbarHostState.showSnackbar(e)
+    if (e != null) {
+      errorText(e)?.let { snackbarHostState.showSnackbar(it) }
       cartViewModel.consumeError()
       purchaseCartViewModel.consumeError()
     }
@@ -260,11 +279,83 @@ fun App() {
       Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-          if (destination == Destination.Expenses && !showProductForm) {
-            FloatingActionButton(onClick = { openExpenseDialog = true }) {
-              Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = stringResource(Res.string.content_desc_add_expense)
+          if (!showProductForm && (destination == Destination.Products || destination == Destination.Expenses)) {
+            ExtendedFloatingActionButton(
+              onClick = {
+                if (destination == Destination.Products) {
+                  editingProduct = null
+                  showProductForm = true
+                } else {
+                  openExpenseDialog = true
+                }
+              },
+              icon = { Icon(imageVector = Icons.Default.Add, contentDescription = null) },
+              text = { Text(stringResource(Res.string.action_add)) }
+            )
+          }
+        },
+        bottomBar = {
+          val navColors = MaterialTheme.colorScheme
+          val cartCount = saleItems.size
+          NavigationBar(
+            containerColor = navColors.surfaceContainer,
+            windowInsets = NavigationBarDefaults.windowInsets
+          ) {
+            Destination.entries.forEach { dest ->
+              val selected = destination == dest && !showProductForm
+              NavigationBarItem(
+                selected = selected,
+                onClick = {
+                  showProductForm = false
+                  destination = dest
+                  when (dest) {
+                    Destination.Products -> productViewModel.loadProducts()
+                    Destination.Cart -> Unit
+                    Destination.Expenses -> expenseViewModel.loadExpenses()
+                    Destination.Movements -> movementsViewModel.load()
+                    Destination.Cash -> {
+                      cashViewModel.loadSummary()
+                      reportsViewModel.load()
+                    }
+                    Destination.Settings -> settingsViewModel.loadSettings()
+                  }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                  selectedIconColor = navColors.onSecondaryContainer,
+                  selectedTextColor = navColors.onSecondaryContainer,
+                  indicatorColor = navColors.secondaryContainer,
+                  unselectedIconColor = navColors.onSurfaceVariant,
+                  unselectedTextColor = navColors.onSurfaceVariant
+                ),
+                icon = {
+                  val icon = if (selected) dest.selectedIcon else dest.icon
+                  if (dest == Destination.Cart && cartCount > 0) {
+                    BadgedBox(
+                      badge = {
+                        Badge(
+                          containerColor = navColors.error,
+                          contentColor = navColors.onError
+                        ) {
+                          Text(if (cartCount > 99) "99+" else cartCount.toString())
+                        }
+                      }
+                    ) {
+                      Icon(imageVector = icon, contentDescription = stringResource(dest.label))
+                    }
+                  } else {
+                    Icon(imageVector = icon, contentDescription = stringResource(dest.label))
+                  }
+                },
+                label = {
+                  Text(
+                    text = stringResource(dest.label),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+                  )
+                }
               )
             }
           }
@@ -294,7 +385,8 @@ fun App() {
                 editingProduct = null
                 showProductForm = false
               },
-              onCreateCategory = { name -> categoryViewModel.createCategory(name) }
+              onCreateCategory = { name -> categoryViewModel.createCategory(name) },
+              onSuggestSku = { productViewModel.generateSku() }
             )
           } else {
             when (destination) {
@@ -314,14 +406,16 @@ fun App() {
                 onLoadNextPage = { productViewModel.loadNextPage() },
                 onProductClick = { product ->
                   if (mode == CartMode.SALE) {
-                    cartViewModel.addItem(
+                    val accepted = cartViewModel.addItem(
                       CartItemFactory.create(
                         productId = product.id ?: 0L,
                         productName = product.name,
                         quantity = 1.0,
                         unitPrice = product.sellingPrice.amount.toDouble()
-                      )
+                      ),
+                      maxQuantity = product.currentStock.value.toDouble()
                     )
+                    if (accepted) destination = Destination.Cart
                   } else {
                     purchaseCartViewModel.addItem(
                       CartItemFactory.create(
@@ -331,12 +425,8 @@ fun App() {
                         unitPrice = product.purchasePrice.amount.toDouble()
                       )
                     )
+                    destination = Destination.Cart
                   }
-                  destination = Destination.Cart
-                },
-                onAddProduct = {
-                  editingProduct = null
-                  showProductForm = true
                 },
                 onEdit = { product ->
                   editingProduct = product
@@ -360,10 +450,10 @@ fun App() {
                 purchaseItems = purchaseItems,
                 onModeChange = { mode = it },
                 onAddItem = { destination = Destination.Products },
-                onRemoveSaleItem = { index -> cartViewModel.removeItem(index) },
-                onRemovePurchaseItem = { index -> purchaseCartViewModel.removeItem(index) },
-                onEditSaleItem = { index, item -> cartViewModel.replaceItem(index, item) },
-                onEditPurchaseItem = { index, item -> purchaseCartViewModel.replaceItem(index, item) },
+                onRemoveItem = { index ->
+                  if (mode == CartMode.SALE) cartViewModel.removeItem(index)
+                  else purchaseCartViewModel.removeItem(index)
+                },
                 onClearSale = { cartViewModel.clearCart() },
                 onClearPurchase = { purchaseCartViewModel.clearCart() },
                 onCheckoutSale = { method, received, appliedDiscount ->
@@ -517,31 +607,6 @@ fun App() {
           }
           }
         }
-
-        NavigationBar {
-          Destination.entries.forEach { dest ->
-            NavigationBarItem(
-              selected = destination == dest && !showProductForm,
-              onClick = {
-                showProductForm = false
-                destination = dest
-                when (dest) {
-                  Destination.Products -> productViewModel.loadProducts()
-                  Destination.Cart -> Unit
-                  Destination.Expenses -> expenseViewModel.loadExpenses()
-                  Destination.Movements -> movementsViewModel.load()
-                  Destination.Cash -> {
-                    cashViewModel.loadSummary()
-                    reportsViewModel.load()
-                  }
-                  Destination.Settings -> settingsViewModel.loadSettings()
-                }
-              },
-              icon = { Icon(imageVector = dest.icon, contentDescription = stringResource(dest.label)) },
-              label = { Text(stringResource(dest.label)) }
-            )
-          }
-        }
       }
 
       }
@@ -550,7 +615,7 @@ fun App() {
         visible = locked,
         pin = pin,
         onPinChange = { pin = it },
-        error = pinError,
+        error = errorText(pinError),
         onUnlock = {
           pinViewModel.unlock(pin) { ok ->
             if (ok) {

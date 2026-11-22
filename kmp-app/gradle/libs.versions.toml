@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.4.21"
-android-gradle-plugin = "9.5.1"
+android-gradle-plugin = "9.5.2"
 compose-multiplatform = "1.12.2"
 compose-material3 = "1.12.0-alpha03"
 compose-material-icons = "1.7.3"
@@ -29,6 +29,7 @@ compose-foundation = { group = "org.jetbrains.compose.foundation", name = "found
 compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "compose-material3" }
 compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "compose-multiplatform" }
 compose-material-icons-core = { group = "org.jetbrains.compose.material", name = "material-icons-core", version.ref = "compose-material-icons" }
+compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "compose-material-icons" }
 compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose-multiplatform" }
 material-kolor-material3 = { group = "com.materialkolor", name = "material-kolor-material3", version.ref = "material-kolor" }
 sqldelight-runtime = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }

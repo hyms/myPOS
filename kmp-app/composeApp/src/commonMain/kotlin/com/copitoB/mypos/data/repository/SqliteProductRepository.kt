@@ -107,10 +107,9 @@ class SqliteProductRepository(
     }
   }
 
-  override suspend fun adjustStock(productId: Long, delta: Stock, reason: String) {
+  override suspend fun adjustStock(productId: Long, newStock: Stock, reason: String) {
     queries.productsQueries.transaction(true) {
       val current = queries.productsQueries.findById(id = productId).executeAsList().firstOrNull()!!
-      val newStock = (current.current_stock ?: 0.0).toStockRounded().plus(delta)
       queries.productsQueries.update(
         id = productId,
         categoryId = current.category_id,

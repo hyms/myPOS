@@ -84,7 +84,7 @@ fun ReportsScreen(
       modifier = Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState())
     ) {
       Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         listOf(
@@ -105,29 +105,29 @@ fun ReportsScreen(
           value = fromText,
           onValueChange = { fromText = it },
           label = { Text(stringResource(Res.string.reports_range_custom)) },
-          placeholder = { Text("YYYY-MM-DD") },
+          placeholder = { Text("AAAA-MM-DD") },
           singleLine = true,
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
         OutlinedTextField(
           value = toText,
           onValueChange = { toText = it },
           label = { Text(stringResource(Res.string.reports_range_custom)) },
-          placeholder = { Text("YYYY-MM-DD") },
+          placeholder = { Text("AAAA-MM-DD") },
           singleLine = true,
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
         )
         if (customError) {
           Text(
             text = stringResource(Res.string.reports_range_error),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(horizontal = 12.dp)
+            modifier = Modifier.padding(horizontal = 16.dp)
           )
         }
         TextButton(
           onClick = { onApplyCustom(fromText, toText) },
-          modifier = Modifier.padding(horizontal = 12.dp)
+          modifier = Modifier.padding(horizontal = 16.dp)
         ) {
           Text(stringResource(Res.string.reports_range_apply))
         }
@@ -152,13 +152,13 @@ fun ReportsScreen(
       Text(
         text = stringResource(Res.string.reports_payment_header),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
       )
       val paymentTotal = payment.values.sumOf { it.amount.toDouble() }
       PaymentMethod.entries.forEach { method ->
         val amount = payment[method] ?: Money.zero()
         val share = if (paymentTotal > 0.0) (amount.amount.toDouble() / paymentTotal).toFloat() else 0f
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -177,7 +177,7 @@ fun ReportsScreen(
         Text(
           text = stringResource(Res.string.reports_monthly_header),
           style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         monthly.forEach { row ->
           BreakdownCard(
@@ -194,7 +194,7 @@ fun ReportsScreen(
         Text(
           text = stringResource(Res.string.reports_annual_header),
           style = MaterialTheme.typography.titleMedium,
-          modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         annual.forEach { row ->
           BreakdownCard(
@@ -213,7 +213,7 @@ fun ReportsScreen(
 @Composable
 private fun StatCardRow(label: String, amount: Money, negative: Boolean = false) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.SpaceBetween
   ) {
     Text(text = label, style = MaterialTheme.typography.bodyLarge)
@@ -234,10 +234,10 @@ private fun BreakdownCard(
   net: Money
 ) {
   Card(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
   ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
       Text(text = label, style = MaterialTheme.typography.titleSmall)
       Row(
         modifier = Modifier.fillMaxWidth(),

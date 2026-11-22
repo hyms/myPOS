@@ -82,12 +82,12 @@ class ProductManagementIntegrationTest {
   }
 
   @Test
-  fun `adjust stock applies delta to current`() {
+  fun `adjust stock sets absolute value`() {
     kotlinx.coroutines.runBlocking {
       seedCategory()
       val created = management.createProduct(input("Widget", stock = "10.000"))
       management.adjustStock(created.id!!, Stock(BigDecimal("4.500")), "Stock count")
-      assertEquals(14.5, management.getProduct(created.id!!)!!.currentStock.value.toDouble())
+      assertEquals(4.5, management.getProduct(created.id!!)!!.currentStock.value.toDouble())
     }
   }
 

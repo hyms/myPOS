@@ -17,6 +17,7 @@ kotlin {
         namespace = "com.copitoB.mypos"
         compileSdk = libs.versions.android.compile.sdk.get().toInt()
         minSdk = libs.versions.android.min.sdk.get().toInt()
+        androidResources.enable = true
 
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
@@ -35,6 +36,7 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.material.icons.core)
+            implementation(libs.compose.material.icons.extended)
             implementation(libs.compose.components.resources)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
@@ -49,6 +51,8 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.koin.test)
             implementation(libs.kotlinx.coroutines.test)
+        }
+        getByName("androidHostTest").dependencies {
             implementation(libs.sqldelight.sqlite.driver)
         }
         androidMain.dependencies {
