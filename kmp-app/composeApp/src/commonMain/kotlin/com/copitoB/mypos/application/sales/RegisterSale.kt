@@ -30,11 +30,12 @@ class RegisterSale(
     items: List<ICartItem>,
     paymentMethod: PaymentMethod,
     received: Money?,
+    discount: Double = 0.0,
     detail: String? = null
   ): Result {
     require(items.isNotEmpty()) { "Cart cannot be empty" }
 
-    val totals = CartRules.calcTotals(items)
+    val totals = CartRules.calcTotals(items, discount)
 
     // Validate stock for each item
     for (item in items) {
@@ -95,11 +96,12 @@ class RegisterPurchase(
   suspend fun execute(
     items: List<ICartItem>,
     paymentMethod: PaymentMethod,
+    discount: Double = 0.0,
     detail: String? = null
   ): Result {
     require(items.isNotEmpty()) { "Cart cannot be empty" }
 
-    val totals = CartRules.calcTotals(items)
+    val totals = CartRules.calcTotals(items, discount)
     val totalMoney = Money(BigDecimal(totals.total), Currency.Bs)
 
     return saleRepository.create(

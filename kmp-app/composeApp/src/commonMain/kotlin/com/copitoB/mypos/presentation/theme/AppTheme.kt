@@ -3,8 +3,13 @@ package com.copitoB.mypos.presentation.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import com.copitoB.mypos.config.AppConfig
+import com.copitoB.mypos.presentation.ui.common.rememberReducedMotion
 import com.materialkolor.material3.rememberDynamicColorScheme
+
+val LocalReducedMotion = compositionLocalOf { false }
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
@@ -14,5 +19,7 @@ fun AppTheme(content: @Composable () -> Unit) {
     isDark = isDark,
     style = AppConfig.PALETTE_STYLE,
   )
-  MaterialTheme(colorScheme = colorScheme, content = content)
+  CompositionLocalProvider(LocalReducedMotion provides rememberReducedMotion()) {
+    MaterialTheme(colorScheme = colorScheme, content = content)
+  }
 }

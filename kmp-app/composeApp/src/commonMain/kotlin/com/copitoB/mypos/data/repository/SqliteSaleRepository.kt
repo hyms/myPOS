@@ -36,9 +36,34 @@ class SqliteSaleRepository(
       .firstOrNull()?.let { mapTransaction(it) }
   }
 
+  override suspend fun findByIdIncludingDeleted(id: Long): SaleTransaction? {
+    return queries.salesQueries.salesFindByIdIncludingDeleted(id = id).executeAsList()
+      .firstOrNull()?.let { mapTransaction(it) }
+  }
+
   override suspend fun list(type: String?, limit: Int, offset: Int): List<SaleTransaction> {
     return queries.salesQueries.salesFindByType(type = type ?: "", limit = limit.toLong(), offset = offset.toLong()).executeAsList()
       .map { mapTransaction(it) }
+  }
+
+  override suspend fun listMovements(type: String?, search: String?, from: String?, to: String?, limit: Int, offset: Int): List<SaleTransaction> {
+    return queries.salesQueries.movementsFiltered(
+      type = type,
+      search = search?.ifBlank { null }?.lowercase(),
+      from = from,
+      to = to,
+      limit = limit.toLong(),
+      offset = offset.toLong()
+    ).executeAsList().map { mapTransaction(it) }
+  }
+
+  override suspend fun countMovements(type: String?, search: String?, from: String?, to: String?): Long {
+    return queries.salesQueries.movementsFilteredCount(
+      type = type,
+      search = search?.ifBlank { null }?.lowercase(),
+      from = from,
+      to = to
+    ).executeAsOne()
   }
 
   override suspend fun softDelete(id: Long) {

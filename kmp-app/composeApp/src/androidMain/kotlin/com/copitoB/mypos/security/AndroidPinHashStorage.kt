@@ -14,4 +14,8 @@ class AndroidPinHashStorage(
   override fun storePinHash(hash: String) {
     prefs.edit().putString("pin_hash", hash).apply()
   }
+
+  override fun clearPin() {
+    prefs.edit().remove("pin_hash").apply()
+  }
 }

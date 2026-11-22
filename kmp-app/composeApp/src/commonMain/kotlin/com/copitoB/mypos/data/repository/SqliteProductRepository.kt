@@ -2,6 +2,7 @@ package com.copitoB.mypos.data.repository
 
 import app.cash.sqldelight.db.SqlDriver
 import com.copitoB.mypos.domain.entities.Product
+import com.copitoB.mypos.domain.entities.ProductSort
 import com.copitoB.mypos.domain.repository.ProductRepository
 import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
@@ -50,18 +51,32 @@ class SqliteProductRepository(
       .firstOrNull()?.let { mapProduct(it) }
   }
 
-  override suspend fun list(search: String?, categoryId: Long?, limit: Int, offset: Int): List<Product> {
-    return when {
-      categoryId != null -> {
-        queries.productsQueries.findByCategory(categoryId = categoryId.toLong()).executeAsList().map { mapProduct(it) }
-      }
-      search != null -> {
-        queries.productsQueries.searchByName(search = search, limit = limit.toLong(), offset = offset.toLong()).executeAsList().map { mapProduct(it) }
-      }
-      else -> {
-        queries.productsQueries.findAll().executeAsList().map { mapProduct(it) }
-      }
-    }
+  override suspend fun list(
+    search: String?,
+    categoryId: Long?,
+    limit: Int,
+    offset: Int,
+    sort: ProductSort,
+    lowStockOnly: Boolean
+  ): List<Product> {
+    val low = if (lowStockOnly) 1L else 0L
+    return if (sort == ProductSort.POPULARIDAD_DESC) {
+      queries.productsQueries.listFilteredPopular(
+        search = search,
+        categoryId = categoryId,
+        lowStockOnly = low,
+        limit = limit.toLong(),
+        offset = offset.toLong()
+      ).executeAsList()
+    } else {
+      queries.productsQueries.listFiltered(
+        search = search,
+        categoryId = categoryId,
+        lowStockOnly = low,
+        limit = limit.toLong(),
+        offset = offset.toLong()
+      ).executeAsList()
+    }.map { mapProduct(it) }
   }
 
   override suspend fun listLowStock(): List<Product> {

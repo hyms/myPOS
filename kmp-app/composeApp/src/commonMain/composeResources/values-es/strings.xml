@@ -4,6 +4,7 @@
     <string name="nav_products">Productos</string>
     <string name="nav_cart">Carrito</string>
     <string name="nav_expenses">Gastos</string>
+    <string name="nav_movements">Movimientos</string>
     <string name="nav_cash">Caja</string>
     <string name="nav_settings">Ajustes</string>
 
@@ -53,6 +54,25 @@
     <string name="label_amount">Monto</string>
     <string name="label_description">Descripción</string>
     <string name="expense_date">%1$s</string>
+    <string name="expense_all_months">Todos</string>
+    <string name="expense_category_label">Categoría</string>
+    <string name="expense_payment_label">Método de pago</string>
+    <string name="expense_label_category">Categoría: %1$s · Pago: %2$s</string>
+    <string name="expense_empty_title">Sin gastos este mes</string>
+    <string name="expense_empty_desc">Registra tu primer gasto con el botón +</string>
+    <string name="expense_error_amount">Monto inválido (debe ser mayor a 0)</string>
+    <string name="expense_error_description">Descripción obligatoria</string>
+    <string name="expense_error_category">Selecciona una categoría</string>
+    <string name="expense_load_more">Cargar más</string>
+    <string name="expense_toast_created">Gasto registrado</string>
+    <string name="content_desc_create_expense_category">Crear categoría de gasto</string>
+    <string name="quick_category_title">Nueva categoría</string>
+    <string name="quick_category_placeholder">Nombre de la categoría</string>
+    <string name="label_category">Categoría</string>
+    <string name="payment_method_cash">Efectivo</string>
+    <string name="payment_method_card">Tarjeta</string>
+    <string name="payment_method_transfer">Transferencia</string>
+    <string name="payment_method_qr">QR</string>
 
     <!-- Caja -->
     <string name="screen_cash">Caja</string>
@@ -88,4 +108,145 @@
 
     <!-- Productos / comunes -->
     <string name="product_sku_missing">N/A</string>
+
+    <!-- Ajustes / general -->
+    <string name="section_general">General</string>
+    <string name="settings_currency_title">Moneda</string>
+    <string name="settings_currency_bs">Bs</string>
+    <string name="settings_currency_usd">$</string>
+    <string name="settings_currency_eur">€</string>
+    <string name="settings_page_size">Filas por consulta</string>
+    <string name="settings_page_size_hint">Filas por consulta (5–100)</string>
+
+    <!-- Seguridad / PIN -->
+    <string name="section_security">Seguridad</string>
+    <string name="settings_pin_title">PIN de seguridad</string>
+    <string name="settings_pin_set">Configurar PIN</string>
+    <string name="settings_pin_change">Cambiar PIN</string>
+    <string name="settings_pin_remove">Eliminar PIN</string>
+    <string name="pin_current">PIN actual</string>
+    <string name="pin_new">Nuevo PIN</string>
+    <string name="pin_confirm">Confirmar PIN</string>
+    <string name="pin_enter">Ingrese su PIN</string>
+    <string name="pin_incorrect">PIN incorrecto</string>
+    <string name="pin_lock_title">Ingrese su PIN</string>
+    <string name="pin_required_action">Ingrese su PIN para confirmar</string>
+    <string name="pin_saved">PIN guardado</string>
+    <string name="pin_removed">PIN eliminado</string>
+    <string name="pin_error_generic">No se pudo procesar el PIN</string>
+    <string name="pin_mismatch">Los PIN no coinciden</string>
+    <string name="pin_too_short">El PIN debe tener al menos 4 dígitos</string>
+
+    <!-- Copia de seguridad -->
+    <string name="section_backup">Copia de seguridad</string>
+    <string name="settings_backup_title">Copia de seguridad</string>
+    <string name="action_export_backup">Exportar</string>
+    <string name="action_import_backup">Importar</string>
+    <string name="backup_exporting">Exportando…</string>
+    <string name="backup_importing">Importando…</string>
+    <string name="backup_export_success">Copia guardada en: %1$s</string>
+    <string name="backup_import_confirm">Esto sobrescribirá todos los datos actuales. Ingrese su PIN para confirmar.</string>
+    <string name="backup_import_success">Importación completada</string>
+    <string name="backup_import_report">Importados: %1$s, actualizados: %2$s, omitidos: %3$s</string>
+    <string name="backup_error_format">Formato de copia inválido</string>
+    <string name="backup_error_newer">La copia usa una versión más nueva (%1$s) que la soportada</string>
+    <string name="backup_error_pin">PIN requerido para importar</string>
+    <string name="backup_warning_row_skipped">Omitido: %1$s</string>
+
+    <!-- Diálogos comunes -->
+    <string name="action_confirm">Confirmar</string>
+    <string name="action_close">Cerrar</string>
+
+    <!-- Catálogo / filtros -->
+    <string name="catalog_search_hint">Buscar producto…</string>
+    <string name="catalog_sort_label">Ordenar</string>
+    <string name="catalog_sort_name">Nombre</string>
+    <string name="catalog_sort_popularity">Más vendido</string>
+    <string name="catalog_category_all">Todas</string>
+    <string name="catalog_low_stock_filter">Stock bajo</string>
+    <string name="catalog_empty">No se encontraron productos</string>
+    <string name="catalog_delete_confirm_title">Eliminar producto</string>
+    <string name="catalog_delete_confirm_msg">¿Eliminar este producto? No se puede deshacer.</string>
+    <string name="catalog_stock_adjust_title">Ajustar stock</string>
+    <string name="catalog_stock_adjust_new_value">Stock nuevo</string>
+    <string name="catalog_stock_adjust_reason">Motivo</string>
+    <string name="catalog_stock_adjusted">Stock ajustado</string>
+    <string name="catalog_modal_category_title">Nueva categoría</string>
+    <string name="catalog_modal_category_label">Nombre</string>
+    <string name="catalog_modal_category_placeholder">Ej. Bebidas</string>
+    <string name="catalog_form_category_label">Categoría</string>
+    <string name="catalog_form_category_required">Categoría obligatoria</string>
+    <string name="content_desc_edit_product">Editar producto</string>
+    <string name="content_desc_adjust_stock">Ajustar stock</string>
+    <string name="catalog_toast_product_saved">Producto guardado</string>
+    <string name="catalog_toast_product_deleted">Producto eliminado</string>
+
+    <!-- Carrito / registro -->
+    <string name="checkout_mode_sale">Venta</string>
+    <string name="checkout_mode_purchase">Compra</string>
+    <string name="checkout_cart_title_sale">Carrito de venta</string>
+    <string name="checkout_cart_title_purchase">Carrito de compra</string>
+    <string name="checkout_line_edit_title">Editar item</string>
+    <string name="checkout_line_quantity">Cantidad</string>
+    <string name="checkout_line_subtotal">Subtotal</string>
+    <string name="checkout_payment_title_sale">Cobrar venta</string>
+    <string name="checkout_payment_title_purchase">Pagar compra</string>
+    <string name="checkout_payment_method">Método de pago</string>
+    <string name="checkout_payment_received">Monto recibido</string>
+    <string name="checkout_payment_change">Cambio: %1$s</string>
+    <string name="checkout_payment_insufficient">Faltan: %1$s</string>
+    <string name="checkout_toast_sale_created">Venta registrada</string>
+    <string name="checkout_toast_purchase_created">Compra registrada</string>
+    <string name="checkout_error_stock_item">Stock insuficiente para %1$s (disp: %2$s, req: %3$s)</string>
+
+    <!-- Movimientos -->
+    <string name="screen_movements">Movimientos</string>
+    <string name="screen_reports">Reportes</string>
+    <string name="accumulator_movements_filter_all">Todos</string>
+    <string name="accumulator_movements_filter_sale">Ventas</string>
+    <string name="accumulator_movements_filter_purchase">Compras</string>
+    <string name="accumulator_movements_filter_expense">Gastos</string>
+    <string name="accumulator_movements_search">Buscar</string>
+    <string name="accumulator_movements_total">%1$d movimientos</string>
+    <string name="accumulator_movements_empty_title">Sin movimientos</string>
+    <string name="accumulator_movements_empty_desc">No hay movimientos que coincidan con tu búsqueda</string>
+    <string name="accumulator_movements_load_more">Cargar más</string>
+
+    <!-- Detalle de transacción -->
+    <string name="accumulator_detail_title">Detalle de transacción</string>
+    <string name="accumulator_detail_type_sale">VENTA</string>
+    <string name="accumulator_detail_type_purchase">COMPRA</string>
+    <string name="accumulator_detail_type_expense">GASTO</string>
+    <string name="accumulator_detail_amount">Monto: %1$s</string>
+    <string name="accumulator_detail_date">Fecha: %1$s</string>
+    <string name="accumulator_detail_payment">Pago: %1$s</string>
+    <string name="accumulator_detail_description">Descripción: %1$s</string>
+    <string name="accumulator_detail_products_header">Productos</string>
+    <string name="accumulator_detail_quantity">%1$s x %2$s</string>
+    <string name="accumulator_detail_unit_price">%1$s</string>
+    <string name="accumulator_revert_button">Revertir transacción</string>
+    <string name="accumulator_revert_confirm_title">Revertir</string>
+    <string name="accumulator_revert_confirm_message">Esta acción restaurará el stock y ajustará la caja. No se puede deshacer.</string>
+    <string name="accumulator_revert_pin_title">Ingrese su PIN</string>
+    <string name="accumulator_revert_success">Transacción revertida</string>
+    <string name="accumulator_revert_error_pin">PIN incorrecto</string>
+    <string name="accumulator_revert_error_stock">Stock insuficiente para revertir esta compra</string>
+    <string name="accumulator_revert_error_generic">No se pudo revertir</string>
+    <string name="accumulator_revert_error_already">Esta transacción ya fue revertida</string>
+
+    <!-- Reportes -->
+    <string name="reports_title">Reportes</string>
+    <string name="reports_range_today">Hoy</string>
+    <string name="reports_range_month">Mes</string>
+    <string name="reports_range_custom">Personalizado</string>
+    <string name="reports_range_apply">Aplicar</string>
+    <string name="reports_range_error">Rango inválido (desde debe ser menor o igual a hasta)</string>
+    <string name="reports_stat_sales">Ventas</string>
+    <string name="reports_stat_purchases">Compras</string>
+    <string name="reports_stat_expenses">Gastos</string>
+    <string name="reports_stat_net">Neto</string>
+    <string name="reports_payment_header">Desglose por método de pago</string>
+    <string name="reports_monthly_header">Desglose mensual</string>
+    <string name="reports_annual_header">Desglose anual</string>
+    <string name="reports_open">Ver reportes</string>
 </resources>

@@ -25,3 +25,43 @@ salesSumByTypeYear: SELECT SUM(total_amount) FROM sales_transactions
 WHERE type = :type
   AND deleted_at IS NULL
   AND strftime('%Y', registered_at) = :period;
+
+-- Arbitrary date-range aggregation (ISO-8601 text bounds, both nullable)
+salesSumByTypeRange: SELECT SUM(total_amount) FROM sales_transactions
+WHERE type = :type
+  AND deleted_at IS NULL
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to);
+
+-- Sales totals grouped by payment method within a date range
+salesSumByPaymentMethod: SELECT payment_method AS method, SUM(total_amount) AS total
+FROM sales_transactions
+WHERE type = 'SALE'
+  AND deleted_at IS NULL
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to)
+GROUP BY payment_method;
+
+-- Monthly sales/purchases/expenses breakdown within a date range
+salesSumByTypeMonthRange: SELECT strftime('%Y-%m', registered_at) AS month,
+  SUM(CASE WHEN type = 'SALE' THEN total_amount ELSE 0 END) AS sales,
+  SUM(CASE WHEN type = 'PURCHASE' THEN total_amount ELSE 0 END) AS purchases,
+  SUM(CASE WHEN type = 'EXPENSE' THEN total_amount ELSE 0 END) AS expenses
+FROM sales_transactions
+WHERE deleted_at IS NULL
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to)
+GROUP BY month
+ORDER BY month DESC;
+
+-- Annual sales/purchases/expenses breakdown within a date range
+salesSumByTypeYearRange: SELECT strftime('%Y', registered_at) AS year,
+  SUM(CASE WHEN type = 'SALE' THEN total_amount ELSE 0 END) AS sales,
+  SUM(CASE WHEN type = 'PURCHASE' THEN total_amount ELSE 0 END) AS purchases,
+  SUM(CASE WHEN type = 'EXPENSE' THEN total_amount ELSE 0 END) AS expenses
+FROM sales_transactions
+WHERE deleted_at IS NULL
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to)
+GROUP BY year
+ORDER BY year DESC;

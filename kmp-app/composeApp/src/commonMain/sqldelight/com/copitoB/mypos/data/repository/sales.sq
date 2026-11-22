@@ -4,6 +4,8 @@ salesFindAll: SELECT * FROM sales_transactions WHERE deleted_at IS NULL ORDER BY
 
 salesFindById: SELECT * FROM sales_transactions WHERE id = :id AND deleted_at IS NULL;
 
+salesFindByIdIncludingDeleted: SELECT * FROM sales_transactions WHERE id = :id;
+
 salesFindByType: SELECT * FROM sales_transactions WHERE type = :type AND deleted_at IS NULL ORDER BY registered_at DESC LIMIT :limit OFFSET :offset;
 
 salesInsert: INSERT INTO sales_transactions (type, total_amount, payment_method, detail, registered_at)
@@ -13,6 +15,29 @@ salesSoftDelete: UPDATE sales_transactions SET deleted_at = :deletedAt WHERE id 
 
 -- Get last inserted row id for sales_transactions
 lastInsertId: SELECT last_insert_rowid();
+
+-- Paginated movements with type / search / date-range filters (all params nullable)
+movementsFiltered:
+SELECT * FROM sales_transactions
+WHERE deleted_at IS NULL
+  AND (:type IS NULL OR type = :type)
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to)
+  AND (:search IS NULL OR detail LIKE '%' || :search || '%'
+       OR payment_method LIKE '%' || :search || '%'
+       OR type LIKE '%' || :search || '%')
+ORDER BY registered_at DESC
+LIMIT :limit OFFSET :offset;
+
+movementsFilteredCount:
+SELECT COUNT(*) FROM sales_transactions
+WHERE deleted_at IS NULL
+  AND (:type IS NULL OR type = :type)
+  AND (:from IS NULL OR registered_at >= :from)
+  AND (:to IS NULL OR registered_at <= :to)
+  AND (:search IS NULL OR detail LIKE '%' || :search || '%'
+       OR payment_method LIKE '%' || :search || '%'
+       OR type LIKE '%' || :search || '%');
 
 -- Queries for transaction_details table
 

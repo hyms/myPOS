@@ -38,4 +38,12 @@ class UpdateAccumulator(
       expensesDelta = deltas.expensesDelta
     )
   }
+
+  suspend fun revert(deltas: Deltas) {
+    accumulatorRepository.revertAccumulator(
+      salesAmount = deltas.salesDelta,
+      purchasesAmount = deltas.purchasesDelta,
+      expensesAmount = deltas.expensesDelta
+    )
+  }
 }

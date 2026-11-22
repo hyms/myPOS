@@ -9,6 +9,7 @@ import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.UserSettings
 import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
+import com.copitoB.mypos.presentation.ui.common.formatTimestampOrRaw
 import com.copitoB.mypos.generated.resources.Res
 import com.copitoB.mypos.generated.resources.payment_card
 import com.copitoB.mypos.generated.resources.payment_cash
@@ -111,7 +112,7 @@ fun Expense.toRowUi(currency: Currency): ExpenseRowUi = ExpenseRowUi(
   amountLabel = currency.format(amount.amount),
   description = description,
   categoryLabel = null,
-  dateLabel = registeredAt?.take(10) ?: "",
+  dateLabel = formatTimestampOrRaw(registeredAt),
   paymentMethodLabel = paymentMethod.label()
 )
 

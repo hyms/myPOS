@@ -1,6 +1,7 @@
 package com.copitoB.mypos.domain.rules
 
 import com.copitoB.mypos.domain.entities.Product
+import com.copitoB.mypos.domain.errors.StockError
 import com.copitoB.mypos.domain.valueobjects.Stock
 
 object StockRules {
@@ -12,8 +13,8 @@ object StockRules {
   fun isBelowMin(current: Stock, min: Stock): Boolean = current.isBelow(min)
 
   fun validateStockAvailable(current: Stock, required: Stock): Stock {
-    require(current.value.compareTo(required.value) >= 0) {
-      "Insufficient stock: available=${current.value}, required=${required.value}"
+    if (current.value.compareTo(required.value) < 0) {
+      throw StockError.Insufficient(available = current, required = required)
     }
     return current
   }

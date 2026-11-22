@@ -2,6 +2,7 @@ package com.copitoB.mypos.application.catalog
 
 import com.copitoB.mypos.domain.entities.Product
 import com.copitoB.mypos.domain.entities.ProductInput
+import com.copitoB.mypos.domain.entities.ProductSort
 import com.copitoB.mypos.domain.repository.ProductRepository
 import com.copitoB.mypos.domain.rules.StockRules
 import com.copitoB.mypos.domain.valueobjects.Currency
@@ -30,8 +31,22 @@ class ProductManagement(
     return productRepository.findById(id)
   }
 
-  suspend fun listProducts(search: String?, categoryId: Long?, limit: Int, offset: Int): List<Product> {
-    return productRepository.list(search, categoryId, limit, offset)
+  suspend fun listProducts(
+    search: String? = null,
+    categoryId: Long? = null,
+    limit: Int = 20,
+    offset: Int = 0,
+    sort: ProductSort = ProductSort.NOMBRE_ASC,
+    lowStockOnly: Boolean = false
+  ): List<Product> {
+    return productRepository.list(
+      search = search,
+      categoryId = categoryId,
+      limit = limit,
+      offset = offset,
+      sort = sort,
+      lowStockOnly = lowStockOnly
+    )
   }
 
   suspend fun updateProduct(id: Long, input: ProductInput): Product {

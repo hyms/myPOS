@@ -9,6 +9,8 @@ class VerifyPin(
     return constantTimeCompare(storedHash, inputHash)
   }
 
+  fun isConfigured(): Boolean = pinHashStorage.getPinHash() != null
+
   private fun constantTimeCompare(a: String, b: String): Boolean {
     if (a.length != b.length) return false
     var result = 0
@@ -31,7 +33,18 @@ class SetPin(
   }
 }
 
+class RemovePin(
+  private val pinHashStorage: PinHashStorage,
+  private val verifyPin: VerifyPin
+) {
+  operator fun invoke(currentPin: String) {
+    require(verifyPin(currentPin)) { "Current PIN is incorrect" }
+    pinHashStorage.clearPin()
+  }
+}
+
 interface PinHashStorage {
   fun getPinHash(): String?
   fun storePinHash(hash: String)
+  fun clearPin()
 }

@@ -11,6 +11,28 @@ findBySku: SELECT * FROM products WHERE sku = :sku AND deleted_at IS NULL;
 
 searchByName: SELECT * FROM products WHERE name LIKE '%' || :search || '%' AND deleted_at IS NULL ORDER BY name ASC LIMIT :limit OFFSET :offset;
 
+listFiltered: SELECT p.* FROM products p
+WHERE p.deleted_at IS NULL
+  AND (:search IS NULL OR p.name LIKE '%' || :search || '%')
+  AND (:categoryId IS NULL OR p.category_id = :categoryId)
+  AND (:lowStockOnly = 0 OR p.current_stock < p.min_stock)
+ORDER BY p.name ASC
+LIMIT :limit OFFSET :offset;
+
+listFilteredPopular: SELECT p.* FROM products p
+LEFT JOIN transaction_details d ON d.product_id = p.id
+LEFT JOIN sales_transactions t
+  ON t.id = d.transaction_id
+  AND t.type = 'SALE'
+  AND t.deleted_at IS NULL
+WHERE p.deleted_at IS NULL
+  AND (:search IS NULL OR p.name LIKE '%' || :search || '%')
+  AND (:categoryId IS NULL OR p.category_id = :categoryId)
+  AND (:lowStockOnly = 0 OR p.current_stock < p.min_stock)
+GROUP BY p.id
+ORDER BY COALESCE(SUM(d.quantity), 0) DESC, p.name ASC
+LIMIT :limit OFFSET :offset;
+
 insert: INSERT INTO products (category_id, sku, name, selling_price, purchase_price, current_stock, min_stock, image_uri, registered_at, updated_at)
 VALUES (:categoryId, :sku, :name, :sellingPrice, :purchasePrice, :currentStock, :minStock, :imageUri, :registeredAt, :updatedAt);
 

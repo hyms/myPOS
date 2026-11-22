@@ -1,0 +1,48 @@
+-- Queries for backup export/import
+
+-- settings
+backupSettingsFind: SELECT * FROM settings WHERE id = 1;
+backupSettingsUpsert: INSERT OR REPLACE INTO settings (id, currency_code, page_size, biometric_enabled, ad_enabled, updated_at)
+VALUES (1, :currencyCode, :pageSize, :biometricEnabled, 0, :updatedAt);
+
+-- categories
+backupCategoriesFindAll: SELECT * FROM categories ORDER BY id ASC;
+backupCategoriesInsertWithId: INSERT INTO categories (id, name, registered_at, updated_at, deleted_at)
+VALUES (:id, :name, :registeredAt, :updatedAt, :deletedAt);
+
+-- expense_categories
+backupExpenseCategoriesFindAll: SELECT * FROM expense_categories ORDER BY id ASC;
+backupExpenseCategoriesInsertWithId: INSERT INTO expense_categories (id, name, registered_at, deleted_at)
+VALUES (:id, :name, :registeredAt, :deletedAt);
+
+-- products
+backupProductsFindAll: SELECT * FROM products ORDER BY id ASC;
+backupProductsInsertWithId: INSERT INTO products (id, category_id, sku, name, selling_price, purchase_price, current_stock, min_stock, image_uri, registered_at, updated_at, deleted_at)
+VALUES (:id, :categoryId, :sku, :name, :sellingPrice, :purchasePrice, :currentStock, :minStock, :imageUri, :registeredAt, :updatedAt, :deletedAt);
+
+-- sales_transactions
+backupTransactionsFindAll: SELECT * FROM sales_transactions ORDER BY id ASC;
+backupTransactionsInsertWithId: INSERT INTO sales_transactions (id, type, total_amount, payment_method, detail, registered_at, deleted_at)
+VALUES (:id, :type, :totalAmount, :paymentMethod, :detail, :registeredAt, :deletedAt);
+
+-- transaction_details
+backupTransactionDetailsFindAll: SELECT * FROM transaction_details ORDER BY id ASC;
+backupTransactionDetailsInsertWithId: INSERT INTO transaction_details (id, transaction_id, product_id, quantity, unit_price)
+VALUES (:id, :transactionId, :productId, :quantity, :unitPrice);
+
+-- wipe
+backupDeleteTransactionDetails: DELETE FROM transaction_details;
+backupDeleteProducts: DELETE FROM products;
+backupDeleteSalesTransactions: DELETE FROM sales_transactions;
+backupDeleteExpenseCategories: DELETE FROM expense_categories;
+backupDeleteCategories: DELETE FROM categories;
+
+-- accumulators recompute
+backupAccumulatorSums: SELECT
+  COALESCE(SUM(CASE WHEN type = 'SALE' THEN total_amount ELSE 0 END), 0) AS total_sales,
+  COALESCE(SUM(CASE WHEN type = 'PURCHASE' THEN total_amount ELSE 0 END), 0) AS total_purchases,
+  COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN total_amount ELSE 0 END), 0) AS total_expenses
+FROM sales_transactions
+WHERE deleted_at IS NULL;
+backupAccumulatorsUpsert: INSERT OR REPLACE INTO financial_accumulators (id, total_sales, total_purchases, total_expenses, net_balance, updated_at)
+VALUES (1, :totalSales, :totalPurchases, :totalExpenses, :netBalance, :updatedAt);

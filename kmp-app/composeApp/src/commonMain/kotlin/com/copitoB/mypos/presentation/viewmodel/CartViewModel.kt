@@ -1,9 +1,12 @@
 package com.copitoB.mypos.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.copitoB.mypos.domain.entities.ICartItem
+import androidx.lifecycle.viewModelScope
 import com.copitoB.mypos.application.sales.RegisterSale
+import com.copitoB.mypos.domain.entities.ICartItem
+import com.copitoB.mypos.domain.errors.StockError
 import com.copitoB.mypos.domain.valueobjects.ChangeAmount
+import com.copitoB.mypos.domain.valueobjects.Currency
 import com.copitoB.mypos.domain.valueobjects.Money
 import com.copitoB.mypos.domain.valueobjects.PaymentMethod
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import androidx.lifecycle.viewModelScope
+import java.math.BigDecimal
 
 class CartViewModel(
   private val registerSale: RegisterSale
@@ -26,11 +29,23 @@ class CartViewModel(
   private val _error = MutableStateFlow<String?>(null)
   val error: StateFlow<String?> = _error.asStateFlow()
 
+  fun consumeError() {
+    _error.value = null
+  }
+
   private val _change = MutableStateFlow<ChangeAmount?>(null)
   val change: StateFlow<ChangeAmount?> = _change.asStateFlow()
 
+  private val _discount = MutableStateFlow(0.0)
+  val discount: StateFlow<Double> = _discount.asStateFlow()
+
   fun addItem(item: ICartItem) {
     _items.update { it + item }
+    _error.value = null
+  }
+
+  fun replaceItem(index: Int, item: ICartItem) {
+    _items.update { current -> current.mapIndexed { i, old -> if (i == index) item else old } }
     _error.value = null
   }
 
@@ -42,40 +57,55 @@ class CartViewModel(
   fun clearCart() {
     _items.value = emptyList()
     _change.value = null
+    _discount.value = 0.0
     _error.value = null
   }
 
-  fun setChange(amount: String, currency: com.copitoB.mypos.domain.valueobjects.Currency) {
+  fun setDiscount(amount: String) {
+    val parsed = amount.toDoubleOrNull() ?: 0.0
+    val subtotal = _items.value.sumOf { it.subtotal }
+    _discount.value = parsed.coerceIn(0.0, subtotal)
+    _error.value = null
+  }
+
+  fun setChange(amount: String, currency: Currency) {
     try {
-      val received = Money(java.math.BigDecimal(amount), currency)
+      val received = Money(BigDecimal(amount), currency)
       if (_items.value.isNotEmpty()) {
         val subtotal = _items.value.sumOf { it.subtotal }
-        val total = Money(java.math.BigDecimal(subtotal), currency)
+        val total = Money(BigDecimal(subtotal), currency)
         _change.value = ChangeAmount(received = received, total = total)
       }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
       _error.value = "Invalid amount"
     }
   }
 
-  fun checkout(paymentMethod: PaymentMethod, received: Money?, detail: String? = null) {
-    viewModelScope.launch {
-      _loading.value = true
-      _error.value = null
-      try {
-        val result = registerSale.execute(
+  fun checkout(paymentMethod: PaymentMethod, received: Money?, detail: String? = null, onDone: (Boolean) -> Unit = {}) {
+    _loading.value = true
+    _error.value = null
+    var outcome = false
+    try {
+      val result = kotlinx.coroutines.runBlocking {
+        registerSale.execute(
           items = _items.value,
           paymentMethod = paymentMethod,
           received = received,
+          discount = _discount.value,
           detail = detail
         )
-        _change.value = result.change
-        clearCart()
-      } catch (e: Exception) {
-        _error.value = e.message
-      } finally {
-        _loading.value = false
       }
+      _change.value = result.change
+      _items.value = emptyList()
+      _discount.value = 0.0
+      outcome = true
+    } catch (e: StockError.Insufficient) {
+      _error.value = "stock_error"
+    } catch (e: Exception) {
+      _error.value = e.message
+    } finally {
+      _loading.value = false
     }
+    onDone(outcome)
   }
 }
