@@ -8,11 +8,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.copitoB.mypos.application.backup.BackupFileIo
 import com.copitoB.mypos.application.backup.BackupSource
+import com.copitoB.mypos.application.backup.createBackupFileIo
 
 @Composable
 actual fun rememberBackupFilePicker(onResult: (BackupSource?) -> Unit): () -> Unit {
   val context = LocalContext.current
-  val fileIo = remember { BackupFileIo(context) }
+  val fileIo: BackupFileIo = remember { createBackupFileIo(context) }
   val launcher = rememberLauncherForActivityResult(
     contract = ActivityResultContracts.OpenDocument()
   ) { uri: Uri? ->

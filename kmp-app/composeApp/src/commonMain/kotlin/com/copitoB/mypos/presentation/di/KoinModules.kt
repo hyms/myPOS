@@ -9,7 +9,6 @@ import com.copitoB.mypos.application.backup.BackupFileIo
 import com.copitoB.mypos.application.backup.ExportBackupUseCase
 import com.copitoB.mypos.application.backup.ImportBackupUseCase
 import com.copitoB.mypos.application.backup.JsonCodec
-import com.copitoB.mypos.application.backup.LegacyDbReader
 import com.copitoB.mypos.application.catalog.ProductManagement
 import com.copitoB.mypos.application.expenses.RegisterExpense
 import com.copitoB.mypos.application.expenses.ReverseExpense
@@ -82,7 +81,6 @@ val applicationModule = module {
   factory { RemovePin(get(), get()) }
   factory { ExportBackupUseCase(get(), get(), get()) }
   factory { ImportBackupUseCase(get(), get(), get(), get()) }
-  factory { LegacyDbReader() }
 }
 
 val presentationModule = module {

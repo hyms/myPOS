@@ -1,15 +1,8 @@
 package com.copitoB.mypos.application.backup
 
+import app.cash.sqldelight.db.SqlDriver
+import com.copitoB.mypos.data.repository.TpvDatabase
 import kotlinx.serialization.json.Json
-
-/**
- * Reads a legacy `rn-app` SQLite `.db` file into backup DTOs.
- * Android actual opens the file read-only via `SQLiteDatabase.openDatabase`.
- * iOS/other actuals throw `UnsupportedOperationException`.
- */
-expect class LegacyDbReader() {
-  fun read(path: String): BackupDataDto
-}
 
 /**
  * Platform file I/O for backup export/import.
@@ -22,12 +15,39 @@ expect class LegacyDbReader() {
  *    A `.db` file (SQLite magic header / `.db` suffix) is copied to a cache
  *    temp file and returned as [BackupSource.LegacySqliteFile]; otherwise the
  *    raw bytes are returned as [BackupSource.Json].
+ *  - [openDriver] opens an existing SQLite database file as a [SqlDriver].
+ *  - [createFreshDriver] creates a fresh empty SQLite database as a [SqlDriver].
+ *  - [createValidator] creates a [BackupDbValidator] for inspecting .db files.
+ *  - [stageCopy] copies the selected .db to a staging cache file for validation.
+ *  - [snapshotActiveDb] creates a rollback snapshot of the active database.
+ *  - [restoreActiveDb] restores the active database from a snapshot path.
+ *  - [acquireWriteLock] / [releaseWriteLock] serialize concurrent writes during import.
  */
-expect class BackupFileIo(context: Any?) {
-
+expect interface BackupFileIo {
   fun save(fileName: String, bytes: ByteArray): String?
-
   fun load(uri: Any?): BackupSource?
+  fun openDriver(path: String): SqlDriver?
+  fun createFreshDriver(): SqlDriver?
+  fun createValidator(): BackupDbValidator
+  fun stageCopy(path: String): String?
+  fun snapshotActiveDb(): String?
+  fun restoreActiveDb(snapshotPath: String?): Boolean
+  fun acquireWriteLock(): Boolean
+  fun releaseWriteLock()
+}
+
+expect fun createBackupFileIo(context: Any?): BackupFileIo
+
+/**
+ * Inspects a SQLite `.db` file and classifies it for import.
+ * Android actual opens the file via `SQLiteDatabase.openDatabase` and uses
+ * raw SQL for PRAGMA introspection and v1 legacy table reads.
+ */
+expect interface BackupDbValidator {
+  fun open(path: String)
+  fun classify(): BackupDbClassification
+  fun stageInto(target: TpvDatabase): StagingResult
+  fun close()
 }
 
 /**
@@ -35,7 +55,6 @@ expect class BackupFileIo(context: Any?) {
  * Pure `commonMain` implementation (no platform API needed).
  */
 class JsonCodec {
-
   private val json = Json {
     prettyPrint = true
     ignoreUnknownKeys = true

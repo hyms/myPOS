@@ -2,6 +2,8 @@ package com.copitoB.mypos.application.backup
 
 import com.copitoB.mypos.application.security.VerifyPin
 import com.copitoB.mypos.data.repository.SqliteBackupRepository
+import com.copitoB.mypos.data.repository.TpvDatabase
+import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -29,7 +31,7 @@ class ExportBackupUseCase(
     val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")
       .withZone(ZoneOffset.UTC)
       .format(Instant.now())
-    return "tpv-backup-$stamp.json"
+    return "tpv-backup-$stamp"
   }
 
   companion object {
@@ -43,33 +45,52 @@ class ExportBackupUseCase(
 class ImportBackupUseCase(
   private val repository: SqliteBackupRepository,
   private val codec: JsonCodec,
-  private val legacyDbReader: LegacyDbReader,
+  private val backupFileIo: BackupFileIo,
   private val verifyPin: VerifyPin
 ) {
   operator fun invoke(source: BackupSource, pin: String): ImportReport {
     if (verifyPin.isConfigured()) {
-      require(verifyPin(pin)) { "PIN required for import" }
+      if (!verifyPin(pin)) {
+        throw BackupException(BackupErrors.PIN_REQUIRED)
+      }
     }
 
+    val stagingWarnings = mutableListOf<String>()
     val raw: BackupDataDto = when (source) {
       is BackupSource.Json -> {
         val envelope = runCatching { codec.decode(source.bytes) }
-          .getOrElse { throw BackupException("Invalid backup file: ${it.message}") }
+          .getOrElse { throw BackupException(BackupErrors.ENVELOPE_INVALID.format(it.message ?: "desconocido")) }
         if (envelope.format != ExportBackupUseCase.FORMAT) {
-          throw BackupException("Invalid backup format: ${envelope.format}")
+          throw BackupException(BackupErrors.ENVELOPE_INVALID.format("formato '${envelope.format}' no reconocido"))
         }
         if (envelope.schemaVersion > ExportBackupUseCase.SCHEMA_VERSION) {
-          throw BackupException("Backup schema version ${envelope.schemaVersion} is newer than supported")
+          throw BackupException(BackupErrors.BACKUP_TOO_NEW.format(envelope.schemaVersion, ExportBackupUseCase.SCHEMA_VERSION))
         }
         envelope.data
       }
-      is BackupSource.LegacySqliteFile -> legacyDbReader.read(source.path)
+      is BackupSource.LegacySqliteFile -> importSqliteStaging(source.path, stagingWarnings)
     }
 
     val warnings = mutableListOf<String>()
+    warnings.addAll(stagingWarnings)
     val normalized = normalize(raw, warnings)
 
-    repository.importAll(normalized)
+    val snapshot = repository.exportAll()
+    if (!backupFileIo.acquireWriteLock()) {
+      throw BackupException(BackupErrors.IMPORT_FAILED.format("no se pudo obtener bloqueo de escritura"))
+    }
+    try {
+      repository.importAll(normalized)
+    } catch (e: Exception) {
+      try {
+        repository.importAll(snapshot)
+      } catch (restoreEx: Exception) {
+        throw BackupException(BackupErrors.ROLLBACK_FAILED.format(restoreEx.message ?: "error desconocido"))
+      }
+      throw BackupException(BackupErrors.IMPORT_FAILED.format(e.message ?: "error desconocido"))
+    } finally {
+      backupFileIo.releaseWriteLock()
+    }
 
     val inserted = normalized.categories.size +
       normalized.expenseCategories.size +
@@ -83,6 +104,42 @@ class ImportBackupUseCase(
       skipped = warnings.count { it.startsWith("skipped") },
       warnings = warnings
     )
+  }
+
+  private fun importSqliteStaging(path: String, warnings: MutableList<String>): BackupDataDto {
+    val stagingPath = backupFileIo.stageCopy(path) ?: path
+    val validator = backupFileIo.createValidator()
+    return try {
+      validator.open(stagingPath)
+      val classification = validator.classify()
+      when (classification) {
+        is BackupDbClassification.INVALID -> throw BackupException(classification.reason)
+        is BackupDbClassification.V2_CURRENT -> stageToDto(validator, warnings)
+        is BackupDbClassification.V1_LEGACY -> stageToDto(validator, warnings)
+      }
+    } finally {
+      validator.close()
+      if (stagingPath != path) {
+        runCatching { java.io.File(stagingPath).delete() }
+      }
+    }
+  }
+
+  private fun stageToDto(validator: BackupDbValidator, warnings: MutableList<String>): BackupDataDto {
+    val freshDriver = backupFileIo.createFreshDriver()
+      ?: throw BackupException(BackupErrors.IMPORT_FAILED.format("no se pudo crear base temporal"))
+    try {
+      runBlocking { TpvDatabase.Schema.create(freshDriver).await() }
+      val result = validator.stageInto(TpvDatabase(freshDriver))
+      warnings.addAll(result.warnings)
+      return SqliteBackupRepository(freshDriver).exportAll()
+    } catch (e: BackupException) {
+      throw e
+    } catch (e: Exception) {
+      throw BackupException(BackupErrors.IMPORT_FAILED.format(e.message ?: "error desconocido"))
+    } finally {
+      runCatching { freshDriver.close() }
+    }
   }
 
   private fun normalize(raw: BackupDataDto, warnings: MutableList<String>): BackupDataDto {

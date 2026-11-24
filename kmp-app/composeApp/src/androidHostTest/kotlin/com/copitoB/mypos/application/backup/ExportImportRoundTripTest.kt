@@ -1,9 +1,11 @@
 package com.copitoB.mypos.application.backup
 
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.copitoB.mypos.application.security.Sha256
 import com.copitoB.mypos.application.security.VerifyPin
 import com.copitoB.mypos.data.repository.SqliteBackupRepository
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -17,7 +19,7 @@ class ExportImportRoundTripTest {
     return ImportBackupUseCase(
       repository = repo(driver),
       codec = JsonCodec(),
-      legacyDbReader = LegacyDbReader(),
+      backupFileIo = TestBackupFileIo(driver),
       verifyPin = VerifyPin(pinStorage)
     )
   }

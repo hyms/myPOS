@@ -2,6 +2,7 @@ package com.copitoB.mypos.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.copitoB.mypos.application.backup.BackupException
 import com.copitoB.mypos.application.backup.BackupSource
 import com.copitoB.mypos.application.backup.ExportBackupUseCase
 import com.copitoB.mypos.application.backup.ImportBackupUseCase
@@ -40,7 +41,7 @@ class BackupViewModel(
         _lastExportPath.value = path
         onResult(path)
       } catch (e: Exception) {
-        _error.value = e.message ?: "export_error"
+        _error.value = (e as? BackupException)?.message ?: "export_error"
       } finally {
         _exporting.value = false
       }
@@ -56,8 +57,7 @@ class BackupViewModel(
         _report.value = report
         onResult(true)
       } catch (e: Exception) {
-        _error.value = e.message ?: "import_error"
-        onResult(false)
+        _error.value = (e as? BackupException)?.message ?: "import_error"
       } finally {
         _importing.value = false
       }

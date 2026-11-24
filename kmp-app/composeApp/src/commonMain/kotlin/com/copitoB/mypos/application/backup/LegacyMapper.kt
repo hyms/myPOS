@@ -33,6 +33,10 @@ object LegacyMapper {
     return if (upper in validKmpPayments) upper else null
   }
 
+  fun isKnownType(raw: String): Boolean = mapType(raw) != null
+
+  fun isKnownPayment(raw: String): Boolean = mapPaymentMethod(raw) != null
+
   fun normalizeTimestamp(raw: String?): String? {
     if (raw.isNullOrBlank()) return null
     val trimmed = raw.trim()
@@ -71,5 +75,10 @@ object LegacyMapper {
       totalExpenses = safe.totalExpenses,
       netBalance = safe.netBalance
     )
+  }
+
+  fun remapNullCategory(categoryId: Long?, validCategoryIds: Set<Long>, fallbackCategoryId: Long?): Long {
+    return if (categoryId != null && categoryId in validCategoryIds) categoryId
+    else fallbackCategoryId ?: throw IllegalArgumentException("No valid category for product")
   }
 }
